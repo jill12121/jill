@@ -3,8 +3,8 @@
 ## Current Task
 
 - ID: F01
-- Sub-step: Android project skeleton and static privacy checks
-- State: PENDING_REMOTE_CI
+- Sub-step: Remote CI executable-wrapper correction
+- State: IN_PROGRESS
 
 ## Completed
 
@@ -29,8 +29,8 @@
 
 ## Next Exact Action
 
-- Configure a repository remote, push commit `1fe5736`, and verify the remote
-  CI run before starting F02.
+- Commit and push the CI wrapper correction, then verify the remote CI run
+  before starting F02.
 
 ## Decisions
 
@@ -50,5 +50,6 @@
 
 ## Known Issues
 
-- F01 is committed locally as `1fe5736`. This repository has no configured
-  remote, so push and remote CI verification remain pending.
+- F01 commits are pushed to `origin/master`. The first remote CI run failed
+  because `gradlew` lacks a Unix executable bit; the explicit Bash invocation
+  correction is in progress.
