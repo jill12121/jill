@@ -32,7 +32,7 @@ try {
         Get-ChildItem -LiteralPath (Join-Path $projectRoot "data") -Recurse -File
         Get-ChildItem -LiteralPath (Join-Path $projectRoot "presentation") -Recurse -File
         Get-ChildItem -LiteralPath (Join-Path $projectRoot "app/src/main/java") -Recurse -File
-    )
+    ) | Where-Object { $_.FullName -notmatch '[\\/]+build[\\/]' }
     foreach ($file in $fixtureFiles) {
         $relativePath = $file.FullName.Substring($projectRoot.Length).TrimStart('\')
         $destination = Join-Path $fixtureRoot $relativePath
@@ -58,6 +58,14 @@ try {
     $presentationPath = Join-Path $fixtureRoot "presentation/src/main/kotlin/com/galleryorganizer/presentation/AppScreen.kt"
     Add-Content -LiteralPath $presentationPath -Value "`nimport com.galleryorganizer.contract.SourceReader"
     Assert-VerificationFails -ExpectedMessage "Presentation must not import port contracts directly"
+
+    Copy-Item -Force -LiteralPath `
+        (Join-Path $projectRoot "presentation/src/main/kotlin/com/galleryorganizer/presentation/AppScreen.kt") `
+        -Destination $presentationPath
+    $useCases = Get-Content -Raw -LiteralPath $domainPath
+    $useCases = $useCases -replace 'interface Scanner \{', "interface Scanner {`n    val sourceReader: SourceReader"
+    Set-Content -NoNewline -LiteralPath $domainPath -Value $useCases
+    Assert-VerificationFails -ExpectedMessage "Scanner must not expose a port dependency"
 
     Write-Output "Architecture guard tests passed."
 }

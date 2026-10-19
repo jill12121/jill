@@ -10,7 +10,7 @@
 
 ## Current Delivery Boundary
 
-- Current task: F02, module boundaries, DI skeleton, and architecture checks.
+- Current task: F02.1, contract, DI, and module-type hardening.
 - Before S01, S02, and S04 receive human-device GO, file behavior runs only
   against Fake implementations. No real workspace write is enabled.
 - P0a excludes OCR, automatic QR scanning, similar-image analysis, video,

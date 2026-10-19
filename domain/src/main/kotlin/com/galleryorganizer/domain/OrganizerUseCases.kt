@@ -1,21 +1,34 @@
 package com.galleryorganizer.domain
 
-import com.galleryorganizer.contract.ManifestStore
-import com.galleryorganizer.contract.PermanentDeleter
-import com.galleryorganizer.contract.SourceReader
-import com.galleryorganizer.contract.WorkspaceGateway
+import com.galleryorganizer.contract.FsResult
+import com.galleryorganizer.contract.ScanScope
+import com.galleryorganizer.contract.SourceBatch
+import kotlinx.coroutines.flow.Flow
 
 interface Scanner {
-    val sourceReader: SourceReader
+    fun scan(scope: ScanScope): Flow<FsResult<SourceBatch>>
 }
 
-interface Analyzer
+data class AnalysisRequest(val subjectId: String)
+
+data class AnalysisSummary(val subjectId: String)
+
+interface Analyzer {
+    suspend fun analyze(request: AnalysisRequest): AnalysisSummary
+}
+
+data class AlbumEditRequest(val albumId: String)
+
+data class AlbumEditPreview(val albumId: String)
 
 interface AlbumEditor {
-    val workspaceGateway: WorkspaceGateway
-    val manifestStore: ManifestStore
+    suspend fun preview(request: AlbumEditRequest): AlbumEditPreview
 }
 
+data class SourceCleanupRequest(val sourceCount: Int)
+
+data class SourceCleanupPreview(val sourceCount: Int)
+
 interface SourceCleanup {
-    val permanentDeleter: PermanentDeleter
+    suspend fun preview(request: SourceCleanupRequest): SourceCleanupPreview
 }

@@ -2,9 +2,9 @@
 
 ## Current Task
 
-- ID: F02
-- Sub-step: Module boundaries, DI skeleton, and architecture checks
-- State: CONDITIONALLY_ACCEPTED
+- ID: F02.1
+- Sub-step: Contract, DI, and module-type hardening
+- State: COMPLETED
 
 ## Completed
 
@@ -35,10 +35,13 @@
   the F02 real-I/O freeze.
 - Closed the F02 review actions: `data` now depends on `domain`, and explicit
   Android 12+ backup/device-transfer exclusion rules are policy-guarded.
+- Completed F02.1: Android Library module types, Hilt/KSP composition root,
+  typed asynchronous port contracts, behavior-only use cases, a non-empty
+  Konsist scope assertion, and a staged I/O guard policy.
 
 ## Next Exact Action
 
-- Commit and push F02, then confirm its GitHub Actions run.
+- Commit and push F02.1, then confirm its GitHub Actions run before F02.2.
 
 ## Decisions
 
@@ -47,6 +50,8 @@
 - Keep application storage behavior disabled until S01/S02/S04 device GO.
 - F02 creates only contracts and dependency bindings; it does not enable
   business persistence, source cleanup, or filesystem behavior.
+- F02.1 uses Hilt/KSP for composition; bindings remain empty until F03
+  defines fake implementations.
 
 ## Deviations
 
@@ -62,3 +67,5 @@
 
 - F02 remains an architecture-only skeleton; it has no organizer
   functionality, business storage, or real I/O by design.
+- Lint still reports the expected missing launcher icon; it is deferred to
+  F02.2 and does not affect the privacy or backup policy.
