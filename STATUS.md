@@ -4,7 +4,7 @@
 
 - ID: F01
 - Sub-step: Android project skeleton and static privacy checks
-- State: COMPLETED_WITH_ENVIRONMENT_BLOCKER
+- State: PENDING_REMOTE_CI
 
 ## Completed
 
@@ -29,7 +29,7 @@
 
 ## Next Exact Action
 
-- Configure the repository-local Git author, commit F01, and verify the remote
+- Configure a repository remote, push commit `1fe5736`, and verify the remote
   CI run before starting F02.
 
 ## Decisions
@@ -43,11 +43,12 @@
 - The system installer is blocked by the device organization policy. The
   project uses an isolated JDK 17 and Android SDK under `D:\WorkFile\.tools`
   instead of a system installation.
-- Git commit remains blocked until a repository author name and email are
-  configured. No author identity was inferred or written automatically.
+- System-level JDK installation remains blocked by device policy; local builds
+  use the project-local toolchain.
 - The source `Baseline Doc/` directory remains untracked. Its verified,
   repository-controlled copy is `docs/spec/`.
 
 ## Known Issues
 
-- F01 is staged but uncommitted because Git has no configured author identity.
+- F01 is committed locally as `1fe5736`. This repository has no configured
+  remote, so push and remote CI verification remain pending.
