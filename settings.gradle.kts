@@ -16,3 +16,7 @@ dependencyResolutionManagement {
 
 rootProject.name = "GalleryOrganizer"
 include(":app")
+include(":core:contract")
+include(":domain")
+include(":data")
+include(":presentation")

@@ -18,6 +18,6 @@
 
 - [x] Confirm the repository contains `docs/spec/README.md` and all v0.3.1
   baseline files.
-- [ ] Confirm a clean working tree after the F01 status-sync commit.
-- [ ] Start only the F02 module-boundary sub-step; do not add business
+- [x] Confirm a clean working tree after the F01 status-sync commit.
+- [x] Start only the F02 module-boundary sub-step; do not add business
   persistence or real file I/O.
