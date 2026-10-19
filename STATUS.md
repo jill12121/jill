@@ -3,8 +3,8 @@
 ## Current Task
 
 - ID: F01
-- Sub-step: Remote CI executable-wrapper correction
-- State: IN_PROGRESS
+- Sub-step: Android project skeleton and static privacy checks
+- State: COMPLETED
 
 ## Completed
 
@@ -26,11 +26,12 @@
   fault path with a temporary fixture.
 - Added `Baseline Doc/` to `.gitignore`; `docs/spec/` is the only
   repository-controlled baseline location.
+- Pushed F01 commits through `883c7cd` to `origin/master`; GitHub Actions run
+  `39217313578` is reported successful.
 
 ## Next Exact Action
 
-- Commit and push the CI wrapper correction, then verify the remote CI run
-  before starting F02.
+- Start F02 module-boundary sub-step after confirming a clean working tree.
 
 ## Decisions
 
@@ -50,6 +51,5 @@
 
 ## Known Issues
 
-- F01 commits are pushed to `origin/master`. The first remote CI run failed
-  because `gradlew` lacks a Unix executable bit; the explicit Bash invocation
-  correction is in progress.
+- None for F01. The APK remains a skeleton by design and has no organizer
+  functionality yet.
