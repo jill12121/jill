@@ -1,0 +1,75 @@
+schema_version: "1.0"
+spec_id: "gallery-organizer-compose-v0.3.1"
+platform: "Android 11+"
+architecture: "VM StateFlow<UiState> + Flow<PagingData<T>>; compose collects paging separately"
+shared:
+  components: ["AppScaffold", "AsyncContent", "TaskExecutionDialog", "ImageThumbnail", "RiskBadge", "PlanSummary", "SelectionBottomBar"]
+  rule: "Draft edits have zero file I/O; system tasks do not show TaskExecutionDialog"
+  selection: "Explicit(ids) | AllExcept(querySnapshot, excludedIds); Plan materializes IDs"
+
+routes:
+  - { route: "onboarding?mode={mode}", screen: "OnboardingScreen", args: ["mode:new|adopt"] }
+  - { route: "library", screen: "AlbumLibraryScreen" }
+  - { route: "inbox", screen: "InboxScreen" }
+  - { route: "inbox/{batchId}?mode={mode}", screen: "InboxScreen", args: ["batchId:String", "mode:overview|organize"] }
+  - { route: "album/{albumId}?filter={filter}", screen: "AlbumDetailScreen", args: ["albumId:String", "filter:all|keep|unreviewed|missing|duplicate"] }
+  - { route: "plan-confirmation/{planId}?origin={origin}", screen: "PlanConfirmationScreen", args: ["planId:String", "origin:inbox|album|review|trash|cleanup"] }
+  - { route: "review?category={category}&scope={scopeId}", screen: "ReviewCenterScreen", args: ["category:duplicates|junk|suspected_ads", "scopeId:String?"] }
+  - { route: "trash?filter={filter}", screen: "TrashScreen", args: ["filter:all|expires_soon|expired|needs_confirmation"] }
+  - { route: "recovery", screen: "RecoveryCenterScreen" }
+  - { route: "settings", screen: "SettingsScreen" }
+  - { route: "image-viewer/{fileId}?origin={origin}", screen: "ImageViewerScreen", args: ["fileId:String", "origin:library|inbox|album|review|trash"] }
+  - { route: "deep-ad-scan?scopeType={scopeType}&scopeId={scopeId}", screen: "DeepAdScanScreen", gate: "P0b" }
+
+screens:
+  OnboardingScreen:
+    state: ["mode", "scanScopeCandidates", "selectedScopes", "rootSelection", "rootCapability", "adoptionState"]
+    events: ["ChooseNewRoot", "ChooseExistingRoot", "SelectScanScopes", "ProbeRoot", "AdoptRoot", "Finish"]
+    tests: ["adopt reads root.json", "invalid root shows fallback", "root scan not auto enabled"]
+  SettingsScreen:
+    state: ["scanScopes", "protectedDirectories", "organizerRoot", "capability", "trashPolicy", "notificationPermission"]
+    events: ["EditScopes", "EditProtected", "OpenSystemSettings", "OpenTrash", "OpenRecovery"]
+  InboxScreen:
+    paging: ["batchPaging", "sourceFilePaging"]
+    state: ["batch", "coverage", "draftId", "sourceDecisions", "planState", "loadState"]
+    events: ["SelectBatch", "SetSourceDecision", "BeginDraft", "SetDisposition", "SetTitle", "SetCover", "SetOrder", "Preview"]
+    rules: ["PARTIAL coverage only selected import", "source TRASH does not copy to app Trash"]
+    tests: ["SourceDecision persists by fingerprint", "draft zero I/O", "plan stale after edit"]
+  AlbumLibraryScreen:
+    paging: ["albumPaging"]
+    state: ["filter", "sort", "search", "selection", "loadState"]
+  AlbumDetailScreen:
+    paging: ["albumFilePaging"]
+    state: ["album", "metadataDraft", "selection", "loadState"]
+    events: ["EditMetadata", "SaveMetadataPlan", "OpenViewer", "OpenReview"]
+    tests: ["title does not rename dir", "metadata only via plan"]
+  PlanConfirmationScreen:
+    state: ["plan", "planType", "progress", "blocked", "executionState", "loadState"]
+    events: ["Confirm", "Cancel", "RunForeground", "RunBackground", "Retry", "OpenAuthorization"]
+    rules: ["ORG/METADATA/TRASH_MOVE/SOURCE_CLEANUP/PERMANENT_DELETE render type-specific summary", "system authorization is only for SOURCE_CLEANUP"]
+    tests: ["cancel zero I/O", "one plan one operation", "auth deny retains archive"]
+  TrashScreen:
+    paging: ["trashPaging"]
+    state: ["filter", "selection", "retention", "loadState"]
+    events: ["Restore", "ChooseRestorePath", "CreateDeletePlan", "CleanExpired", "OpenViewer"]
+    tests: ["sidecar mismatch blocked", "onlyCopy warning shown", "manual delete strong confirmation"]
+  ReviewCenterScreen:
+    paging: ["reviewPaging"]
+    state: ["category", "scope", "draftId", "selection", "loadState"]
+    tests: ["imported copy excluded", "cross album duplicate no default delete", "QR-only confirmation"]
+  RecoveryCenterScreen:
+    state: ["recoveryItems", "pendingCleanup", "loadState"]
+    events: ["Continue", "Rollback", "RebuildManifest", "StartCleanupAuth"]
+    tests: ["Room reset sees disk Journal", "pending cleanup has entry point"]
+  ImageViewerScreen:
+    state: ["file", "decodeState", "metadata", "evidence", "zoom"]
+    events: ["Dismiss", "ToggleZoom"]
+  DeepAdScanScreen:
+    gate: "P0b"
+    state: ["scope:{type,id}", "workerState", "progress", "failedCount"]
+    events: ["Start", "Cancel", "Retry", "RunBackground"]
+
+navigation:
+  archive_success: "to album/{albumId}; clear draft"
+  source_cleanup_wait: "to recovery pendingCleanup; notification deep link is optional"
+  restore_success: "return origin preserving scroll"

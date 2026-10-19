@@ -1,0 +1,57 @@
+schema_version: "1.0"
+package: "gallery-organizer-v0.3.1"
+status: "sole-implementation-baseline"
+read_order: ["README.md", "01_product_prd_v0.3.1.md", "02_technical_architecture_v0.3.1.md", "03_delivery_plan_v0.3.1.md", "04_adrs_v0.3.1.md", "06_compose_ui_spec_v0.3.1.yaml", "07_contract_tables_v0.3.1.md", "08_execution_playbook_v0.3.1.md"]
+platform: { min_sdk: 30, target: "current stable" }
+privacy: { internet: false, manage_external_storage: false, allow_backup: false, ocr_raw_persisted: false }
+
+ports: ["SourceReader", "WorkspaceGateway", "PermanentDeleter", "ManifestStore", "ImageProbe", "ThumbnailSource", "TextRecognizer", "BarcodeScanner"]
+forbidden: ["UI direct filesystem/DAO", "source direct move", "unplanned write", "automatic OCR", "UiState LazyPagingItems"]
+
+hard_invariants:
+  - "Source only read by SourceReader; source deletion only SourceCleanup+PermanentDeleter"
+  - "All target writes start after disk Journal PLANNED"
+  - "MOVE source cleanup requires committed Manifest, target readback SHA and unchanged source locator"
+  - "Scanner/Analyzer never mutate UserState or SourceDecision"
+  - "Sweep only FULL coverage + completed scan"
+  - "Plan operationId is planId; one plan executes once"
+  - "Trash purge only via PermanentDeletePlan"
+
+spikes:
+  S01: { blocks: ["F05", "I02", "J2"], human_device_required: true }
+  S02: { blocks: ["F05", "I01", "X01"], human_device_required: true }
+  S03: { blocks: ["B03"], human_device_required: true }
+  S04: { blocks: ["J1", "J3"], human_device_required: true }
+  S05: { blocks: ["I04"], human_device_required: false }
+
+tasks:
+  F01: { depends: [], output: "project-ci", size: "S" }
+  F02: { depends: ["F01"], output: "architecture", size: "S" }
+  F03: { depends: ["F02"], output: "states-errors-permissions-plans", size: "M" }
+  F04: { depends: ["F03"], output: "room-fakes-faults", size: "M" }
+  F05: { depends: ["F02", "S01", "S02"], output: "onboarding-settings-root-adoption", size: "M" }
+  F06: { depends: ["F01"], output: "fixtures-e2e", size: "S" }
+  N01: { depends: ["F05"], output: "scan-scope", size: "S" }
+  I01: { depends: ["F04", "F05", "S02", "N01"], output: "scanner", size: "M" }
+  I02: { depends: ["F05", "S01"], output: "workspace", size: "S" }
+  I03: { depends: ["I01", "F04"], output: "batch-source-decision", size: "M" }
+  I04: { depends: ["I01", "S05"], output: "thumbnails", size: "M" }
+  I05: { depends: ["I03", "F04"], output: "draft-plan", size: "M" }
+  J1: { depends: ["F04", "S04"], output: "journal-engine", size: "M" }
+  J2: { depends: ["J1", "I02", "S01"], output: "copy-executor", size: "L" }
+  J3: { depends: ["J1", "J2", "S04"], output: "reconciler", size: "M" }
+  I06b: { depends: ["I05", "J2"], output: "plan-confirm-ui", size: "M" }
+  I06c: { depends: ["I03", "I04", "I05"], output: "primary-ui", size: "M" }
+  I06d: { depends: ["J2", "J3", "I06b", "I06c"], output: "archive-e2e", size: "M" }
+  X01: { depends: ["J2", "S02"], output: "source-cleanup", size: "M" }
+  I07: { depends: ["I04"], output: "viewer", size: "S" }
+  R01: { depends: ["J3", "F05"], output: "recovery-center", size: "M" }
+  R02: { depends: ["J2"], output: "trash-review", size: "M" }
+  R03: { depends: ["R02"], output: "expiry-delete", size: "M" }
+  R04: { depends: ["F04", "I01", "J2"], output: "exact-duplicate", size: "M" }
+  R05: { depends: ["R02", "R04"], output: "review-center", size: "M" }
+  R06: { depends: ["R01", "R02", "R03", "R04", "R05"], output: "release-gate", size: "M" }
+
+completion:
+  every_task: ["unit/static", "one fault path", "fixture acceptance", "status-risk-deviation update"]
+  filesystem_task: ["device/provider record", "journal recovery test"]
