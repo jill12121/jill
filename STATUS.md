@@ -2,9 +2,9 @@
 
 ## Current Task
 
-- ID: F02.2
-- Sub-step: Delivery quality hardening
-- State: COMPLETED
+- ID: F04
+- Sub-step: Freeze Fake, Room, and FaultPlan boundaries
+- State: PLANNED
 
 ## Completed
 
@@ -52,11 +52,13 @@
 - Added fixture-tested release checks for the generated merged Manifest and
   release runtime dependency graph. Local release policy verification, check,
   lint, and debug APK assembly pass.
+- Committed and pushed F03.1, F02.2, and the PowerShell Core CI correction.
+  GitHub Actions Verify run `39365176154` passed on commit `113e6b8`.
 
 ## Next Exact Action
 
-- Start F04 with in-memory Fake ports and deterministic FaultPlan behavior,
-  then add Room schemas and uniqueness constraints without production I/O.
+- Implement F04.1 test-first in-memory Fake ports and deterministic FaultPlan
+  behavior without release bindings or real file I/O.
 
 ## Decisions
 
@@ -69,6 +71,9 @@
   fake implementations.
 - F03 domain contracts are platform-neutral and must remain independent of
   Room, MediaStore, SAF, WorkManager, and filesystem APIs.
+- F04 Fake ports remain test-only; the release Hilt graph must not bind them.
+- F04 Room stores app-private metadata only and does not authorize external
+  storage, disk Journal, Manifest, copy, cleanup, or deletion behavior.
 
 ## Deviations
 
@@ -85,4 +90,4 @@
 - F02 remains an architecture-only skeleton; it has no organizer
   functionality, business storage, or real I/O by design.
 - Fake port implementations and deterministic fault injection belong to F04.
-- Remote CI for the uncommitted F02.2 and F03 changes is not yet available.
+- F04 is planned but has no implementation yet.
