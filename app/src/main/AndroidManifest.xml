@@ -4,8 +4,10 @@
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
+        android:icon="@drawable/ic_launcher"
         android:name=".GalleryOrganizerApplication"
         android:label="@string/app_name"
+        android:roundIcon="@drawable/ic_launcher"
         android:supportsRtl="true"
         android:theme="@style/Theme.GalleryOrganizer">
         <activity

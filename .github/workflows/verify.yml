@@ -14,18 +14,21 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
       - name: Verify implementation baseline
         shell: pwsh
         run: ./scripts/verify-baseline-spec.ps1
       - name: Verify app policy
         shell: pwsh
         run: ./scripts/test-app-policy.ps1
+      - name: Verify release policy guard
+        shell: pwsh
+        run: ./scripts/test-release-policy.ps1
       - name: Verify architecture boundaries
         shell: pwsh
         run: ./scripts/test-architecture.ps1
-      - name: Lint
-        run: bash ./gradlew lint
-      - name: Unit tests
-        run: bash ./gradlew testDebugUnitTest :domain:test
-      - name: Assemble debug APK
-        run: bash ./gradlew assembleDebug
+      - name: Check, lint, and assemble debug APK
+        run: ./gradlew check lint assembleDebug
+      - name: Verify release artifact policy
+        shell: pwsh
+        run: ./scripts/verify-release-policy.ps1

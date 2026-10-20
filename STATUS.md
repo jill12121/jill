@@ -2,8 +2,8 @@
 
 ## Current Task
 
-- ID: F02.1
-- Sub-step: Contract, DI, and module-type hardening
+- ID: F02.2
+- Sub-step: Delivery quality hardening
 - State: COMPLETED
 
 ## Completed
@@ -38,10 +38,25 @@
 - Completed F02.1: Android Library module types, Hilt/KSP composition root,
   typed asynchronous port contracts, behavior-only use cases, a non-empty
   Konsist scope assertion, and a staged I/O guard policy.
+- Started F03 with pure Kotlin domain contracts for state machines, plan
+  schema validation, source decisions, domain error mapping, and Android media
+  permission matrices. Added table-driven tests without Room, fake adapters,
+  Android storage APIs, or real file I/O.
+- Completed F03.1 review closure: corrected state machines, added typed Plan
+  payloads and authorization waiting, separated scan coverage from API
+  capability, added operation-aware failure resolution, and exhaustively
+  tested all transition matrices.
+- Completed F02.2 delivery hardening: standard Gradle Wrapper scripts,
+  distribution checksum, executable Git mode, stable EOL rules, launcher icon,
+  and CI setup-gradle integration.
+- Added fixture-tested release checks for the generated merged Manifest and
+  release runtime dependency graph. Local release policy verification, check,
+  lint, and debug APK assembly pass.
 
 ## Next Exact Action
 
-- Commit and push F02.1, then confirm its GitHub Actions run before F02.2.
+- Start F04 with in-memory Fake ports and deterministic FaultPlan behavior,
+  then add Room schemas and uniqueness constraints without production I/O.
 
 ## Decisions
 
@@ -50,8 +65,10 @@
 - Keep application storage behavior disabled until S01/S02/S04 device GO.
 - F02 creates only contracts and dependency bindings; it does not enable
   business persistence, source cleanup, or filesystem behavior.
-- F02.1 uses Hilt/KSP for composition; bindings remain empty until F03
-  defines fake implementations.
+- F02.1 uses Hilt/KSP for composition; bindings remain empty until F04 defines
+  fake implementations.
+- F03 domain contracts are platform-neutral and must remain independent of
+  Room, MediaStore, SAF, WorkManager, and filesystem APIs.
 
 ## Deviations
 
@@ -67,5 +84,5 @@
 
 - F02 remains an architecture-only skeleton; it has no organizer
   functionality, business storage, or real I/O by design.
-- Lint still reports the expected missing launcher icon; it is deferred to
-  F02.2 and does not affect the privacy or backup policy.
+- Fake port implementations and deterministic fault injection belong to F04.
+- Remote CI for the uncommitted F02.2 and F03 changes is not yet available.
