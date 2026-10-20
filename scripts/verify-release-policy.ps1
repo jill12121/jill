@@ -63,8 +63,10 @@ function Assert-ReleaseDependencyPolicy {
 $dependencyReport = $null
 if ([string]::IsNullOrWhiteSpace($MergedManifestPath) -or
     [string]::IsNullOrWhiteSpace($DependencyReportPath)) {
-    $isWindows = [System.Environment]::OSVersion.Platform -eq "Win32NT"
-    $gradlePath = Join-Path $ProjectRoot $(if ($isWindows) { "gradlew.bat" } else { "gradlew" })
+    $runningOnWindows = [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform(
+        [System.Runtime.InteropServices.OSPlatform]::Windows
+    )
+    $gradlePath = Join-Path $ProjectRoot $(if ($runningOnWindows) { "gradlew.bat" } else { "gradlew" })
     if (-not (Test-Path -LiteralPath $gradlePath)) {
         throw "Missing Gradle Wrapper: $gradlePath"
     }
