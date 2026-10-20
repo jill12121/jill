@@ -99,6 +99,9 @@ $ioAllowedRoots = @{
 foreach ($file in $sourceFiles) {
     $content = Get-Content -Raw -LiteralPath $file.FullName
     $relativePath = $file.FullName.Substring($ProjectRoot.Length).TrimStart('\').Replace('\', '/')
+    Assert-DoesNotMatch -Content $content `
+        -Pattern '\bFake(SourceReader|WorkspaceGateway|ManifestStore|PermanentDeleter)\b|(?m)^\s*import\s+com\.galleryorganizer\.data\.fake' `
+        -Message "Production source must not depend on test fakes: $relativePath"
     $isAllowedIoLocation = $ioAllowedRoots[$IoPolicyStage] | Where-Object {
         $relativePath.StartsWith($_, [System.StringComparison]::OrdinalIgnoreCase)
     }

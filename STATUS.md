@@ -2,9 +2,9 @@
 
 ## Current Task
 
-- ID: F04
-- Sub-step: Freeze Fake, Room, and FaultPlan boundaries
-- State: PLANNED
+- ID: F04.1
+- Sub-step: Test-only Fake Ports and deterministic FaultPlan
+- State: COMPLETED
 
 ## Completed
 
@@ -54,11 +54,13 @@
   lint, and debug APK assembly pass.
 - Committed and pushed F03.1, F02.2, and the PowerShell Core CI correction.
   GitHub Actions Verify run `39365176154` passed on commit `113e6b8`.
+- Completed F04.1 locally with four test-only in-memory Port implementations,
+  deterministic operation-index faults, inspectable recovery state, and a
+  production Fake-dependency Guard.
 
 ## Next Exact Action
 
-- Implement F04.1 test-first in-memory Fake ports and deterministic FaultPlan
-  behavior without release bindings or real file I/O.
+- Commit and push F04.1, confirm remote Verify, and stop before F04.2 Room work.
 
 ## Decisions
 
@@ -74,6 +76,7 @@
 - F04 Fake ports remain test-only; the release Hilt graph must not bind them.
 - F04 Room stores app-private metadata only and does not authorize external
   storage, disk Journal, Manifest, copy, cleanup, or deletion behavior.
+- F04.1 adds no VirtualClock because no current Port accepts time.
 
 ## Deviations
 
@@ -89,5 +92,4 @@
 
 - F02 remains an architecture-only skeleton; it has no organizer
   functionality, business storage, or real I/O by design.
-- Fake port implementations and deterministic fault injection belong to F04.
-- F04 is planned but has no implementation yet.
+- Room entities, DAO, schema, migration, and persistence remain F04.2.

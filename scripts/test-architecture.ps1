@@ -67,6 +67,14 @@ try {
     Set-Content -NoNewline -LiteralPath $domainPath -Value $useCases
     Assert-VerificationFails -ExpectedMessage "Scanner must not expose a port dependency"
 
+    Copy-Item -Force -LiteralPath `
+        (Join-Path $projectRoot "domain/src/main/kotlin/com/galleryorganizer/domain/OrganizerUseCases.kt") `
+        -Destination $domainPath
+    $appBindingsPath = Join-Path $fixtureRoot "app/src/main/java/com/galleryorganizer/app/di/AppBindingsModule.kt"
+    Add-Content -LiteralPath $appBindingsPath `
+        -Value "`nval leakedFake: FakeSourceReader? = null"
+    Assert-VerificationFails -ExpectedMessage "Production source must not depend on test fakes"
+
     Write-Output "Architecture guard tests passed."
 }
 finally {

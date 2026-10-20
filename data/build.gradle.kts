@@ -26,4 +26,5 @@ dependencies {
     implementation(project(":domain"))
     testImplementation(kotlin("test"))
     testImplementation(libs.konsist)
+    testImplementation(libs.kotlinx.coroutines.test)
 }
