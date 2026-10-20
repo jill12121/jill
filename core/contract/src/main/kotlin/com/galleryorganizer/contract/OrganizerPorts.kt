@@ -129,6 +129,8 @@ interface WorkspaceGateway {
     suspend fun promotePart(part: PartInfo): FsResult<FinalFile>
     suspend fun readBackDigest(file: FinalFile): FsResult<Sha256>
     suspend fun deletePart(part: PartInfo): FsResult<Unit>
+    suspend fun moveToTrash(file: FinalFile, target: RelativePath): FsResult<FinalFile>
+    suspend fun restoreFromTrash(file: FinalFile, target: RelativePath): FsResult<FinalFile>
 }
 
 interface PermanentDeleter {
