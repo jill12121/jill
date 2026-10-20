@@ -37,19 +37,26 @@ class FakePortsTest {
     @Test
     fun `workspace and manifest expose only explicit completed state`() = runTest {
         val workspace = FakeWorkspaceGateway()
-        val path = RelativePath("album/image.part")
+        val partPath = RelativePath("album/image.jpg.part")
+        val finalPath = RelativePath("album/image.jpg")
         val digest = Sha256("digest-6")
         assertIs<FsResult.Success<Unit>>(workspace.ensureDirectory(RelativePath("album")))
         val part = assertIs<FsResult.Success<PartInfo>>(
-            workspace.writePart(path, FakeByteSource("abcdef".encodeToByteArray()), FakeDigestSink(digest)),
+            workspace.writePart(partPath, FakeByteSource("abcdef".encodeToByteArray()), FakeDigestSink(digest)),
         ).value
-        assertNull(workspace.finalBytes(path))
-        val final = assertIs<FsResult.Success<FinalFile>>(workspace.promotePart(part)).value
-        assertContentEquals("abcdef".encodeToByteArray(), workspace.finalBytes(path))
+        assertNull(workspace.finalBytes(finalPath))
+        val final = assertIs<FsResult.Success<FinalFile>>(
+            workspace.promotePart(part, finalPath),
+        ).value
+        assertEquals(FinalFile(finalPath, 6), final)
+        assertTrue(!final.path.value.endsWith(".part"))
+        assertNull(workspace.partBytes(partPath))
+        assertNull(workspace.finalBytes(partPath))
+        assertContentEquals("abcdef".encodeToByteArray(), workspace.finalBytes(finalPath))
         assertEquals(FsResult.Success(digest), workspace.readBackDigest(final))
         val trashed = assertIs<FsResult.Success<FinalFile>>(
             workspace.moveToTrash(final, RelativePath("trash/image"))).value
-        assertNull(workspace.finalBytes(path))
+        assertNull(workspace.finalBytes(finalPath))
         assertContentEquals("abcdef".encodeToByteArray(), workspace.trashBytes(trashed.path))
         val restored = assertIs<FsResult.Success<FinalFile>>(
             workspace.restoreFromTrash(trashed, RelativePath("album/restored"))).value
@@ -67,6 +74,135 @@ class FakePortsTest {
         assertEquals("manifest", recovery.value?.content)
         manifest.commit(operationId)
         assertEquals(FakeManifestState.COMMITTED, manifest.state(operationId))
+    }
+
+    @Test
+    fun `promotion rejects identical and part final targets without changing state`() = runTest {
+        val workspace = FakeWorkspaceGateway()
+        val partPath = RelativePath("Albums/album-1/img-1.jpg.part")
+        val bytes = "source".encodeToByteArray()
+        val part = writePart(workspace, partPath, bytes)
+
+        assertEquals(
+            FsResult.Failure(StorageFailure.Conflict),
+            workspace.promotePart(part, partPath),
+        )
+        assertContentEquals(bytes, workspace.partBytes(partPath))
+        assertNull(workspace.finalBytes(partPath))
+
+        val invalidTarget = RelativePath("Albums/album-1/other.jpg.part")
+        assertEquals(
+            FsResult.Failure(StorageFailure.Conflict),
+            workspace.promotePart(part, invalidTarget),
+        )
+        assertContentEquals(bytes, workspace.partBytes(partPath))
+        assertNull(workspace.finalBytes(invalidTarget))
+    }
+
+    @Test
+    fun `write part rejects occupied part final and trash paths without consuming source`() = runTest {
+        val workspace = FakeWorkspaceGateway()
+        val occupiedPart = RelativePath("album/occupied-part.jpg.part")
+        val occupiedFinal = RelativePath("album/occupied-final.jpg")
+        val occupiedTrash = RelativePath("trash/occupied.jpg")
+        val existingBytes = "existing".encodeToByteArray()
+
+        writePart(workspace, occupiedPart, existingBytes)
+        createFinal(
+            workspace,
+            RelativePath("album/final-source.jpg.part"),
+            occupiedFinal,
+            existingBytes,
+        )
+        val trashSource = createFinal(
+            workspace,
+            RelativePath("album/trash-source.jpg.part"),
+            RelativePath("album/trash-source.jpg"),
+            existingBytes,
+        )
+        assertIs<FsResult.Success<FinalFile>>(workspace.moveToTrash(trashSource, occupiedTrash))
+
+        listOf(occupiedPart, occupiedFinal, occupiedTrash).forEach { target ->
+            val incoming = FakeByteSource("incoming".encodeToByteArray())
+            assertEquals(
+                FsResult.Failure(StorageFailure.Conflict),
+                workspace.writePart(target, incoming, FakeDigestSink(Sha256("incoming"))),
+            )
+            assertContentEquals("incoming".encodeToByteArray(), incoming.readAll())
+        }
+
+        assertContentEquals(existingBytes, workspace.partBytes(occupiedPart))
+        assertContentEquals(existingBytes, workspace.finalBytes(occupiedFinal))
+        assertContentEquals(existingBytes, workspace.trashBytes(occupiedTrash))
+    }
+
+    @Test
+    fun `promotion conflict preserves source part and existing final`() = runTest {
+        val workspace = FakeWorkspaceGateway()
+        val finalTarget = RelativePath("album/existing.jpg")
+        val existingBytes = "existing-final".encodeToByteArray()
+        createFinal(
+            workspace,
+            RelativePath("album/existing.jpg.part"),
+            finalTarget,
+            existingBytes,
+        )
+        val sourcePath = RelativePath("album/new.jpg.part")
+        val sourceBytes = "new-part".encodeToByteArray()
+        val sourcePart = writePart(workspace, sourcePath, sourceBytes)
+
+        assertEquals(
+            FsResult.Failure(StorageFailure.Conflict),
+            workspace.promotePart(sourcePart, finalTarget),
+        )
+        assertContentEquals(sourceBytes, workspace.partBytes(sourcePath))
+        assertContentEquals(existingBytes, workspace.finalBytes(finalTarget))
+    }
+
+    @Test
+    fun `trash and restore conflicts preserve both source and target`() = runTest {
+        val workspace = FakeWorkspaceGateway()
+        val trashTarget = RelativePath("trash/occupied.jpg")
+        val occupiedTrashBytes = "occupied-trash".encodeToByteArray()
+        val occupiedTrashSource = createFinal(
+            workspace,
+            RelativePath("album/occupied-trash.jpg.part"),
+            RelativePath("album/occupied-trash.jpg"),
+            occupiedTrashBytes,
+        )
+        assertIs<FsResult.Success<FinalFile>>(
+            workspace.moveToTrash(occupiedTrashSource, trashTarget),
+        )
+
+        val moveSourcePath = RelativePath("album/move-source.jpg")
+        val moveSourceBytes = "move-source".encodeToByteArray()
+        val moveSource = createFinal(
+            workspace,
+            RelativePath("album/move-source.jpg.part"),
+            moveSourcePath,
+            moveSourceBytes,
+        )
+        assertEquals(
+            FsResult.Failure(StorageFailure.Conflict),
+            workspace.moveToTrash(moveSource, trashTarget),
+        )
+        assertContentEquals(moveSourceBytes, workspace.finalBytes(moveSourcePath))
+        assertContentEquals(occupiedTrashBytes, workspace.trashBytes(trashTarget))
+
+        val restoreTarget = RelativePath("album/restore-target.jpg")
+        val restoreTargetBytes = "existing-final".encodeToByteArray()
+        createFinal(
+            workspace,
+            RelativePath("album/restore-target.jpg.part"),
+            restoreTarget,
+            restoreTargetBytes,
+        )
+        assertEquals(
+            FsResult.Failure(StorageFailure.Conflict),
+            workspace.restoreFromTrash(FinalFile(trashTarget, occupiedTrashBytes.size.toLong()), restoreTarget),
+        )
+        assertContentEquals(occupiedTrashBytes, workspace.trashBytes(trashTarget))
+        assertContentEquals(restoreTargetBytes, workspace.finalBytes(restoreTarget))
     }
 
     @Test
@@ -119,6 +255,30 @@ class FakePortsTest {
     }
 
     @Test
+    fun `partial write retry reports conflict and preserves partial bytes`() = runTest {
+        val workspace = FakeWorkspaceGateway(
+            FaultInjector(FaultPlan(1, FaultMode.PARTIAL_WRITE)),
+        )
+        val partPath = RelativePath("album/image.jpg.part")
+        assertFailsWith<InjectedPartialWriteException> {
+            workspace.writePart(
+                partPath,
+                FakeByteSource("abcdef".encodeToByteArray(), chunkSize = 3),
+                FakeDigestSink(Sha256("unused")),
+            )
+        }
+        val retrySource = FakeByteSource("replacement".encodeToByteArray())
+
+        assertEquals(
+            FsResult.Failure(StorageFailure.Conflict),
+            workspace.writePart(partPath, retrySource, FakeDigestSink(Sha256("replacement"))),
+        )
+        assertContentEquals("abc".encodeToByteArray(), workspace.partBytes(partPath))
+        assertContentEquals("replacement".encodeToByteArray(), retrySource.readAll())
+        assertNull(workspace.finalBytes(RelativePath("album/image.jpg")))
+    }
+
+    @Test
     fun `manifest faults never commit and simulated kill blocks later operations`() = runTest {
         val operationId = OperationId("op-1")
         val manifest = FakeManifestStore(FaultInjector(FaultPlan(2, FaultMode.THROW)))
@@ -135,4 +295,21 @@ class FakePortsTest {
         assertEquals(1, log.records.size)
         assertEquals(FakeOperationOutcome.PROCESS_KILLED, log.records.single().outcome)
     }
+
+    private suspend fun writePart(
+        workspace: FakeWorkspaceGateway,
+        path: RelativePath,
+        bytes: ByteArray,
+    ): PartInfo = assertIs<FsResult.Success<PartInfo>>(
+        workspace.writePart(path, FakeByteSource(bytes), FakeDigestSink(Sha256("digest-${path.value}"))),
+    ).value
+
+    private suspend fun createFinal(
+        workspace: FakeWorkspaceGateway,
+        partPath: RelativePath,
+        finalPath: RelativePath,
+        bytes: ByteArray,
+    ): FinalFile = assertIs<FsResult.Success<FinalFile>>(
+        workspace.promotePart(writePart(workspace, partPath, bytes), finalPath),
+    ).value
 }

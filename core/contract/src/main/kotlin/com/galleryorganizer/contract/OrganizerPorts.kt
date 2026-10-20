@@ -126,7 +126,10 @@ interface WorkspaceGateway {
         digest: DigestSink,
     ): FsResult<PartInfo>
 
-    suspend fun promotePart(part: PartInfo): FsResult<FinalFile>
+    suspend fun promotePart(
+        part: PartInfo,
+        finalTarget: RelativePath,
+    ): FsResult<FinalFile>
     suspend fun readBackDigest(file: FinalFile): FsResult<Sha256>
     suspend fun deletePart(part: PartInfo): FsResult<Unit>
     suspend fun moveToTrash(file: FinalFile, target: RelativePath): FsResult<FinalFile>

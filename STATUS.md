@@ -2,9 +2,9 @@
 
 ## Current Task
 
-- ID: F04.1
-- Sub-step: Test-only Fake Ports and deterministic FaultPlan
-- State: COMPLETED
+- ID: F04.1.1
+- Sub-step: Safe Fake Workspace promotion and target conflicts
+- State: COMPLETED LOCALLY; REMOTE VERIFY PENDING
 
 ## Completed
 
@@ -57,10 +57,14 @@
 - Completed F04.1 locally with four test-only in-memory Port implementations,
   deterministic operation-index faults, inspectable recovery state, and a
   production Fake-dependency Guard.
+- Corrected F04.1 promotion to require a distinct explicit final target and
+  made Fake workspace writes reject occupied part/final/trash paths without
+  changing source or target state.
 
 ## Next Exact Action
 
-- Commit and push F04.1, confirm remote Verify, and stop before F04.2 Room work.
+- Run the complete F04.1.1 gates, commit and push the correction, confirm
+  remote Verify, produce a clean source package, and stop before F04.2 Room.
 
 ## Decisions
 
