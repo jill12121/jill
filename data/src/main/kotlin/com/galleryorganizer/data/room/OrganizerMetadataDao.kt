@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 
 @Dao
 interface OrganizerMetadataDao {
@@ -35,7 +36,10 @@ interface OrganizerMetadataDao {
     fun insertBatchMember(entity: BatchMemberEntity)
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
-    fun insertDraft(entity: DraftEntity)
+    fun insertEditingDraft(entity: DraftEntity)
+
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    fun insertInactiveDraft(entity: DraftEntity)
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
     fun insertDraftAction(entity: DraftActionEntity)
@@ -51,6 +55,39 @@ interface OrganizerMetadataDao {
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
     fun insertTrashEntry(entity: TrashEntryEntity)
+
+    @Query("SELECT * FROM import_records WHERE importId = :importId")
+    fun findImportRecord(importId: String): ImportRecordEntity?
+
+    @Query("SELECT * FROM drafts WHERE draftId = :draftId")
+    fun findDraft(draftId: String): DraftEntity?
+
+    @Query("SELECT * FROM image_assets WHERE imageId = :imageId")
+    fun findImageAsset(imageId: String): ImageAssetEntity?
+
+    @Query("SELECT * FROM file_facts WHERE fileId = :fileId")
+    fun findFileFact(fileId: String): FileFactEntity?
+
+    @Query("SELECT * FROM asset_files WHERE imageId = :imageId AND fileId = :fileId")
+    fun findAssetFile(imageId: String, fileId: String): AssetFileEntity?
+
+    @Query("SELECT * FROM album_memberships WHERE albumId = :albumId AND imageId = :imageId")
+    fun findAlbumMembership(albumId: String, imageId: String): AlbumMembershipEntity?
+
+    @Transaction
+    fun insertCommittedImportMetadata(
+        imageAsset: ImageAssetEntity,
+        targetFile: FileFactEntity,
+        assetFile: AssetFileEntity,
+        membership: AlbumMembershipEntity,
+        importRecord: ImportRecordEntity,
+    ) {
+        insertImageAsset(imageAsset)
+        insertFileFact(targetFile)
+        insertAssetFile(assetFile)
+        insertAlbumMembership(membership)
+        insertImportRecord(importRecord)
+    }
 
     @Query(
         """

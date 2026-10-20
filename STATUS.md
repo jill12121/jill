@@ -2,8 +2,8 @@
 
 ## Current Task
 
-- ID: F04.2
-- Sub-step: Room schema, constraints, and migration baseline
+- ID: F04.2.1
+- Sub-step: Room contract, transaction, and release-policy hardening
 - State: COMPLETED LOCALLY; REMOTE VERIFY PENDING
 
 ## Completed
@@ -68,10 +68,17 @@
 - Added atomic Draft invalidation and archival updates that clear `activeKey`,
   plus local Room tests for insertion conflicts, indexes, schema export, and
   the version 1 migration baseline.
+- Committed and pushed F04.2. Remote Verify run `39389514045` passed on commit
+  `452f46f`.
+- Hardened Draft state/active-key invariants, ImportRecord conflict coverage,
+  composite uniqueness allowed branches, and committed-import metadata
+  transaction rollback behavior.
+- Extended release policy fixtures to reject test-only runtime dependencies
+  and production references to test Fake implementations.
 
 ## Next Exact Action
 
-- Create one focused F04.2 commit, push it, and confirm Remote Verify before
+- Create one focused F04.2.1 commit, push it, and confirm Remote Verify before
   starting F04.3.
 
 ## Decisions

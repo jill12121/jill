@@ -121,7 +121,16 @@ data class DraftEntity(
     val revision: Long,
     val activeKey: String?,
     val state: String,
-)
+) {
+    init {
+        require(state == "EDITING" || state == "STALE" || state == "ARCHIVED") {
+            "Unsupported Draft state: $state"
+        }
+        require((state == "EDITING") == (activeKey != null)) {
+            "Only EDITING Draft may have a non-null activeKey."
+        }
+    }
+}
 
 @Entity(tableName = "draft_actions", primaryKeys = ["draftId", "fileId"])
 data class DraftActionEntity(

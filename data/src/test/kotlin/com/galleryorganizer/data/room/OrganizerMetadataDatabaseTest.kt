@@ -11,6 +11,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
 
 @RunWith(RobolectricTestRunner::class)
 class OrganizerMetadataDatabaseTest {
@@ -122,18 +123,136 @@ class OrganizerMetadataDatabaseTest {
     }
 
     @Test
-    fun `active draft key is unique and released by invalidation or archival`() {
-        dao.insertDraft(draft("draft-1", "scope-1"))
+    fun `import record rejects duplicate primary key without replacing original`() {
+        dao.insertImportRecord(importRecord())
+
         assertConflict {
-            dao.insertDraft(draft("draft-2", "scope-1"))
+            dao.insertImportRecord(
+                importRecord(
+                    sourceFileId = "different-source",
+                    targetFileId = "different-target",
+                    state = "FAILED",
+                ),
+            )
+        }
+
+        val original = dao.findImportRecord("import-1")
+        assertEquals("source-file", original?.sourceFileId)
+        assertEquals("target-file", original?.targetFileId)
+        assertEquals("COMMITTED", original?.state)
+    }
+
+    @Test
+    fun `draft state and active key combinations are validated`() {
+        assertFailsWith<IllegalArgumentException> {
+            draft("draft-stale", "scope-stale", state = "STALE")
+        }
+        assertFailsWith<IllegalArgumentException> {
+            draft("draft-archived", "scope-archived", state = "ARCHIVED")
+        }
+        assertFailsWith<IllegalArgumentException> {
+            draft("draft-editing", null, state = "EDITING")
+        }
+        assertFailsWith<IllegalArgumentException> {
+            draft("draft-unknown", null, state = "UNKNOWN")
+        }
+    }
+
+    @Test
+    fun `inactive draft insertion accepts null active key`() {
+        dao.insertInactiveDraft(draft("draft-stale", null, state = "STALE"))
+        dao.insertInactiveDraft(draft("draft-archived", null, state = "ARCHIVED"))
+
+        assertEquals("STALE", dao.findDraft("draft-stale")?.state)
+        assertNull(dao.findDraft("draft-stale")?.activeKey)
+        assertEquals("ARCHIVED", dao.findDraft("draft-archived")?.state)
+        assertNull(dao.findDraft("draft-archived")?.activeKey)
+    }
+
+    @Test
+    fun `active draft key is unique and released by invalidation or archival`() {
+        dao.insertEditingDraft(draft("draft-1", "scope-1"))
+        assertConflict {
+            dao.insertEditingDraft(draft("draft-2", "scope-1"))
         }
 
         assertEquals(1, dao.invalidateDraft("draft-1"))
-        dao.insertDraft(draft("draft-2", "scope-1"))
+        val stale = dao.findDraft("draft-1")
+        assertEquals("STALE", stale?.state)
+        assertNull(stale?.activeKey)
+        dao.insertEditingDraft(draft("draft-2", "scope-1"))
 
-        dao.insertDraft(draft("draft-3", "scope-2", state = "STALE"))
+        dao.insertEditingDraft(draft("draft-3", "scope-2"))
+        assertEquals(1, dao.invalidateDraft("draft-3"))
         assertEquals(1, dao.archiveDraft("draft-3"))
-        dao.insertDraft(draft("draft-4", "scope-2"))
+        val archived = dao.findDraft("draft-3")
+        assertEquals("ARCHIVED", archived?.state)
+        assertNull(archived?.activeKey)
+        dao.insertEditingDraft(draft("draft-4", "scope-2"))
+    }
+
+    @Test
+    fun `composite constraints allow each component to vary independently`() {
+        dao.insertFileFact(fileFact("file-base"))
+        dao.insertFileFact(fileFact("file-root", rootId = "root-2"))
+        dao.insertFileFact(fileFact("file-path", relativePath = "album/other.jpg"))
+
+        dao.insertAlbumMembership(AlbumMembershipEntity("album-1", "image-1", 0))
+        dao.insertAlbumMembership(AlbumMembershipEntity("album-1", "image-2", 1))
+        dao.insertAlbumMembership(AlbumMembershipEntity("album-2", "image-1", 0))
+
+        dao.insertAssetFile(AssetFileEntity("image-1", "file-1", "ALBUM_COPY"))
+        dao.insertAssetFile(AssetFileEntity("image-1", "file-2", "ALBUM_COPY"))
+        dao.insertAssetFile(AssetFileEntity("image-2", "file-1", "ALBUM_COPY"))
+
+        dao.insertEvidence(evidence("evidence-base"))
+        dao.insertEvidence(evidence("evidence-content", contentKey = "content-2"))
+        dao.insertEvidence(evidence("evidence-type", type = "MODEL"))
+        dao.insertEvidence(evidence("evidence-version", analysisVersion = 2))
+        dao.insertEvidence(evidence("evidence-key", evidenceKey = "other-key"))
+
+        dao.insertBatchMember(BatchMemberEntity("batch-1", "file-1"))
+        dao.insertBatchMember(BatchMemberEntity("batch-1", "file-2"))
+        dao.insertBatchMember(BatchMemberEntity("batch-2", "file-1"))
+
+        dao.insertDraftAction(DraftActionEntity("draft-1", "file-1", "KEEP", 0, false))
+        dao.insertDraftAction(DraftActionEntity("draft-1", "file-2", "KEEP", 1, false))
+        dao.insertDraftAction(DraftActionEntity("draft-2", "file-1", "KEEP", 0, false))
+
+        dao.insertJournalStep(journalStep("COPY_PART"))
+        dao.insertJournalStep(journalStep("COPY_PART", operationId = "operation-2"))
+        dao.insertJournalStep(journalStep("COPY_PART", stepIndex = 1))
+    }
+
+    @Test
+    fun `metadata transaction rolls back earlier inserts when a later insert conflicts`() {
+        dao.insertAssetFile(AssetFileEntity("image-transaction", "file-conflict", "EXISTING"))
+
+        assertConflict {
+            dao.insertCommittedImportMetadata(
+                imageAsset = ImageAssetEntity("image-transaction", 1, "operation-1"),
+                targetFile = fileFact(
+                    fileId = "file-transaction",
+                    relativePath = "album/transaction.jpg",
+                ),
+                assetFile = AssetFileEntity("image-transaction", "file-conflict", "NEW"),
+                membership = AlbumMembershipEntity(
+                    "album-transaction",
+                    "image-transaction",
+                    0,
+                ),
+                importRecord = importRecord(importId = "import-transaction"),
+            )
+        }
+
+        assertNull(dao.findImageAsset("image-transaction"))
+        assertNull(dao.findFileFact("file-transaction"))
+        assertNull(dao.findAlbumMembership("album-transaction", "image-transaction"))
+        assertNull(dao.findImportRecord("import-transaction"))
+        assertEquals(
+            "EXISTING",
+            dao.findAssetFile("image-transaction", "file-conflict")?.relation,
+        )
     }
 
     @Test
@@ -150,11 +269,15 @@ class OrganizerMetadataDatabaseTest {
         assertIndex("trash_entries", "index_trash_entries_file_id", "fileId")
     }
 
-    private fun fileFact(fileId: String) = FileFactEntity(
+    private fun fileFact(
+        fileId: String,
+        rootId: String = "root-1",
+        relativePath: String = "album/image.jpg",
+    ) = FileFactEntity(
         fileId = fileId,
         kind = "DOWNLOAD",
-        rootId = "root-1",
-        relativePath = "album/image.jpg",
+        rootId = rootId,
+        relativePath = relativePath,
         displayName = "image.jpg",
         sizeBytes = 100,
         mtimeNormalized = 200,
@@ -168,19 +291,29 @@ class OrganizerMetadataDatabaseTest {
         contentKey = fileId,
     )
 
-    private fun evidence(evidenceId: String) = EvidenceEntity(
+    private fun evidence(
+        evidenceId: String,
+        contentKey: String = "content-1",
+        type: String = "RULE",
+        analysisVersion: Int = 1,
+        evidenceKey: String = "stable-key",
+    ) = EvidenceEntity(
         evidenceId = evidenceId,
-        contentKey = "content-1",
-        type = "RULE",
+        contentKey = contentKey,
+        type = type,
         score = 0.9,
         maskedDetail = "masked",
-        analysisVersion = 1,
-        evidenceKey = "stable-key",
+        analysisVersion = analysisVersion,
+        evidenceKey = evidenceKey,
     )
 
-    private fun journalStep(type: String) = JournalStepEntity(
-        operationId = "operation-1",
-        stepIndex = 0,
+    private fun journalStep(
+        type: String,
+        operationId: String = "operation-1",
+        stepIndex: Int = 0,
+    ) = JournalStepEntity(
+        operationId = operationId,
+        stepIndex = stepIndex,
         type = type,
         expectedFingerprint = "fingerprint",
         state = "PLANNED",
@@ -189,26 +322,31 @@ class OrganizerMetadataDatabaseTest {
 
     private fun draft(
         draftId: String,
-        activeKey: String,
+        activeKey: String?,
         state: String = "EDITING",
     ) = DraftEntity(
         draftId = draftId,
         scopeType = "BATCH",
-        scopeId = activeKey,
+        scopeId = activeKey ?: "inactive-scope",
         revision = 1,
         activeKey = activeKey,
         state = state,
     )
 
-    private fun importRecord() = ImportRecordEntity(
-        importId = "import-1",
-        sourceFileId = "source-file",
-        targetFileId = "target-file",
+    private fun importRecord(
+        importId: String = "import-1",
+        sourceFileId: String = "source-file",
+        targetFileId: String = "target-file",
+        state: String = "COMMITTED",
+    ) = ImportRecordEntity(
+        importId = importId,
+        sourceFileId = sourceFileId,
+        targetFileId = targetFileId,
         imageId = "image-1",
         disposition = "COPY_KEEP_SOURCE",
         sourceLocator = "locator",
         sha256 = "sha256",
-        state = "COMMITTED",
+        state = state,
         verifiedAtEpochMillis = 1,
     )
 

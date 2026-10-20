@@ -51,11 +51,48 @@ function Assert-ReleaseDependencyPolicy {
         "Ktor Client" = 'io\.ktor:ktor-client'
         "Volley" = 'com\.android\.volley:volley'
         "Fuel" = 'com\.github\.kittinunf\.fuel:'
+        "Kotlin Coroutines Test" = 'org\.jetbrains\.kotlinx:kotlinx-coroutines-test:'
+        "Room Testing" = 'androidx\.room:room-testing:'
+        "Robolectric" = 'org\.robolectric:robolectric:'
+        "JUnit" = 'junit:junit:'
+        "Hilt Android Testing" = 'com\.google\.dagger:hilt-android-testing:'
+        "Test Fixtures" = ':[^:\s]+-test-fixtures:'
+        "Fake Artifact" = '(?im)(?:project\s+:|com\.galleryorganizer:)[^:\s]*fake[^:\s]*'
     }
 
     foreach ($entry in $forbiddenPatterns.GetEnumerator()) {
         if ($Report -match $entry.Value) {
             throw "Forbidden release runtime dependency: $($entry.Key)"
+        }
+    }
+}
+
+function Assert-ReleaseSourcePolicy {
+    param([string]$Root)
+
+    $productionRoots = @(
+        "app/src/main",
+        "data/src/main",
+        "presentation/src/main"
+    )
+    $forbiddenFakePattern = (
+        '(?m)^\s*import\s+com\.galleryorganizer\.data\.fake(?:\.|$)' +
+        '|\bFake(SourceReader|WorkspaceGateway|ManifestStore|PermanentDeleter)\b'
+    )
+
+    foreach ($relativeRoot in $productionRoots) {
+        $sourceRoot = Join-Path $Root $relativeRoot
+        if (-not (Test-Path -LiteralPath $sourceRoot)) {
+            continue
+        }
+
+        $sourceFiles = Get-ChildItem -Path $sourceRoot -File -Recurse |
+            Where-Object { $_.Extension -in @(".kt", ".java") }
+        foreach ($sourceFile in $sourceFiles) {
+            $content = Get-Content -Raw -LiteralPath $sourceFile.FullName
+            if ($content -match $forbiddenFakePattern) {
+                throw "Forbidden release source Fake reference: $($sourceFile.FullName)"
+            }
         }
     }
 }
@@ -107,5 +144,6 @@ else {
 
 Assert-ReleaseManifestPolicy -Path $MergedManifestPath
 Assert-ReleaseDependencyPolicy -Report $dependencyReport
+Assert-ReleaseSourcePolicy -Root $ProjectRoot
 
 Write-Output "Release manifest and runtime dependency policy verification passed."
