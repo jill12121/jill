@@ -2,8 +2,8 @@
 
 ## Current Task
 
-- ID: F04.1.1
-- Sub-step: Safe Fake Workspace promotion and target conflicts
+- ID: F04.2
+- Sub-step: Room schema, constraints, and migration baseline
 - State: COMPLETED LOCALLY; REMOTE VERIFY PENDING
 
 ## Completed
@@ -60,11 +60,19 @@
 - Corrected F04.1 promotion to require a distinct explicit final target and
   made Fake workspace writes reject occupied part/final/trash paths without
   changing source or target state.
+- Committed and pushed F04.1.1. Remote Verify run `39381020609` passed on
+  commit `3a656dd`.
+- Added the app-private Room v1 metadata schema with 15 entities, all frozen
+  uniqueness rules, and the specified ImportRecord, Plan, Journal, and
+  TrashEntry indexes.
+- Added atomic Draft invalidation and archival updates that clear `activeKey`,
+  plus local Room tests for insertion conflicts, indexes, schema export, and
+  the version 1 migration baseline.
 
 ## Next Exact Action
 
-- Run the complete F04.1.1 gates, commit and push the correction, confirm
-  remote Verify, produce a clean source package, and stop before F04.2 Room.
+- Create one focused F04.2 commit, push it, and confirm Remote Verify before
+  starting F04.3.
 
 ## Decisions
 
@@ -96,4 +104,4 @@
 
 - F02 remains an architecture-only skeleton; it has no organizer
   functionality, business storage, or real I/O by design.
-- Room entities, DAO, schema, migration, and persistence remain F04.2.
+- F04.3 integration scenarios remain pending after F04.2 Remote Verify.
