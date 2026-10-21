@@ -78,6 +78,7 @@ private data class StoredFile(val bytes: ByteArray, val digest: Sha256?)
 class FakeWorkspaceGateway(
     private val faultInjector: FaultInjector = FaultInjector(),
     private val workspaceCapabilities: WorkspaceCapabilities = WorkspaceCapabilities(true, true),
+    private val writeFailure: StorageFailure? = null,
 ) : WorkspaceGateway {
     private val mutableDirectories = linkedSetOf<RelativePath>()
     private val parts = linkedMapOf<RelativePath, StoredFile>()
@@ -113,6 +114,7 @@ class FakeWorkspaceGateway(
                 }
             },
         ) {
+            writeFailure?.let { return@execute FsResult.Failure(it) }
             val bytes = mutableListOf<Byte>()
             while (true) {
                 when (val result = source.readChunk(64 * 1024)) {

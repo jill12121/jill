@@ -4,7 +4,7 @@
 
 - ID: F04.3
 - Sub-step: Minimum Fake Integration
-- State: READY; IMPLEMENTATION NOT STARTED
+- State: COMPLETED LOCALLY; REMOTE VERIFY PENDING
 
 ## Completed
 
@@ -79,11 +79,17 @@
   commit `bb8c96d`.
 - Added the F04.3 construction instruction with test-only Fake, Room
   in-memory, FaultPlan, and integration-test boundaries.
+- Completed F04.3 with nine integration scenarios for fingerprint
+  invalidation, import linkage, failure mapping, cleanup denial, interrupted
+  copy, pre-Manifest recovery input, and in-memory Journal semantics.
+- Kept the F04.3 harness test-only and verified zero Room schema diff, zero
+  forbidden API hits, 37 passing data tests, all project build gates, and the
+  generated release artifact policy.
 
 ## Next Exact Action
 
-- Execute `docs/tasks/F04_3.md` test-first without adding production I/O,
-  Room schema changes, or disk Journal/Manifest behavior.
+- Commit and push F04.3, then wait for Remote Verify before marking the
+  delivery closed.
 
 ## Decisions
 
@@ -117,6 +123,5 @@
 
 - F02 remains an architecture-only skeleton; it has no organizer
   functionality, business storage, or real I/O by design.
-- F04.3 integration scenarios are ready but not implemented.
 - J1/J2/J3 remain blocked by S01 SAF, S02 MediaStore, and S04
   Manifest/Recovery device Spikes even after F04 completes.
