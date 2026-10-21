@@ -4,7 +4,7 @@
 
 - ID: F04.3.1
 - Sub-step: Deterministic Failure and Journal Harness Hardening
-- State: IMPLEMENTED LOCALLY; REMOTE VERIFY PENDING
+- State: COMPLETED
 
 ## Completed
 
@@ -90,10 +90,13 @@
 - Implemented F04.3.1 returned-failure injection and logging, source-retention
   observation, full test-only Journal operation/step semantics, and
   `PARTIAL_IMPORT` recovery integration.
+- Committed and pushed F04.3.1 as `58a6350`. Remote Verify run `39574777445`
+  passed.
 
 ## Next Exact Action
 
-- Run all delivery gates, commit and push F04.3.1, then wait for Remote Verify.
+- Prepare and execute S01 SAF, S02 MediaStore, and S04 Manifest/Recovery
+  device Spikes before considering J1, J2, or J3.
 
 ## Decisions
 
@@ -112,7 +115,7 @@
 - F04.1 adds no VirtualClock because no current Port accepts time.
 - F04.3 may prove only in-memory integration semantics; S01/S02/S04 remain
   mandatory before J1/J2/J3 or any production storage executor.
-- F04 is not complete until F04.3.1 passes Remote Verify.
+- F04 is complete; this does not authorize production storage execution.
 
 ## Deviations
 
@@ -128,6 +131,5 @@
 
 - F02 remains an architecture-only skeleton; it has no organizer
   functionality, business storage, or real I/O by design.
-- F04.3.1 Remote Verify is pending; F04 remains in progress.
 - J1/J2/J3 remain blocked by S01 SAF, S02 MediaStore, and S04
   Manifest/Recovery device Spikes even after F04 completes.
