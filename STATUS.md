@@ -2,9 +2,9 @@
 
 ## Current Task
 
-- ID: F04.3.1
-- Sub-step: Deterministic Failure and Journal Harness Hardening
-- State: COMPLETED
+- ID: S01
+- Sub-step: SAF Workspace Capability Spike
+- State: READY_FOR_DEVICE
 
 ## Completed
 
@@ -92,11 +92,14 @@
   `PARTIAL_IMPORT` recovery integration.
 - Committed and pushed F04.3.1 as `58a6350`. Remote Verify run `39574777445`
   passed.
+- Prepared an isolated S01 SAF probe application with deterministic capability
+  classification, a device runbook, and a result matrix. The probe APK builds
+  locally; no human-device GO has been recorded.
 
 ## Next Exact Action
 
-- Prepare and execute S01 SAF, S02 MediaStore, and S04 Manifest/Recovery
-  device Spikes before considering J1, J2, or J3.
+- Execute `docs/tasks/S01.md` on Android 11, current target, and at least two
+  OEM device families, then record GO, LIMITED_GO, or NO_GO.
 
 ## Decisions
 
@@ -116,6 +119,8 @@
 - F04.3 may prove only in-memory integration semantics; S01/S02/S04 remain
   mandatory before J1/J2/J3 or any production storage executor.
 - F04 is complete; this does not authorize production storage execution.
+- S01 probe code stays in the separate `:spikes:s01-saf` application and must
+  not be bound into the main release graph.
 
 ## Deviations
 
@@ -133,3 +138,5 @@
   functionality, business storage, or real I/O by design.
 - J1/J2/J3 remain blocked by S01 SAF, S02 MediaStore, and S04
   Manifest/Recovery device Spikes even after F04 completes.
+- S01 is ready for device execution, not complete; no desktop or emulator
+  result may be substituted for the required human-device matrix.
