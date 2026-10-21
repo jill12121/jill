@@ -2,9 +2,9 @@
 
 ## Current Task
 
-- ID: F04.2.1
-- Sub-step: Room contract, transaction, and release-policy hardening
-- State: COMPLETED LOCALLY; REMOTE VERIFY PENDING
+- ID: F04.3
+- Sub-step: Minimum Fake Integration
+- State: READY; IMPLEMENTATION NOT STARTED
 
 ## Completed
 
@@ -75,11 +75,15 @@
   transaction rollback behavior.
 - Extended release policy fixtures to reject test-only runtime dependencies
   and production references to test Fake implementations.
+- Committed and pushed F04.2.1. Remote Verify run `39401867807` passed on
+  commit `bb8c96d`.
+- Added the F04.3 construction instruction with test-only Fake, Room
+  in-memory, FaultPlan, and integration-test boundaries.
 
 ## Next Exact Action
 
-- Create one focused F04.2.1 commit, push it, and confirm Remote Verify before
-  starting F04.3.
+- Execute `docs/tasks/F04_3.md` test-first without adding production I/O,
+  Room schema changes, or disk Journal/Manifest behavior.
 
 ## Decisions
 
@@ -96,6 +100,8 @@
 - F04 Room stores app-private metadata only and does not authorize external
   storage, disk Journal, Manifest, copy, cleanup, or deletion behavior.
 - F04.1 adds no VirtualClock because no current Port accepts time.
+- F04.3 may prove only in-memory integration semantics; S01/S02/S04 remain
+  mandatory before J1/J2/J3 or any production storage executor.
 
 ## Deviations
 
@@ -111,4 +117,6 @@
 
 - F02 remains an architecture-only skeleton; it has no organizer
   functionality, business storage, or real I/O by design.
-- F04.3 integration scenarios remain pending after F04.2 Remote Verify.
+- F04.3 integration scenarios are ready but not implemented.
+- J1/J2/J3 remain blocked by S01 SAF, S02 MediaStore, and S04
+  Manifest/Recovery device Spikes even after F04 completes.
