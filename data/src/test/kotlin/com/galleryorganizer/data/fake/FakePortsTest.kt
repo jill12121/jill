@@ -255,6 +255,30 @@ class FakePortsTest {
     }
 
     @Test
+    fun `returned failures use deterministic operation index and are not logged completed`() = runTest {
+        val log = FakeOperationLog()
+        val workspace = FakeWorkspaceGateway(
+            FaultInjector(
+                FaultPlan(2, FaultMode.ReturnFailure(StorageFailure.InsufficientSpace)),
+                log,
+            ),
+        )
+        assertIs<FsResult.Success<Unit>>(workspace.ensureDirectory(RelativePath("album")))
+
+        val result = workspace.writePart(
+            RelativePath("album/image.jpg.part"),
+            FakeByteSource("content".encodeToByteArray()),
+            FakeDigestSink(Sha256("digest")),
+        )
+
+        assertEquals(FsResult.Failure(StorageFailure.InsufficientSpace), result)
+        assertEquals(
+            listOf(FakeOperationOutcome.COMPLETED, FakeOperationOutcome.RETURNED_FAILURE),
+            log.records.map(FakeOperationRecord::outcome),
+        )
+    }
+
+    @Test
     fun `partial write retry reports conflict and preserves partial bytes`() = runTest {
         val workspace = FakeWorkspaceGateway(
             FaultInjector(FaultPlan(1, FaultMode.PARTIAL_WRITE)),

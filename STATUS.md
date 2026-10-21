@@ -2,9 +2,9 @@
 
 ## Current Task
 
-- ID: F04.3
-- Sub-step: Minimum Fake Integration
-- State: COMPLETED LOCALLY; REMOTE VERIFY PENDING
+- ID: F04.3.1
+- Sub-step: Deterministic Failure and Journal Harness Hardening
+- State: IMPLEMENTED LOCALLY; REMOTE VERIFY PENDING
 
 ## Completed
 
@@ -85,11 +85,15 @@
 - Kept the F04.3 harness test-only and verified zero Room schema diff, zero
   forbidden API hits, 37 passing data tests, all project build gates, and the
   generated release artifact policy.
+- Recorded the F04.3 semantic review as NO-GO despite Remote Verify run
+  `39567952968` passing the original delivery.
+- Implemented F04.3.1 returned-failure injection and logging, source-retention
+  observation, full test-only Journal operation/step semantics, and
+  `PARTIAL_IMPORT` recovery integration.
 
 ## Next Exact Action
 
-- Commit and push F04.3, then wait for Remote Verify before marking the
-  delivery closed.
+- Run all delivery gates, commit and push F04.3.1, then wait for Remote Verify.
 
 ## Decisions
 
@@ -108,6 +112,7 @@
 - F04.1 adds no VirtualClock because no current Port accepts time.
 - F04.3 may prove only in-memory integration semantics; S01/S02/S04 remain
   mandatory before J1/J2/J3 or any production storage executor.
+- F04 is not complete until F04.3.1 passes Remote Verify.
 
 ## Deviations
 
@@ -123,5 +128,6 @@
 
 - F02 remains an architecture-only skeleton; it has no organizer
   functionality, business storage, or real I/O by design.
+- F04.3.1 Remote Verify is pending; F04 remains in progress.
 - J1/J2/J3 remain blocked by S01 SAF, S02 MediaStore, and S04
   Manifest/Recovery device Spikes even after F04 completes.

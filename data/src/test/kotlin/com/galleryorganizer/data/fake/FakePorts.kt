@@ -49,13 +49,14 @@ class FakeSourceReader(
     private val faultInjector: FaultInjector = FaultInjector(),
 ) : SourceReader {
     private val entriesByRef = entries.associateBy(FakeSourceEntry::ref)
+    fun hasEntry(ref: SourceFileRef): Boolean = ref in entriesByRef
     override suspend fun stat(ref: SourceFileRef): FsResult<FileFingerprint> =
-        faultInjector.execute("source.stat") {
-            val entry = entriesByRef[ref] ?: return@execute FsResult.Failure(StorageFailure.NotFound)
+        faultInjector.executeResult("source.stat") {
+            val entry = entriesByRef[ref] ?: return@executeResult FsResult.Failure(StorageFailure.NotFound)
             entry.statFailure?.let { FsResult.Failure(it) } ?: FsResult.Success(entry.fingerprint)
         }
     override fun enumerate(scope: ScanScope, cursor: ScanCursor?): Flow<FsResult<SourceBatch>> = flow {
-        emit(faultInjector.execute("source.enumerate") {
+        emit(faultInjector.executeResult("source.enumerate") {
             enumerationFailure?.let { FsResult.Failure(it) } ?: FsResult.Success(
                 SourceBatch(
                     entriesByRef.values.map {
@@ -67,8 +68,8 @@ class FakeSourceReader(
         })
     }
     override suspend fun open(ref: SourceFileRef): FsResult<ByteSource> =
-        faultInjector.execute("source.open") {
-            val entry = entriesByRef[ref] ?: return@execute FsResult.Failure(StorageFailure.NotFound)
+        faultInjector.executeResult("source.open") {
+            val entry = entriesByRef[ref] ?: return@executeResult FsResult.Failure(StorageFailure.NotFound)
             entry.openFailure?.let { FsResult.Failure(it) } ?: FsResult.Success(FakeByteSource(entry.bytes))
         }
 }
@@ -92,9 +93,9 @@ class FakeWorkspaceGateway(
         path in parts || path in finals || path in trash
 
     override suspend fun capabilities() =
-        faultInjector.execute("workspace.capabilities") { FsResult.Success(workspaceCapabilities) }
+        faultInjector.executeResult("workspace.capabilities") { FsResult.Success(workspaceCapabilities) }
     override suspend fun ensureDirectory(path: RelativePath) =
-        faultInjector.execute("workspace.ensureDirectory") {
+        faultInjector.executeResult("workspace.ensureDirectory") {
             mutableDirectories += path
             FsResult.Success(Unit)
         }
@@ -104,7 +105,7 @@ class FakeWorkspaceGateway(
         digest: DigestSink,
     ): FsResult<PartInfo> {
         if (isOccupied(target)) return FsResult.Failure(StorageFailure.Conflict)
-        return faultInjector.execute(
+        return faultInjector.executeResult(
             name = "workspace.writePart",
             partialWrite = {
                 val chunk = (source.readChunk(3) as? FsResult.Success)?.value
@@ -114,20 +115,20 @@ class FakeWorkspaceGateway(
                 }
             },
         ) {
-            writeFailure?.let { return@execute FsResult.Failure(it) }
+            writeFailure?.let { return@executeResult FsResult.Failure(it) }
             val bytes = mutableListOf<Byte>()
             while (true) {
                 when (val result = source.readChunk(64 * 1024)) {
-                    is FsResult.Failure -> return@execute result
+                    is FsResult.Failure -> return@executeResult result
                     is FsResult.Success -> {
                         val chunk = result.value ?: break
-                        digest.update(chunk).let { if (it is FsResult.Failure) return@execute it }
+                        digest.update(chunk).let { if (it is FsResult.Failure) return@executeResult it }
                         bytes += chunk.bytes.toList()
                     }
                 }
             }
             val sha = when (val result = digest.finish()) {
-                is FsResult.Failure -> return@execute result
+                is FsResult.Failure -> return@executeResult result
                 is FsResult.Success -> result.value
             }
             parts[target] = StoredFile(bytes.toByteArray(), sha)
@@ -139,36 +140,39 @@ class FakeWorkspaceGateway(
         if (finalTarget.value.endsWith(".part") || isOccupied(finalTarget)) {
             return FsResult.Failure(StorageFailure.Conflict)
         }
-        return faultInjector.execute("workspace.promotePart") {
-            val stored = parts.remove(part.path) ?: return@execute FsResult.Failure(StorageFailure.NotFound)
+        return faultInjector.executeResult("workspace.promotePart") {
+            val stored = parts.remove(part.path)
+                ?: return@executeResult FsResult.Failure(StorageFailure.NotFound)
             finals[finalTarget] = stored
             FsResult.Success(FinalFile(finalTarget, stored.bytes.size.toLong()))
         }
     }
 
     override suspend fun readBackDigest(file: FinalFile) =
-        faultInjector.execute("workspace.readBackDigest") {
+        faultInjector.executeResult("workspace.readBackDigest") {
             finals[file.path]?.digest?.let { FsResult.Success(it) }
                 ?: FsResult.Failure(StorageFailure.NotFound)
         }
     override suspend fun deletePart(part: PartInfo) =
-        faultInjector.execute("workspace.deletePart") {
+        faultInjector.executeResult("workspace.deletePart") {
             if (parts.remove(part.path) == null) FsResult.Failure(StorageFailure.NotFound)
             else FsResult.Success(Unit)
         }
     override suspend fun moveToTrash(file: FinalFile, target: RelativePath) =
         if (isOccupied(target)) {
             FsResult.Failure(StorageFailure.Conflict)
-        } else faultInjector.execute("workspace.moveToTrash") {
-            val stored = finals.remove(file.path) ?: return@execute FsResult.Failure(StorageFailure.NotFound)
+        } else faultInjector.executeResult("workspace.moveToTrash") {
+            val stored = finals.remove(file.path)
+                ?: return@executeResult FsResult.Failure(StorageFailure.NotFound)
             trash[target] = stored
             FsResult.Success(FinalFile(target, stored.bytes.size.toLong()))
         }
     override suspend fun restoreFromTrash(file: FinalFile, target: RelativePath) =
         if (isOccupied(target)) {
             FsResult.Failure(StorageFailure.Conflict)
-        } else faultInjector.execute("workspace.restoreFromTrash") {
-            val stored = trash.remove(file.path) ?: return@execute FsResult.Failure(StorageFailure.NotFound)
+        } else faultInjector.executeResult("workspace.restoreFromTrash") {
+            val stored = trash.remove(file.path)
+                ?: return@executeResult FsResult.Failure(StorageFailure.NotFound)
             finals[target] = stored
             FsResult.Success(FinalFile(target, stored.bytes.size.toLong()))
         }
@@ -183,7 +187,7 @@ class FakeManifestStore(
     private val states = mutableMapOf<OperationId, FakeManifestState>()
     fun state(operationId: OperationId) = states[operationId] ?: FakeManifestState.NONE
     override suspend fun writeImporting(manifest: ImportManifest): FsResult<Unit> =
-        faultInjector.execute(
+        faultInjector.executeResult(
             name = "manifest.writeImporting",
             partialWrite = {
                 contents[manifest.operationId] = manifest.content.take(manifest.content.length / 2)
@@ -195,7 +199,7 @@ class FakeManifestStore(
             FsResult.Success(Unit)
         }
     override suspend fun commit(operationId: OperationId) =
-        faultInjector.execute("manifest.commit") {
+        faultInjector.executeResult("manifest.commit") {
             if (state(operationId) != FakeManifestState.IMPORTING) {
                 FsResult.Failure(StorageFailure.NotFound)
             } else {
@@ -204,7 +208,7 @@ class FakeManifestStore(
             }
         }
     override suspend fun loadRecovery(operationId: OperationId): FsResult<RecoveryManifest?> =
-        faultInjector.execute("manifest.loadRecovery") {
+        faultInjector.executeResult("manifest.loadRecovery") {
             FsResult.Success(contents[operationId]?.let { RecoveryManifest(operationId, it) })
         }
 }
@@ -217,11 +221,13 @@ class FakePermanentDeleter(
     private val mutableAuthorizationRequests = mutableListOf<List<SourceFileRef>>()
     private val mutableDeleteRequests = mutableListOf<TrashEntry>()
     private val mutableDeletedEntries = mutableListOf<TrashEntry>()
+    private val mutableAuthorizedSourceCleanupRefs = mutableListOf<SourceFileRef>()
     val authorizationRequests get() = mutableAuthorizationRequests.toList()
     val deleteRequests get() = mutableDeleteRequests.toList()
     val deletedTrashEntries get() = mutableDeletedEntries.toList()
+    val authorizedSourceCleanupRefs get() = mutableAuthorizedSourceCleanupRefs.toList()
     override suspend fun deleteTrash(entry: TrashEntry): FsResult<Unit> =
-        faultInjector.execute(
+        faultInjector.executeResult(
             name = "deleter.deleteTrash",
             partialWrite = { mutableDeleteRequests += entry },
         ) {
@@ -233,9 +239,16 @@ class FakePermanentDeleter(
     override suspend fun requestSourceCleanupAuthorization(
         refs: List<SourceFileRef>,
     ): FsResult<DeleteAuthorizationRequest> =
-        faultInjector.execute("deleter.requestAuthorization") {
+        faultInjector.executeResult(
+            name = "deleter.requestAuthorization",
+            returnedFailure = { mutableAuthorizationRequests += refs.toList() },
+        ) {
             mutableAuthorizationRequests += refs.toList()
             authorizationFailure?.let { FsResult.Failure(it) }
-                ?: FsResult.Success(DeleteAuthorizationRequest("auth-${mutableAuthorizationRequests.size}"))
+                ?: FsResult.Success(
+                    DeleteAuthorizationRequest("auth-${mutableAuthorizationRequests.size}"),
+                ).also {
+                    mutableAuthorizedSourceCleanupRefs += refs
+                }
         }
 }

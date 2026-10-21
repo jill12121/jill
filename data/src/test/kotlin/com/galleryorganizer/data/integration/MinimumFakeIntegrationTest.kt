@@ -37,11 +37,14 @@ class MinimumFakeIntegrationTest {
 
     @Test
     fun `source decision only applies to its exact fingerprint key`() {
-        val original = sourceKey(size = 100, modified = 200)
+        val original = sourceDecisionKey("DOWNLOAD", "root-1", "inbox/image.jpg", 100, 200)
         dao.insertSourceDecision(SourceDecisionEntity(original, "KEEP", 1))
 
         assertEquals("KEEP", harness.findSourceDecision(original)?.decision)
-        listOf(sourceKey(size = 101, modified = 200), sourceKey(size = 100, modified = 201))
+        listOf(
+            sourceDecisionKey("DOWNLOAD", "root-1", "inbox/image.jpg", 101, 200),
+            sourceDecisionKey("DOWNLOAD", "root-1", "inbox/image.jpg", 100, 201),
+        )
             .forEach { changed ->
                 assertFalse(SourceDecision(original, SourceDecisionValue.KEEP, 1).appliesTo(changed))
                 assertNull(harness.findSourceDecision(changed))
@@ -70,7 +73,14 @@ class MinimumFakeIntegrationTest {
     @Test
     fun `source access denial maps to partial access without forging full scan`() = runTest {
         val selected = SourceFileRef("visible-1")
-        val reader = FakeSourceReader(emptyList(), enumerationFailure = StorageFailure.AccessDenied)
+        val log = FakeOperationLog()
+        val reader = FakeSourceReader(
+            emptyList(),
+            faultInjector = FaultInjector(
+                FaultPlan(1, FaultMode.ReturnFailure(StorageFailure.AccessDenied)),
+                log,
+            ),
+        )
         val scan = PartialScanSnapshot(setOf(selected))
 
         val result = reader.enumerate(ScanScope("selected"), null).single()
@@ -85,6 +95,7 @@ class MinimumFakeIntegrationTest {
         )
         assertEquals(setOf(selected), scan.visibleRefs)
         assertFalse(scan.completed)
+        assertEquals(FakeOperationOutcome.RETURNED_FAILURE, log.records.single().outcome)
     }
 
     @Test
@@ -92,7 +103,13 @@ class MinimumFakeIntegrationTest {
         val partPath = RelativePath("album/image.jpg.part")
         val finalPath = RelativePath("album/image.jpg")
         val operationId = OperationId("storage-full")
-        val workspace = FakeWorkspaceGateway(writeFailure = StorageFailure.InsufficientSpace)
+        val log = FakeOperationLog()
+        val workspace = FakeWorkspaceGateway(
+            FaultInjector(
+                FaultPlan(1, FaultMode.ReturnFailure(StorageFailure.InsufficientSpace)),
+                log,
+            ),
+        )
         val manifest = FakeManifestStore()
 
         val result = workspace.writePart(
@@ -106,6 +123,7 @@ class MinimumFakeIntegrationTest {
         assertNull(workspace.finalBytes(finalPath))
         assertEquals(FakeManifestState.NONE, manifest.state(operationId))
         assertNull(dao.findImportRecord("import-1"))
+        assertEquals(FakeOperationOutcome.RETURNED_FAILURE, log.records.single().outcome)
     }
 
     @Test
@@ -129,6 +147,17 @@ class MinimumFakeIntegrationTest {
 
     @Test
     fun `cleanup denial preserves committed archive metadata and source`() = runTest {
+        val sourceRef = SourceFileRef("source-file")
+        val source = FakeSourceReader(
+            listOf(
+                FakeSourceEntry(
+                    sourceRef,
+                    "source.jpg",
+                    FileFingerprint(100, 200, "image/jpeg"),
+                    "source-content".encodeToByteArray(),
+                ),
+            ),
+        )
         dao.insertFileFact(fileFact("source-file", "inbox/source.jpg"))
         dao.insertCommittedImportMetadata(
             ImageAssetEntity("image-1", 1, "operation-1"),
@@ -137,9 +166,16 @@ class MinimumFakeIntegrationTest {
             AlbumMembershipEntity("album-1", "image-1", 0),
             importRecord(),
         )
-        val deleter = FakePermanentDeleter(authorizationFailure = StorageFailure.AccessDenied)
+        val log = FakeOperationLog()
+        val deleter = FakePermanentDeleter(
+            faultInjector = FaultInjector(
+                FaultPlan(1, FaultMode.ReturnFailure(StorageFailure.AccessDenied)),
+                log,
+            ),
+        )
+        assertTrue(source.hasEntry(sourceRef))
 
-        val result = deleter.requestSourceCleanupAuthorization(listOf(SourceFileRef("source-file")))
+        val result = deleter.requestSourceCleanupAuthorization(listOf(sourceRef))
 
         assertEquals(
             DomainErrorCode.SOURCE_DELETE_AUTH_DENIED,
@@ -152,6 +188,15 @@ class MinimumFakeIntegrationTest {
         assertNotNull(dao.findAlbumMembership("album-1", "image-1"))
         assertEquals("COMMITTED", dao.findImportRecord("import-1")?.state)
         assertTrue(deleter.deletedTrashEntries.isEmpty())
+        assertTrue(deleter.authorizedSourceCleanupRefs.isEmpty())
+        assertEquals(listOf(listOf(sourceRef)), deleter.authorizationRequests)
+        assertTrue(source.hasEntry(sourceRef))
+        assertContentEquals(
+            "source-content".encodeToByteArray(),
+            assertIs<FakeByteSource>(assertIs<FsResult.Success<ByteSource>>(source.open(sourceRef)).value)
+                .readAll(),
+        )
+        assertEquals(FakeOperationOutcome.RETURNED_FAILURE, log.records.single().outcome)
     }
 
     @Test
@@ -187,7 +232,7 @@ class MinimumFakeIntegrationTest {
         val workspace = FakeWorkspaceGateway()
         val manifest = FakeManifestStore()
         val journal = InMemoryJournalHarness()
-        journal.start(operationId)
+        journal.start(operationId, listOf("COPY_PART"))
         journal.completeStep(operationId, 0, "COPY_PART")
         harness.writePart(workspace, partPath, "recoverable".encodeToByteArray())
 
@@ -205,14 +250,72 @@ class MinimumFakeIntegrationTest {
     }
 
     @Test
-    fun `in memory journal preserves watermark and completed steps across process kill`() = runTest {
+    fun `partial manifest recovery exposes only actual in memory progress`() = runTest {
+        val operationId = OperationId("partial-manifest")
+        val partPath = RelativePath("album/partial-manifest.jpg.part")
+        val workspace = FakeWorkspaceGateway()
+        val manifest = FakeManifestStore(
+            FaultInjector(FaultPlan(1, FaultMode.PARTIAL_WRITE)),
+        )
+        val journal = InMemoryJournalHarness()
+        journal.start(operationId, listOf("COPY_PART", "WRITE_MANIFEST"))
+        journal.completeStep(operationId, 0, "COPY_PART")
+        harness.writePart(workspace, partPath, "recoverable".encodeToByteArray())
+        assertFailsWith<InjectedPartialWriteException> {
+            manifest.writeImporting(ImportManifest(operationId, "manifest-content"))
+        }
+
+        val snapshot = recoverySnapshot(operationId, journal, workspace, manifest, partPath)
+
+        assertEquals(FakeManifestState.PARTIAL_IMPORT, snapshot.manifestState)
+        assertEquals(1, snapshot.watermark)
+        assertEquals(listOf(0), snapshot.completedSteps.map { it.index })
+        assertFalse(snapshot.diskJournalCreated)
+        assertFalse(snapshot.diskManifestCreated)
+    }
+
+    @Test
+    fun `in memory journal rejects invalid completion and locks completed operation`() = runTest {
+        val operationId = OperationId("journal-complete")
+        val journal = InMemoryJournalHarness()
+        assertFailsWith<IllegalArgumentException> {
+            journal.completeStep(operationId, 0, "COPY_PART")
+        }
+        journal.start(operationId, listOf("COPY_PART", "PROMOTE_PART"))
+        assertFailsWith<IllegalArgumentException> {
+            journal.completeStep(operationId, 1, "PROMOTE_PART")
+        }
+        journal.completeStep(operationId, 0, "COPY_PART")
+        val partial = journal.snapshot(operationId)
+        assertEquals(1, partial.watermark)
+        assertEquals(InMemoryStepState.COMPLETED, partial.steps[0].state)
+        assertEquals(InMemoryStepState.PLANNED, partial.steps[1].state)
+        assertFailsWith<IllegalArgumentException> {
+            journal.completeStep(operationId, 0, "COPY_PART")
+        }
+        assertFailsWith<IllegalArgumentException> { journal.finish(operationId) }
+        journal.completeStep(operationId, 1, "PROMOTE_PART")
+        journal.finish(operationId)
+
+        val completed = journal.snapshot(operationId)
+        assertEquals(InMemoryJournalState.COMPLETED, completed.state)
+        assertEquals(2, completed.watermark)
+        assertTrue(completed.steps.all { it.state == InMemoryStepState.COMPLETED })
+        assertFailsWith<IllegalArgumentException> {
+            journal.completeStep(operationId, 2, "COMMIT_MANIFEST")
+        }
+        assertEquals(InMemoryJournalState.COMPLETED, journal.snapshot(operationId).state)
+    }
+
+    @Test
+    fun `in memory journal preserves watermark and incomplete killed step`() = runTest {
         val operationId = OperationId("journal-kill")
         val log = FakeOperationLog()
         val journal = InMemoryJournalHarness(
             FaultInjector(FaultPlan(3, FaultMode.SIMULATED_PROCESS_KILL), log),
         )
 
-        journal.start(operationId)
+        journal.start(operationId, listOf("COPY_PART", "PROMOTE_PART"))
         journal.completeStep(operationId, 0, "COPY_PART")
         assertFailsWith<IllegalArgumentException> {
             journal.completeStep(operationId, 0, "COPY_PART")
@@ -225,12 +328,10 @@ class MinimumFakeIntegrationTest {
         assertEquals(InMemoryJournalState.EXECUTING, snapshot.state)
         assertEquals(1, snapshot.watermark)
         assertEquals(listOf(0), snapshot.completedSteps.map { it.index })
+        assertEquals(InMemoryStepState.EXECUTING, snapshot.steps[1].state)
         assertFalse(snapshot.diskJournalCreated)
         assertEquals(FakeOperationOutcome.PROCESS_KILLED, log.records.last().outcome)
     }
-
-    private fun sourceKey(size: Long, modified: Long) =
-        "DOWNLOAD:root-1:inbox/image.jpg:$size:$modified"
 
     private fun fileFact(fileId: String, path: String) = FileFactEntity(
         fileId, "DOWNLOAD", "root-1", path, path.substringAfterLast('/'),

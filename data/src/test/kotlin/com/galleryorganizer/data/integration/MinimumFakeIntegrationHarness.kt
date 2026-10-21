@@ -7,22 +7,30 @@ import com.galleryorganizer.data.room.OrganizerMetadataDatabase
 import com.galleryorganizer.data.room.SourceDecisionEntity
 
 enum class OccupiedState { PART, FINAL, TRASH }
-enum class InMemoryJournalState { PLANNED, EXECUTING }
+enum class InMemoryJournalState { PLANNED, EXECUTING, COMPLETED }
+enum class InMemoryStepState { PLANNED, EXECUTING, COMPLETED }
 
-data class CompletedJournalStep(val index: Int, val type: String)
+data class JournalStepSnapshot(
+    val index: Int,
+    val type: String,
+    val state: InMemoryStepState,
+)
 
 data class JournalSnapshot(
     val operationId: OperationId,
     val state: InMemoryJournalState,
     val watermark: Long,
-    val completedSteps: List<CompletedJournalStep>,
+    val steps: List<JournalStepSnapshot>,
     val diskJournalCreated: Boolean = false,
-)
+) {
+    val completedSteps: List<JournalStepSnapshot>
+        get() = steps.filter { it.state == InMemoryStepState.COMPLETED }
+}
 
 data class RecoverySnapshot(
     val operationId: OperationId,
     val watermark: Long,
-    val completedSteps: List<CompletedJournalStep>,
+    val completedSteps: List<JournalStepSnapshot>,
     val partPresent: Boolean,
     val finalPresent: Boolean,
     val manifestState: FakeManifestState,
@@ -47,28 +55,64 @@ class PartialScanSnapshot(initiallyVisible: Set<SourceFileRef>) {
 class InMemoryJournalHarness(
     private val faultInjector: FaultInjector = FaultInjector(),
 ) {
+    private data class MutableStep(
+        val index: Int,
+        val type: String,
+        var state: InMemoryStepState = InMemoryStepState.PLANNED,
+    )
+
     private data class State(
         var operationState: InMemoryJournalState = InMemoryJournalState.PLANNED,
         var watermark: Long = 0,
-        val completedSteps: MutableList<CompletedJournalStep> = mutableListOf(),
+        val steps: MutableList<MutableStep>,
     )
 
     private val states = mutableMapOf<OperationId, State>()
 
-    suspend fun start(operationId: OperationId) {
+    suspend fun start(operationId: OperationId, stepTypes: List<String>) {
         require(operationId !in states) { "Operation already exists." }
+        require(stepTypes.isNotEmpty()) { "At least one step is required." }
         faultInjector.execute("journal.start") {
-            states[operationId] = State()
+            states[operationId] = State(
+                steps = stepTypes.mapIndexed { index, type ->
+                    MutableStep(index, type)
+                }.toMutableList(),
+            )
         }
     }
 
     suspend fun completeStep(operationId: OperationId, stepIndex: Int, type: String) {
-        val state = requireNotNull(states[operationId]) { "Operation does not exist." }
-        require(stepIndex == state.completedSteps.size) { "Step must be unique and contiguous." }
+        val operation = requireNotNull(states[operationId]) { "Operation does not exist." }
+        require(operation.operationState != InMemoryJournalState.COMPLETED) {
+            "Completed operation cannot accept steps."
+        }
+        val step = requireNotNull(operation.steps.getOrNull(stepIndex)) { "Step is not planned." }
+        require(step.type == type) { "Step type does not match the plan." }
+        require(step.state == InMemoryStepState.PLANNED) { "Step is already started." }
+        require(operation.steps.take(stepIndex).all { it.state == InMemoryStepState.COMPLETED }) {
+            "Previous steps must complete first."
+        }
+        operation.operationState = InMemoryJournalState.EXECUTING
+        step.state = InMemoryStepState.EXECUTING
         faultInjector.execute("journal.completeStep") {
-            state.completedSteps += CompletedJournalStep(stepIndex, type)
-            state.operationState = InMemoryJournalState.EXECUTING
-            state.watermark = stepIndex.toLong() + 1
+            step.state = InMemoryStepState.COMPLETED
+            operation.watermark = operation.steps
+                .takeWhile { it.state == InMemoryStepState.COMPLETED }
+                .size
+                .toLong()
+        }
+    }
+
+    suspend fun finish(operationId: OperationId) {
+        val operation = requireNotNull(states[operationId]) { "Operation does not exist." }
+        require(operation.operationState != InMemoryJournalState.COMPLETED) {
+            "Operation is already completed."
+        }
+        require(operation.steps.all { it.state == InMemoryStepState.COMPLETED }) {
+            "Every planned step must complete first."
+        }
+        faultInjector.execute("journal.finish") {
+            operation.operationState = InMemoryJournalState.COMPLETED
         }
     }
 
@@ -78,10 +122,18 @@ class InMemoryJournalHarness(
             operationId,
             state.operationState,
             state.watermark,
-            state.completedSteps.toList(),
+            state.steps.map { JournalStepSnapshot(it.index, it.type, it.state) },
         )
     }
 }
+
+fun sourceDecisionKey(
+    kind: String,
+    rootId: String,
+    relativePath: String,
+    sizeBytes: Long,
+    modifiedAtNormalized: Long,
+): String = listOf(kind, rootId, relativePath, sizeBytes, modifiedAtNormalized).joinToString(":")
 
 class MinimumFakeIntegrationHarness(
     private val database: OrganizerMetadataDatabase,

@@ -1,12 +1,26 @@
 package com.galleryorganizer.data.fake
 
-enum class FaultMode { THROW, PARTIAL_WRITE, SIMULATED_PROCESS_KILL }
+import com.galleryorganizer.contract.FsResult
+import com.galleryorganizer.contract.StorageFailure
+
+sealed interface FaultMode {
+    data object THROW : FaultMode
+    data object PARTIAL_WRITE : FaultMode
+    data object SIMULATED_PROCESS_KILL : FaultMode
+    data class ReturnFailure(val failure: StorageFailure) : FaultMode
+}
 
 data class FaultPlan(val triggerAtOperation: Int, val mode: FaultMode) {
     init { require(triggerAtOperation > 0) }
 }
 
-enum class FakeOperationOutcome { COMPLETED, THREW, PARTIAL_WRITE, PROCESS_KILLED }
+enum class FakeOperationOutcome {
+    COMPLETED,
+    RETURNED_FAILURE,
+    THREW,
+    PARTIAL_WRITE,
+    PROCESS_KILLED,
+}
 
 data class FakeOperationRecord(val index: Int, val name: String, val outcome: FakeOperationOutcome)
 
@@ -33,9 +47,8 @@ class FaultInjector(
         partialWrite: suspend () -> Unit = {},
         operation: suspend () -> T,
     ): T {
-        if (processKilled) throw SimulatedProcessKillException(name)
-        val index = ++operationIndex
-        when (plan?.takeIf { it.triggerAtOperation == index }?.mode) {
+        val (index, mode) = nextOperation(name)
+        when (mode) {
             FaultMode.THROW -> fail(index, name, FakeOperationOutcome.THREW) { InjectedFaultException(name) }
             FaultMode.PARTIAL_WRITE -> {
                 partialWrite()
@@ -49,12 +62,58 @@ class FaultInjector(
                     SimulatedProcessKillException(name)
                 }
             }
+            is FaultMode.ReturnFailure -> error("ReturnFailure requires executeResult.")
             null -> {
                 val result = operation()
                 log.add(FakeOperationRecord(index, name, FakeOperationOutcome.COMPLETED))
                 return result
             }
         }
+    }
+
+    suspend fun <T> executeResult(
+        name: String,
+        partialWrite: suspend () -> Unit = {},
+        returnedFailure: suspend (StorageFailure) -> Unit = {},
+        operation: suspend () -> FsResult<T>,
+    ): FsResult<T> {
+        val (index, mode) = nextOperation(name)
+        when (mode) {
+            FaultMode.THROW -> fail(index, name, FakeOperationOutcome.THREW) { InjectedFaultException(name) }
+            FaultMode.PARTIAL_WRITE -> {
+                partialWrite()
+                fail(index, name, FakeOperationOutcome.PARTIAL_WRITE) {
+                    InjectedPartialWriteException(name)
+                }
+            }
+            FaultMode.SIMULATED_PROCESS_KILL -> {
+                processKilled = true
+                fail(index, name, FakeOperationOutcome.PROCESS_KILLED) {
+                    SimulatedProcessKillException(name)
+                }
+            }
+            is FaultMode.ReturnFailure -> {
+                returnedFailure(mode.failure)
+                log.add(FakeOperationRecord(index, name, FakeOperationOutcome.RETURNED_FAILURE))
+                return FsResult.Failure(mode.failure)
+            }
+            null -> {
+                val result = operation()
+                val outcome = if (result is FsResult.Failure) {
+                    FakeOperationOutcome.RETURNED_FAILURE
+                } else {
+                    FakeOperationOutcome.COMPLETED
+                }
+                log.add(FakeOperationRecord(index, name, outcome))
+                return result
+            }
+        }
+    }
+
+    private fun nextOperation(name: String): Pair<Int, FaultMode?> {
+        if (processKilled) throw SimulatedProcessKillException(name)
+        val index = ++operationIndex
+        return index to plan?.takeIf { it.triggerAtOperation == index }?.mode
     }
 
     private fun fail(
