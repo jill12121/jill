@@ -2,9 +2,9 @@
 
 ## Current Task
 
-- ID: S01
-- Sub-step: S01.1 SAF Probe Hardening
-- State: HARDENED_AWAITING_REMOTE_VERIFY
+- ID: F06
+- Sub-step: Pure Domain Algorithms And Fixtures
+- State: IN_PROGRESS
 
 ## Completed
 
@@ -96,10 +96,13 @@
   production MIME/rename paths, restart/reinstall checks, collisions, flags,
   throughput, seek, enumeration, safe JSON export, and release isolation.
   No human-device result has been recorded.
+- Started F06 pure domain algorithms and cross-OEM filename/fingerprint
+  fixtures; completion is not yet claimed.
 
 ## Next Exact Action
 
-- Obtain a green Remote Verify for S01.1 before any device execution.
+- Complete F06 local and Remote Verify gates; S01/S02/S04 device runs remain
+  PENDING.
 
 ## Decisions
 

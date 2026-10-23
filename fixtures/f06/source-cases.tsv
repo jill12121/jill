@@ -1,0 +1,11 @@
+case	kind	root	path	size	mtime
+samsung-camera	MEDIA	primary	DCIM/Camera/IMG_0001.jpg	0	1700000000123
+xiaomi-download	MEDIA	primary	Download/相册/é.jpg	9223372036854775807	1700000000999
+pixel-motion	MEDIA	primary	DCIM/Camera/PXL_001.MP.jpg	4294967296	0
+windows-reserved	SAF	download	CON.jpg	1	1
+invalid-name	SAF	download	a<b>:c?.webp	1024	1000
+long-unicode	SAF	pictures	图图图图图图图图图图图图图图图图图图图图.webp	2048	2000
+nfc-composed	SAF	download	é.jpg	10	3000
+nfc-decomposed	SAF	download	é.jpg	10	3000
+duplicate-a	MEDIA	primary	Download/same.jpg	50	4000
+duplicate-b	MEDIA	primary	Download/same.jpg	50	4000
