@@ -6,6 +6,7 @@ $fixtureRoot = Join-Path ([System.IO.Path]::GetTempPath()) (
 )
 $manifestPath = Join-Path $fixtureRoot "AndroidManifest.xml"
 $dependencyReportPath = Join-Path $fixtureRoot "releaseRuntimeClasspath.txt"
+$artifactPath = Join-Path $fixtureRoot "app-release.apk"
 
 function Write-ValidFixture {
     @'
@@ -21,6 +22,7 @@ releaseRuntimeClasspath - Runtime classpath of release.
 +--- androidx.activity:activity-compose:1.10.0
 \--- com.google.dagger:hilt-android:2.52
 '@ | Set-Content -NoNewline -LiteralPath $dependencyReportPath
+    "release artifact" | Set-Content -NoNewline -LiteralPath $artifactPath
 }
 
 function Assert-VerificationFails {
@@ -31,7 +33,8 @@ function Assert-VerificationFails {
         & $verifyScript `
             -ProjectRoot $fixtureRoot `
             -MergedManifestPath $manifestPath `
-            -DependencyReportPath $dependencyReportPath
+            -DependencyReportPath $dependencyReportPath `
+            -ReleaseArtifactPath $artifactPath
     }
     catch {
         $failure = $_.Exception.Message
@@ -52,7 +55,8 @@ try {
     & $verifyScript `
         -ProjectRoot $fixtureRoot `
         -MergedManifestPath $manifestPath `
-        -DependencyReportPath $dependencyReportPath
+        -DependencyReportPath $dependencyReportPath `
+        -ReleaseArtifactPath $artifactPath
 
     $manifest = Get-Content -Raw -LiteralPath $manifestPath
     $manifest = $manifest -replace '<application', (
@@ -109,6 +113,12 @@ package com.galleryorganizer.data
 import com.galleryorganizer.data.fake.FakeWorkspaceGateway
 '@ | Set-Content -NoNewline -LiteralPath $fakeSourcePath
     Assert-VerificationFails -ExpectedMessage "Forbidden release source Fake reference"
+    Remove-Item -Force -LiteralPath $fakeSourcePath
+
+    Write-ValidFixture
+    "com/galleryorganizer/spikes/s01/S01ProbeActivity" |
+        Set-Content -NoNewline -LiteralPath $artifactPath
+    Assert-VerificationFails -ExpectedMessage "Forbidden spike package or module reference"
 
     Write-Output "Release policy guard tests passed."
 }

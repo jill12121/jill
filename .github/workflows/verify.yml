@@ -29,6 +29,10 @@ jobs:
         run: ./scripts/test-architecture.ps1
       - name: Check, lint, and assemble debug APK
         run: ./gradlew check lint assembleDebug
+      - name: Verify S01 APK signature
+        run: |
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)"
+          "$APKSIGNER" verify --verbose spikes/s01-saf/build/outputs/apk/debug/s01-saf-debug.apk
       - name: Verify release artifact policy
         shell: pwsh
         run: ./scripts/verify-release-policy.ps1

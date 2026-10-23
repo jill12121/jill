@@ -1,17 +1,32 @@
 package com.galleryorganizer.spikes.s01
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -23,13 +38,18 @@ class S01ProbeActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val preferences = getSharedPreferences("s01", MODE_PRIVATE)
         val probe = SafCapabilityProbe(this)
-
         setContent {
             var result by remember {
                 mutableStateOf(S01ProbeResult.decode(preferences.getString("result", null)))
             }
             var running by remember { mutableStateOf(false) }
             val scope = rememberCoroutineScope()
+
+            fun persist(updated: S01ProbeResult) {
+                result = updated
+                preferences.edit().putString("result", updated.encode()).apply()
+            }
+
             val launcher = rememberLauncherForActivityResult(
                 ActivityResultContracts.OpenDocumentTree(),
             ) { uri ->
@@ -37,81 +57,92 @@ class S01ProbeActivity : ComponentActivity() {
                     preferences.edit().putString("treeUri", uri.toString()).apply()
                     scope.launch {
                         running = true
-                        result = probe.run(uri)
-                        preferences.edit().putString("result", result?.encode()).apply()
+                        persist(probe.run(uri))
                         running = false
                     }
+                }
+            }
+
+            fun retry(markReboot: Boolean) {
+                val saved = preferences.getString("treeUri", null)?.let(Uri::parse)
+                val previous = result
+                if (saved != null && previous != null) scope.launch {
+                    running = true
+                    val passed = probe.retrySavedGrant(saved)
+                    persist(
+                        if (markReboot) previous.copy(deviceRebootRetryPassed = passed)
+                        else previous.copy(forceStopRetryPassed = passed),
+                    )
+                    running = false
                 }
             }
 
             MaterialTheme {
                 Surface(color = Color(0xFFF7F9F7)) {
                     Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
-                            .padding(horizontal = 24.dp, vertical = 32.dp),
-                        verticalArrangement = Arrangement.spacedBy(20.dp),
+                        Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                            .padding(horizontal = 24.dp, vertical = 28.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
                         Text("S01 / SAF", style = MaterialTheme.typography.labelLarge)
                         Text(
-                            "Workspace capability",
-                            style = MaterialTheme.typography.headlineMedium,
+                            "Workspace capability probe",
+                            style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.SemiBold,
                         )
                         Text(
-                            "Select Download first. The probe writes and removes one temporary file.",
+                            "Create GalleryOrganizer under Download first, then select that " +
+                                "directory. The selected directory is tested directly.",
                             color = Color(0xFF4C5B54),
                         )
                         Button(
-                            onClick = { launcher.launch(null) },
+                            onClick = { launcher.launch(DOWNLOADS_INITIAL_URI) },
                             enabled = !running,
                             modifier = Modifier.fillMaxWidth(),
                         ) {
-                            Text(if (running) "Running probe..." else "Select root and run")
+                            Text(if (running) "Running..." else "Select organizer root and run")
                         }
                         OutlinedButton(
+                            onClick = { retry(false) },
+                            enabled = !running && result != null,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text("Run force-stop retry") }
+                        OutlinedButton(
+                            onClick = { retry(true) },
+                            enabled = !running && result != null,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text("Run device-reboot retry") }
+                        OutlinedButton(
                             onClick = {
-                                val saved = preferences.getString("treeUri", null)?.let(Uri::parse)
-                                val previous = result
-                                if (saved != null && previous != null) {
-                                    scope.launch {
-                                        running = true
-                                        result = previous.copy(
-                                            savedGrantRestored = probe.verifySavedGrant(saved),
-                                        )
-                                        preferences.edit()
-                                            .putString("result", result?.encode())
-                                            .apply()
-                                        running = false
-                                    }
+                                result?.toJson()?.let { json ->
+                                    getSystemService(ClipboardManager::class.java).setPrimaryClip(
+                                        ClipData.newPlainText("S01 result JSON", json),
+                                    )
                                 }
                             },
-                            enabled = !running,
+                            enabled = result != null,
                             modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text("Verify saved authorization")
-                        }
+                        ) { Text("Copy result JSON") }
                         HorizontalDivider()
                         Text("Device result", style = MaterialTheme.typography.titleMedium)
-                        result?.reportLines(Build.VERSION.SDK_INT)?.forEach { line ->
+                        result?.reportLines()?.forEach { line ->
                             val parts = line.split('=', limit = 2)
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
+                                Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
                                 Text(parts[0], color = Color(0xFF5F6D66))
                                 Text(parts.getOrElse(1) { "" }, fontWeight = FontWeight.Medium)
                             }
-                        } ?: Text("No probe result", color = Color(0xFF5F6D66))
-                        Text(
-                            "Force-stop and reopen the app before verifying saved authorization.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF5F6D66),
-                        )
+                        } ?: Text("PENDING", color = Color(0xFF5F6D66))
                     }
                 }
             }
         }
+    }
+
+    private companion object {
+        val DOWNLOADS_INITIAL_URI =
+            Uri.parse("content://com.android.externalstorage.documents/root/downloads")
     }
 }

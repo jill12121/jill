@@ -3,8 +3,8 @@
 ## Current Task
 
 - ID: S01
-- Sub-step: SAF Workspace Capability Spike
-- State: READY_FOR_DEVICE
+- Sub-step: S01.1 SAF Probe Hardening
+- State: HARDENED_AWAITING_REMOTE_VERIFY
 
 ## Completed
 
@@ -92,14 +92,14 @@
   `PARTIAL_IMPORT` recovery integration.
 - Committed and pushed F04.3.1 as `58a6350`. Remote Verify run `39574777445`
   passed.
-- Prepared an isolated S01 SAF probe application with deterministic capability
-  classification, a device runbook, and a result matrix. The probe APK builds
-  locally; no human-device GO has been recorded.
+- Hardened the isolated S01 probe around a directly selected organizer root,
+  production MIME/rename paths, restart/reinstall checks, collisions, flags,
+  throughput, seek, enumeration, safe JSON export, and release isolation.
+  No human-device result has been recorded.
 
 ## Next Exact Action
 
-- Execute `docs/tasks/S01.md` on Android 11, current target, and at least two
-  OEM device families, then record GO, LIMITED_GO, or NO_GO.
+- Obtain a green Remote Verify for S01.1 before any device execution.
 
 ## Decisions
 

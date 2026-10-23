@@ -1,7 +1,8 @@
 param(
     [string]$ProjectRoot = (Split-Path -Parent $PSScriptRoot),
     [string]$MergedManifestPath,
-    [string]$DependencyReportPath
+    [string]$DependencyReportPath,
+    [string]$ReleaseArtifactPath
 )
 
 $ErrorActionPreference = "Stop"
@@ -97,6 +98,17 @@ function Assert-ReleaseSourcePolicy {
     }
 }
 
+function Assert-ReleaseArtifactPolicy {
+    param([string]$Path)
+    if (-not (Test-Path -LiteralPath $Path)) {
+        throw "Missing release APK/AAB: $Path"
+    }
+    $text = [Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($Path))
+    if ($text -match '(?i)(com[./]galleryorganizer[./]spikes|:spikes:)') {
+        throw "Forbidden spike package or module reference in release artifact"
+    }
+}
+
 $dependencyReport = $null
 if ([string]::IsNullOrWhiteSpace($MergedManifestPath) -or
     [string]::IsNullOrWhiteSpace($DependencyReportPath)) {
@@ -113,6 +125,7 @@ if ([string]::IsNullOrWhiteSpace($MergedManifestPath) -or
         --no-watch-fs `
         --max-workers=1 `
         :app:processReleaseMainManifest `
+        :app:assembleRelease `
         :app:dependencies `
         --configuration releaseRuntimeClasspath 2>&1
     if ($LASTEXITCODE -ne 0) {
@@ -134,6 +147,11 @@ if ([string]::IsNullOrWhiteSpace($MergedManifestPath) -or
     $MergedManifestPath = $manifestCandidates |
         Sort-Object LastWriteTimeUtc -Descending |
         Select-Object -First 1 -ExpandProperty FullName
+    $ReleaseArtifactPath = Get-ChildItem -Path (Join-Path $ProjectRoot "app/build/outputs") `
+        -Include "*.apk", "*.aab" -File -Recurse |
+        Where-Object { $_.FullName -match '[\\/]release[\\/]' } |
+        Sort-Object LastWriteTimeUtc -Descending |
+        Select-Object -First 1 -ExpandProperty FullName
 }
 else {
     if (-not (Test-Path -LiteralPath $DependencyReportPath)) {
@@ -145,5 +163,6 @@ else {
 Assert-ReleaseManifestPolicy -Path $MergedManifestPath
 Assert-ReleaseDependencyPolicy -Report $dependencyReport
 Assert-ReleaseSourcePolicy -Root $ProjectRoot
+Assert-ReleaseArtifactPolicy -Path $ReleaseArtifactPath
 
 Write-Output "Release manifest and runtime dependency policy verification passed."
