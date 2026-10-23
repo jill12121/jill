@@ -32,7 +32,7 @@ jobs:
       - name: Verify S01 APK signature
         run: |
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)"
-          "$APKSIGNER" verify --verbose spikes/s01-saf/build/outputs/apk/debug/s01-saf-debug.apk
+          "$APKSIGNER" verify --verbose spikes/probe-suite/build/outputs/apk/debug/probe-suite-debug.apk
       - name: Verify release artifact policy
         shell: pwsh
         run: ./scripts/verify-release-policy.ps1
