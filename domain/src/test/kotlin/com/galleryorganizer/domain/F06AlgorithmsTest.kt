@@ -14,11 +14,15 @@ class F06AlgorithmsTest {
             listOf(
                 SourceEntry("a", "Trip/Day1/a.jpg"),
                 SourceEntry("b", "Trip/Day2/b.jpg"),
+                SourceEntry("d", "Trip/Day2/Evening/d.jpg"),
                 SourceEntry("c", "loose.jpg"),
             ),
         )
         assertEquals(listOf("Trip", BatchGrouper.LOOSE_BATCH), grouped.map { it.batch })
-        assertEquals(listOf("Day1", "Day2"), grouped.first().subgroups.map { it.name })
+        assertEquals(
+            listOf("Day1", "Day2", "Day2/Evening"),
+            grouped.first().subgroups.map { it.name },
+        )
         assertEquals(listOf("c"), grouped.last().subgroups.single().sourceIds)
     }
 
@@ -66,6 +70,14 @@ class F06AlgorithmsTest {
     @Test
     fun `short image id supports the smallest valid prefix`() {
         assertEquals("a", ShortImageIdCollisionRetry.choose("abcdef", emptySet(), 1))
+    }
+
+    @Test
+    fun `short image id treats case-only names as occupied`() {
+        assertEquals(
+            "abcdef1",
+            ShortImageIdCollisionRetry.choose("abcdef123456", setOf("ABCDEF")),
+        )
     }
 
     @Test

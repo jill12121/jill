@@ -18,7 +18,11 @@ object BatchGrouper {
             .map { (batch, batchEntries) ->
                 val subgroups = batchEntries.groupBy { entry ->
                     val path = parts(entry.relativePath)
-                    if (batch == LOOSE_BATCH || path.size < 3) LOOSE_SUBGROUP else path[1]
+                    if (batch == LOOSE_BATCH || path.size < 3) {
+                        LOOSE_SUBGROUP
+                    } else {
+                        path.subList(1, path.lastIndex).joinToString("/")
+                    }
                 }.map { (name, values) ->
                     SourceSubgroup(name, values.map { it.sourceId }.sorted())
                 }.sortedBy { it.name }
@@ -99,9 +103,10 @@ object FileNameSanitizer {
 object ShortImageIdCollisionRetry {
     fun choose(fullId: String, used: Set<String>, minimumLength: Int = 6): String {
         require(fullId.length >= minimumLength)
+        val occupied = used.mapTo(mutableSetOf()) { it.lowercase(Locale.ROOT) }
         return (minimumLength..fullId.length)
             .map(fullId::take)
-            .firstOrNull { it !in used }
+            .firstOrNull { it.lowercase(Locale.ROOT) !in occupied }
             ?: error("Full image id collides")
     }
 }
