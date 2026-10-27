@@ -19,7 +19,8 @@
 - S02/S04 scaffold: combined probe APK committed as `5ffcac4`; Remote Verify
   `39932002281` passed; device results remain PENDING.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
-  `39934313216` passed; task status remains IN_PROGRESS.
+  `39934313216` passed. Identity invariant hardening commit `6585754` passed
+  Remote Verify `40437932838`; task status remains IN_PROGRESS.
 
 ## Next Exact Action
 
