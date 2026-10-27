@@ -4,6 +4,19 @@
   "pages": [],
   "cleanupState": "NOT_RUN",
   "authorizationBatchSizes": [],
+  "cleanupFixtureOwnership": "APP_OWNED",
+  "provenance": {
+    "schemaVersion": 1,
+    "probeVersion": "S02.3",
+    "runId": "REQUIRED",
+    "model": "REQUIRED",
+    "sdkInt": 30,
+    "manufacturer": "REQUIRED",
+    "securityPatch": "YYYY-MM-DD",
+    "appVersionName": "REQUIRED",
+    "appVersionCode": 0,
+    "fingerprintSha256": "REQUIRED_64_LOWERCASE_HEX"
+  },
   "exceptionClass": null,
   "decisionS02SingleDevice": "PENDING"
 }

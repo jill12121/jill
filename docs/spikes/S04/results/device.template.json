@@ -2,5 +2,19 @@
   "stageObservations": {},
   "providerOverwriteBehavior": "NOT_RUN",
   "exceptionClass": null,
+  "pendingStagePresent": false,
+  "runId": "REQUIRED",
+  "treeUriSha256": "REQUIRED_64_LOWERCASE_HEX",
+  "provenance": {
+    "schemaVersion": 1,
+    "probeVersion": "S04.3",
+    "model": "REQUIRED",
+    "sdkInt": 30,
+    "manufacturer": "REQUIRED",
+    "securityPatch": "YYYY-MM-DD",
+    "appVersionName": "REQUIRED",
+    "appVersionCode": 0,
+    "fingerprintSha256": "REQUIRED_64_LOWERCASE_HEX"
+  },
   "decisionS04SingleDevice": "PENDING"
 }

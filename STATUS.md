@@ -27,6 +27,24 @@
 - S01.3: exported result JSON now carries manufacturer, security patch, and a
   SHA-256 fingerprint hash instead of the raw build fingerprint; committed as
   `5dd458e`; Remote Verify `40450678249` passed.
+- S01.4: ownership validation rejects malformed marker fields and mismatched or
+  replaced samples, while the cleanup ledger tracks every created document;
+  committed as `c44e511`; Remote Verify `122067814285` passed. All 15 S01 unit
+  tests are green.
+- S02.2: strict monotonic bounded pagination, honored query arguments, cleanup
+  tri-state evidence, and explicit fixture ownership were committed as
+  `941efd4`; Remote Verify `40469408370` passed.
+- S02.3: pending cleanup authorization now survives Activity recreation, and
+  exported evidence binds schema/probe/run/app/device provenance while exposing
+  only a SHA-256 build fingerprint hash; committed as `14e6e9e`; Remote Verify
+  `40471142170` passed. All 6 S02 unit tests are green.
+- S04.2: durable `PREPARING` -> `READY` -> `OBSERVED` phases make observation
+  and cleanup crash-resumable; committed as `31f24dd`; Remote Verify
+  `40472524359` passed.
+- S04.3: overwrite behavior is classified by exact names and parsed
+  generations, and every stage is bound to one run, tree hash, app, and device
+  provenance; committed as `15abf47`; Remote Verify `40475288809` passed. All
+  7 S04 unit tests are green.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
@@ -41,19 +59,21 @@
 
 ## Next Exact Action
 
-- Independently review S01.2/S01.3/S02.1/S04.1, then assign and schedule the
-  REQUIRED physical-device matrix.
+- Independently review S01.4/S02.3/S04.3, define and review the S02
+  external-helper-owned fixture path, then assign and schedule the REQUIRED
+  physical-device matrix.
 
 ## Active Gates
 
 - F06: COMPLETE; golden manifest fixtures and the progressive pure-domain E2E
   are delivered. Storage executors stay outside F06 and remain gated.
-- S01: REVIEW_PENDING; S01.2 ownership repair and S01.3 fingerprint redaction
-  are CI-green; do not install until reviewed.
-- S02: REVIEW_PENDING; S02.1 evidence repair is CI-green; device result is
-  PENDING.
-- S04: REVIEW_PENDING; S04.1 restart repair is CI-green; device result is
-  PENDING.
+- S01: REVIEW_PENDING; S01.4 ownership and cleanup hardening is CI-green; do
+  not install until reviewed.
+- S02: REVIEW_PENDING; S02.3 pagination, cleanup, lifecycle, and provenance
+  hardening is CI-green; its conclusive external-helper fixture path and device
+  result are PENDING.
+- S04: REVIEW_PENDING; S04.3 durable recovery, overwrite, and provenance
+  hardening is CI-green; device result is PENDING.
 - J1/J2/J3 and production storage execution remain BLOCKED until required
   device decisions are recorded.
 
