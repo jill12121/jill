@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "albumId": "album-2026-10-importing",
+  "state": "IMPORTING",
+  "createdAtEpochMillis": 1772001000000,
+  "committedAtEpochMillis": null,
+  "images": [
+    {
+      "imageId": "cafe0001",
+      "fileName": "cafe0001.webp",
+      "order": 0,
+      "sizeBytes": 51200,
+      "modifiedAtMillis": 1772000900000,
+      "fpMethod": "sha256",
+      "fpValue": "4444444444444444444444444444444444444444444444444444444444444444"
+    },
+    {
+      "imageId": "cafe0002",
+      "fileName": "cafe0002.webp",
+      "order": 1,
+      "sizeBytes": 61440,
+      "modifiedAtMillis": 1772000950000,
+      "fpMethod": "sha256",
+      "fpValue": "5555555555555555555555555555555555555555555555555555555555555555"
+    }
+  ]
+}

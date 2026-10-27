@@ -1,0 +1,7 @@
+caseName	resource	expectValid	issueCodes	expectedState	imageCount
+normal-v1-committed	f06/manifests/valid-committed-v1.json	VALID	-	COMMITTED	3
+normal-v1-importing	f06/manifests/valid-importing-v1.json	VALID	-	IMPORTING	2
+malformed-json	f06/manifests/malformed.json	INVALID	MALFORMED_JSON	-	0
+missing-field	f06/manifests/missing-field.json	INVALID	MISSING_FIELD	-	0
+duplicate-image-id	f06/manifests/duplicate-image-id.json	INVALID	DUPLICATE_IMAGE_ID	-	0
+unsupported-schema	f06/manifests/unsupported-schema-v2.json	INVALID	UNSUPPORTED_SCHEMA	-	0

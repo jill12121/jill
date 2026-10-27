@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "albumId": "album-duplicate",
+  "state": "COMMITTED",
+  "createdAtEpochMillis": 1772003000000,
+  "committedAtEpochMillis": 1772003600000,
+  "images": [
+    {
+      "imageId": "abcd0001",
+      "fileName": "abcd0001.webp",
+      "order": 0,
+      "sizeBytes": 1024,
+      "modifiedAtMillis": 1772002900000,
+      "fpMethod": "sha256",
+      "fpValue": "7777777777777777777777777777777777777777777777777777777777777777"
+    },
+    {
+      "imageId": "ABCD0001",
+      "fileName": "ABCD0001.jpg",
+      "order": 1,
+      "sizeBytes": 2048,
+      "modifiedAtMillis": 1772002950000,
+      "fpMethod": "sha256",
+      "fpValue": "8888888888888888888888888888888888888888888888888888888888888888"
+    }
+  ]
+}

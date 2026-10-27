@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "albumId": "album-2026-10-trip",
+  "state": "COMMITTED",
+  "createdAtEpochMillis": 1772000000000,
+  "committedAtEpochMillis": 1772000600000,
+  "images": [
+    {
+      "imageId": "abcdef01",
+      "fileName": "abcdef01.webp",
+      "order": 0,
+      "sizeBytes": 102400,
+      "modifiedAtMillis": 1771999000000,
+      "fpMethod": "sha256",
+      "fpValue": "1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    {
+      "imageId": "abcdef02",
+      "fileName": "Day1/abcdef02.jpg",
+      "order": 1,
+      "sizeBytes": 204800,
+      "modifiedAtMillis": 1771999100000,
+      "fpMethod": "sha256",
+      "fpValue": "2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    {
+      "imageId": "abcdef03",
+      "fileName": "Day2/abcdef03.png",
+      "order": 2,
+      "sizeBytes": 307200,
+      "modifiedAtMillis": 1771999200000,
+      "fpMethod": "sha256",
+      "fpValue": "3333333333333333333333333333333333333333333333333333333333333333"
+    }
+  ]
+}

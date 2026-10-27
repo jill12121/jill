@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 2,
+  "albumId": "album-future",
+  "state": "COMMITTED",
+  "createdAtEpochMillis": 1772004000000,
+  "committedAtEpochMillis": 1772004600000,
+  "images": [
+    {
+      "imageId": "futu0001",
+      "fileName": "futu0001.webp",
+      "order": 0,
+      "sizeBytes": 4096,
+      "modifiedAtMillis": 1772003900000,
+      "fpMethod": "sha256",
+      "fpValue": "9999999999999999999999999999999999999999999999999999999999999999"
+    }
+  ]
+}

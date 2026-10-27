@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "state": "IMPORTING",
+  "createdAtEpochMillis": 1772002000000,
+  "committedAtEpochMillis": null,
+  "images": [
+    {
+      "imageId": "dead0001",
+      "fileName": "dead0001.webp",
+      "order": 0,
+      "modifiedAtMillis": 1772001900000,
+      "fpMethod": "sha256",
+      "fpValue": "6666666666666666666666666666666666666666666666666666666666666666"
+    }
+  ]
+}
