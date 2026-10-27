@@ -80,7 +80,10 @@ class SafCapabilityProbe(private val context: Context) {
         }
 
         S01ProbeResult(
-            Build.MODEL, Build.VERSION.SDK_INT, Build.FINGERPRINT, classifyRoot(root),
+            Build.MODEL, Build.VERSION.SDK_INT, Build.MANUFACTURER,
+            Build.VERSION.SECURITY_PATCH,
+            S01ProbeResult.redactFingerprint(Build.FINGERPRINT),
+            classifyRoot(root),
             if (classifyRoot(root) == RootKind.DOWNLOAD) DownloadRootSelection.TRUE
             else DownloadRootSelection.PROMPT_MESSAGE,
             dirsReady, partReadback, renamed, renamedName, renamedMime, finalReadback,

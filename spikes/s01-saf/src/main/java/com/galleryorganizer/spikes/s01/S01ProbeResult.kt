@@ -2,6 +2,7 @@ package com.galleryorganizer.spikes.s01
 
 import java.net.URLDecoder
 import java.net.URLEncoder
+import java.security.MessageDigest
 
 enum class RootKind { DOWNLOAD, PICTURES, OTHER }
 enum class DownloadRootSelection { TRUE, FALSE, PROMPT_MESSAGE }
@@ -10,7 +11,9 @@ enum class S01SingleDeviceOutcome { PASS, PARTIAL, FAIL }
 data class S01ProbeResult(
     val deviceModel: String,
     val androidSdk: Int,
-    val buildFingerprint: String,
+    val manufacturer: String,
+    val securityPatch: String,
+    val buildFingerprintHash: String,
     val rootKind: RootKind,
     val canSelectDownloadRoot: DownloadRootSelection,
     val organizerRootReady: Boolean,
@@ -67,7 +70,8 @@ data class S01ProbeResult(
 
     fun toJson(): String = linkedMapOf<String, Any?>(
         "deviceModel" to deviceModel, "androidSdk" to androidSdk,
-        "buildFingerprint" to buildFingerprint, "rootKind" to rootKind,
+        "manufacturer" to manufacturer, "securityPatch" to securityPatch,
+        "buildFingerprintHash" to buildFingerprintHash, "rootKind" to rootKind,
         "canSelectDownloadRoot" to when (canSelectDownloadRoot) {
             DownloadRootSelection.TRUE -> true
             DownloadRootSelection.FALSE -> false
@@ -102,7 +106,8 @@ data class S01ProbeResult(
     }
 
     private fun values() = listOf(
-        deviceModel, androidSdk, buildFingerprint, rootKind, canSelectDownloadRoot,
+        deviceModel, androidSdk, manufacturer, securityPatch, buildFingerprintHash,
+        rootKind, canSelectDownloadRoot,
         organizerRootReady, partWriteReadback, renameSucceeded, renamedActualDisplayName,
         renamedActualMime, finalReadback, cleanupSucceeded, collideCreate, collideRename,
         createDirIdempotent, oldUriStillReadable, forceStopRetryPassed,
@@ -114,22 +119,29 @@ data class S01ProbeResult(
     ).map(Any?::toString)
 
     companion object {
+        fun redactFingerprint(raw: String): String {
+            val digest = MessageDigest.getInstance("SHA-256")
+                .digest(raw.toByteArray(Charsets.UTF_8))
+            val hex = digest.joinToString("") { "%02x".format(it.toInt() and 0xFF) }
+            return "sha256:$hex"
+        }
+
         fun decode(value: String?): S01ProbeResult? = runCatching {
             val v = value?.split('|')?.map {
                 URLDecoder.decode(it, Charsets.UTF_8.name())
             } ?: return null
-            require(v.size == 33)
+            require(v.size == 35)
             S01ProbeResult(
-                v[0], v[1].toInt(), v[2], RootKind.valueOf(v[3]),
-                DownloadRootSelection.valueOf(v[4]), v[5].toBoolean(), v[6].toBoolean(),
-                v[7].toBoolean(), v[8], v[9], v[10].toBoolean(), v[11].toBoolean(),
-                v[12], v[13], v[14], v[15].toBoolean(), v[16].toBoolean(),
-                v[17].toBoolean(), v[18].toBoolean(), v[19].toBoolean(),
-                v[20].toBoolean(), v[21], v[22].toDouble(), v[23].toDouble(),
-                v[24].toDouble(), v[25].toBoolean(), v[26].toLong(), v[27].toLong(),
-                v[28].toLongOrNull(), v[29].split(',').filter(String::isNotEmpty),
-                v[30].split(',').filter(String::isNotEmpty), v[31].ifEmpty { null },
-                v[32].ifEmpty { null },
+                v[0], v[1].toInt(), v[2], v[3], v[4], RootKind.valueOf(v[5]),
+                DownloadRootSelection.valueOf(v[6]), v[7].toBoolean(), v[8].toBoolean(),
+                v[9].toBoolean(), v[10], v[11], v[12].toBoolean(), v[13].toBoolean(),
+                v[14], v[15], v[16], v[17].toBoolean(), v[18].toBoolean(),
+                v[19].toBoolean(), v[20].toBoolean(), v[21].toBoolean(),
+                v[22].toBoolean(), v[23], v[24].toDouble(), v[25].toDouble(),
+                v[26].toDouble(), v[27].toBoolean(), v[28].toLong(), v[29].toLong(),
+                v[30].toLongOrNull(), v[31].split(',').filter(String::isNotEmpty),
+                v[32].split(',').filter(String::isNotEmpty), v[33].ifEmpty { null },
+                v[34].ifEmpty { null },
             )
         }.getOrNull()
 
@@ -137,8 +149,22 @@ data class S01ProbeResult(
             null -> "null"
             is Boolean, is Number -> value.toString()
             is List<*> -> value.joinToString(prefix = "[", postfix = "]") { jsonValue(it) }
-            else -> "\"${value.toString().replace("\\", "\\\\").replace("\"", "\\\"")
-                .replace("\n", "\\n").replace("\r", "\\r")}\""
+            else -> "\"${escapeJsonString(value.toString())}\""
+        }
+
+        private fun escapeJsonString(value: String): String = buildString {
+            value.forEach { c ->
+                when (c) {
+                    '\\' -> append("\\\\")
+                    '"' -> append("\\\"")
+                    '\n' -> append("\\n")
+                    '\r' -> append("\\r")
+                    '\t' -> append("\\t")
+                    '\b' -> append("\\b")
+                    '\u000C' -> append("\\f")
+                    else -> if (c.code < 0x20) append("\\u%04x".format(c.code)) else append(c)
+                }
+            }
         }
     }
 }

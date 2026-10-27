@@ -1,7 +1,9 @@
 {
   "deviceModel": "REQUIRED",
   "androidSdk": 0,
-  "buildFingerprint": "REQUIRED",
+  "manufacturer": "REQUIRED",
+  "securityPatch": "REQUIRED",
+  "buildFingerprintHash": "sha256:REQUIRED",
   "rootKind": "OTHER",
   "canSelectDownloadRoot": "promptMessage",
   "organizerRootReady": false,
