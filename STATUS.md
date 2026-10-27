@@ -20,7 +20,8 @@
   `39932002281` passed; device results remain PENDING.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
-  Remote Verify `40437932838`; task status remains IN_PROGRESS.
+  Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
+  commit `ca03b9d` passed Remote Verify `40440140530`; task remains IN_PROGRESS.
 
 ## Next Exact Action
 
@@ -60,8 +61,8 @@
 - F04.3 may prove only in-memory integration semantics; S01/S02/S04 remain
   mandatory before J1/J2/J3 or any production storage executor.
 - F04 is complete; this does not authorize production storage execution.
-- S01 probe code stays in the separate `:spikes:s01-saf` application and must
-  not be bound into the main release graph.
+- S01 probe code stays in the separate `:spikes:s01-saf` library, installed
+  only through `:spikes:probe-suite`, and must not enter the main release graph.
 
 ## Deviations
 
