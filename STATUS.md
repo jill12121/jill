@@ -2,9 +2,9 @@
 
 ## Current Task
 
-- ID: F06
-- Sub-step: Pure Domain Algorithms And Fixtures
-- State: IN_PROGRESS
+- ID: S01/S02/S04
+- Sub-step: Independent spike review and REQUIRED physical-device matrix
+- State: REVIEW_PENDING (device evidence PENDING; matrix owner UNASSIGNED)
 
 ## Completed
 
@@ -24,23 +24,32 @@
   authorization committed as `dec1951`; Remote Verify `40446516962` passed.
 - S04.1: persisted two-stage restart observation committed as `45cecff`; Remote
   Verify `40447648083` passed.
+- S01.3: exported result JSON now carries manufacturer, security patch, and a
+  SHA-256 fingerprint hash instead of the raw build fingerprint; committed as
+  `5dd458e`; Remote Verify `40450678249` passed.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
   commit `ca03b9d` passed Remote Verify `40440140530`. Relative-path and
-  fixture-loader commit `6fdd89f` passed Remote Verify `40445342619`; task
-  remains IN_PROGRESS.
+  fixture-loader commit `6fdd89f` passed Remote Verify `40445342619`.
+- F06 manifest archive pipeline: strict JSON parser (`4fb0649`, Verify
+  `40454071478`), manifest codec (`2c99d22`, check `122028203216`), golden
+  fixture corpus (`bb070e2`, check `122031243215`), pure filesystem verifier
+  (`5a3abff`, check `122036651621`), and manifest factory plus progressive
+  pure-domain E2E (`881f023`, check `122047757478`) all passed Remote Verify.
+  F06 is COMPLETE within its pure-domain scope.
 
 ## Next Exact Action
 
-- Independently review S01.2/S02.1/S04.1, then assign and schedule the REQUIRED
-  physical-device matrix.
+- Independently review S01.2/S01.3/S02.1/S04.1, then assign and schedule the
+  REQUIRED physical-device matrix.
 
 ## Active Gates
 
-- F06: IN_PROGRESS; expand only through pure domain behavior and fixtures.
-- S01: REVIEW_PENDING; S01.2 ownership repair is CI-green; do not install until
-  reviewed.
+- F06: COMPLETE; golden manifest fixtures and the progressive pure-domain E2E
+  are delivered. Storage executors stay outside F06 and remain gated.
+- S01: REVIEW_PENDING; S01.2 ownership repair and S01.3 fingerprint redaction
+  are CI-green; do not install until reviewed.
 - S02: REVIEW_PENDING; S02.1 evidence repair is CI-green; device result is
   PENDING.
 - S04: REVIEW_PENDING; S04.1 restart repair is CI-green; device result is
@@ -75,6 +84,9 @@
 - F04 is complete; this does not authorize production storage execution.
 - S01 probe code stays in the separate `:spikes:s01-saf` library, installed
   only through `:spikes:probe-suite`, and must not enter the main release graph.
+- S01 exported result JSON must never include the raw `Build.FINGERPRINT`;
+  only manufacturer, security patch level, and a SHA-256 fingerprint hash may
+  leave the device.
 
 ## Deviations
 
@@ -90,8 +102,5 @@
 
 - S01/S02/S04 physical-device results are PENDING; emulator and desktop
   results cannot satisfy the REQUIRED matrix.
-- S01 result JSON still exposes the full build fingerprint; replace it with a
-  fingerprint hash before results are committed.
-- F06 Golden Manifest and progressive pure-test E2E fixtures remain pending.
 - J1/J2/J3 and all production workspace/Manifest/cleanup execution are blocked
   by those device decisions.

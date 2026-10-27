@@ -14,26 +14,31 @@ Do not infer device GO from CI or desktop tests.
   cleanup authorization; Remote Verify `40446516962`.
 - S04.1 `45cecff`: persisted cutoff and post-restart recovery observation;
   Remote Verify `40447648083`.
+- S01.3 `5dd458e`: raw build fingerprint replaced by manufacturer, security
+  patch, and SHA-256 hash in exported JSON; Remote Verify `40450678249`.
+- F06 manifest pipeline `4fb0649` -> `2c99d22` -> `bb070e2` -> `5a3abff` ->
+  `881f023`: strict JSON parser, manifest codec, golden fixtures, filesystem
+  verifier, and manifest factory plus progressive pure-domain E2E; latest
+  check `122047757478` succeeded. F06 is COMPLETE.
 
-All remain subject to an independent review before the probe-suite is installed
-on physical devices.
+All spike repairs remain subject to an independent review before the
+probe-suite is installed on physical devices.
 
 ## Current State
 
 - F01-F04: complete safety and test foundation.
-- F06: `IN_PROGRESS`; Golden Manifest and progressive pure-test E2E fixtures
-  remain.
+- F06: `COMPLETE` within its pure-domain scope; golden manifest fixtures and
+  the progressive pure-domain E2E are delivered (35 domain tests green).
 - S01/S02/S04: `REVIEW_PENDING`; device evidence remains PENDING.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action
 
-1. Review S01.2, S02.1, and S04.1 against their task runbooks.
-2. Replace the full S01 build fingerprint in exported JSON with a hash.
-3. Assign owner, date, and concrete devices for Android 11, current target,
+1. Review S01.2, S01.3, S02.1, and S04.1 against their task runbooks.
+2. Assign owner, date, and concrete devices for Android 11, current target,
    OEM family A, and OEM family B.
-4. Execute the matrix only after review acceptance.
-5. Record per-device JSON and GO/LIMITED_GO/NO_GO inputs.
+3. Execute the matrix only after review acceptance.
+4. Record per-device JSON and GO/LIMITED_GO/NO_GO inputs.
 
 ## Hard Boundaries
 
