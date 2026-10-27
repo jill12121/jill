@@ -12,9 +12,12 @@ enum class CleanupAuthorizationState {
     PENDING,
     GRANTED_REMOVED,
     GRANTED_STILL_PRESENT,
+    GRANTED_QUERY_FAILED,
     DENIED,
     REQUEST_FAILED,
 }
+
+enum class CleanupFixtureOwnership { APP_OWNED, EXTERNAL_HELPER_OWNED }
 
 enum class S02SingleDeviceOutcome { PASS, PARTIAL, PENDING, FAIL }
 
@@ -25,6 +28,8 @@ data class PageEvidence(
     val lastId: Long,
     val pageMillis: Long,
     val duplicateCount: Int,
+    val strictlyIncreasing: Boolean = true,
+    val queryArgsHonored: Boolean = true,
 )
 
 object PaginationEvidenceValidator {
@@ -37,7 +42,9 @@ object PaginationEvidenceValidator {
                 page.rowCount in 1..PAGE_SIZE &&
                 page.firstId > previousLastId &&
                 page.lastId >= page.firstId &&
-                page.duplicateCount == 0
+                page.duplicateCount == 0 &&
+                page.strictlyIncreasing &&
+                page.queryArgsHonored
             previousLastId = page.lastId
             valid
         }
@@ -56,6 +63,8 @@ data class S02ProbeResult(
     val pages: List<PageEvidence>,
     val cleanupState: CleanupAuthorizationState,
     val authorizationBatchSizes: List<Int>,
+    val cleanupFixtureOwnership: CleanupFixtureOwnership =
+        CleanupFixtureOwnership.APP_OWNED,
     val exceptionClass: String? = null,
 ) {
     val outcome: S02SingleDeviceOutcome
@@ -71,12 +80,16 @@ data class S02ProbeResult(
                     ) ||
                 authorizationBatchSizes.any { it !in 1..CleanupAuthorizationChunker.MAX_BATCH_SIZE } ||
                 cleanupState == CleanupAuthorizationState.GRANTED_STILL_PRESENT ||
+                cleanupState == CleanupAuthorizationState.GRANTED_QUERY_FAILED ||
                 cleanupState == CleanupAuthorizationState.DENIED ||
                 cleanupState == CleanupAuthorizationState.REQUEST_FAILED ->
                 S02SingleDeviceOutcome.FAIL
 
             cleanupState == CleanupAuthorizationState.NOT_RUN ||
                 cleanupState == CleanupAuthorizationState.PENDING ->
+                S02SingleDeviceOutcome.PENDING
+
+            cleanupFixtureOwnership == CleanupFixtureOwnership.APP_OWNED ->
                 S02SingleDeviceOutcome.PENDING
 
             permissionState == MediaPermissionState.PARTIAL_USER_SELECTED ->
@@ -92,13 +105,16 @@ data class S02ProbeResult(
             pages.joinToString(",") {
                 """{"pageIndex":${it.pageIndex},"rowCount":${it.rowCount},""" +
                     """"firstId":${it.firstId},"lastId":${it.lastId},""" +
-                    """"pageMillis":${it.pageMillis},"duplicateCount":${it.duplicateCount}}"""
+                    """"pageMillis":${it.pageMillis},"duplicateCount":${it.duplicateCount},""" +
+                    """"strictlyIncreasing":${it.strictlyIncreasing},""" +
+                    """"queryArgsHonored":${it.queryArgsHonored}}"""
             },
         )
         append("""]""")
         append(""","cleanupState":"$cleanupState","authorizationBatchSizes":[""")
         append(authorizationBatchSizes.joinToString(","))
         append("]")
+        append(""","cleanupFixtureOwnership":"$cleanupFixtureOwnership"""")
         append(""","exceptionClass":${exceptionClass?.let { "\"$it\"" } ?: "null"}""")
         append(""","decisionS02SingleDevice":"$outcome"}""")
     }

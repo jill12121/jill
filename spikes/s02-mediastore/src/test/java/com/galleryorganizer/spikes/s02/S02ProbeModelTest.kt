@@ -51,10 +51,22 @@ class S02ProbeModelTest {
             S02SingleDeviceOutcome.FAIL,
             passingResult().copy(authorizationBatchSizes = emptyList()).outcome,
         )
+        assertEquals(
+            S02SingleDeviceOutcome.FAIL,
+            passingResult().copy(
+                cleanupState = CleanupAuthorizationState.GRANTED_QUERY_FAILED,
+            ).outcome,
+        )
+        assertEquals(
+            S02SingleDeviceOutcome.PENDING,
+            passingResult().copy(
+                cleanupFixtureOwnership = CleanupFixtureOwnership.APP_OWNED,
+            ).outcome,
+        )
     }
 
     @Test
-    fun `pagination requires bounded monotonic duplicate-free pages`() {
+    fun `pagination requires bounded monotonic duplicate-free honored pages`() {
         listOf(0, 1, 499, 500, 501, 1001).forEach { size ->
             assertTrue(PaginationEvidenceValidator.isValid(pagesFor(size)))
         }
@@ -71,6 +83,32 @@ class S02ProbeModelTest {
                 ),
             ),
         )
+        assertFalse(
+            PaginationEvidenceValidator.isValid(
+                listOf(
+                    page(
+                        pageIndex = 0,
+                        rowCount = 2,
+                        firstId = 1,
+                        lastId = 2,
+                        strictlyIncreasing = false,
+                    ),
+                ),
+            ),
+        )
+        assertFalse(
+            PaginationEvidenceValidator.isValid(
+                listOf(
+                    page(
+                        pageIndex = 0,
+                        rowCount = 2,
+                        firstId = 1,
+                        lastId = 2,
+                        queryArgsHonored = false,
+                    ),
+                ),
+            ),
+        )
     }
 
     @Test
@@ -84,17 +122,36 @@ class S02ProbeModelTest {
 
     private fun pagesFor(size: Int): List<PageEvidence> =
         (1L..size.toLong()).toList().chunked(500).mapIndexed { index, ids ->
-            PageEvidence(index, ids.size, ids.first(), ids.last(), 1, 0)
+            page(index, ids.size, ids.first(), ids.last())
         }
+
+    private fun page(
+        pageIndex: Int,
+        rowCount: Int,
+        firstId: Long,
+        lastId: Long,
+        strictlyIncreasing: Boolean = true,
+        queryArgsHonored: Boolean = true,
+    ) = PageEvidence(
+        pageIndex,
+        rowCount,
+        firstId,
+        lastId,
+        1,
+        0,
+        strictlyIncreasing,
+        queryArgsHonored,
+    )
 
     private fun passingResult() = S02ProbeResult(
         permissionState = MediaPermissionState.FULL,
         totalVisibleRows = 501,
         pages = listOf(
-            PageEvidence(0, 500, 1, 500, 10, 0),
-            PageEvidence(1, 1, 501, 501, 2, 0),
+            page(0, 500, 1, 500),
+            page(1, 1, 501, 501),
         ),
         cleanupState = CleanupAuthorizationState.GRANTED_REMOVED,
         authorizationBatchSizes = listOf(1),
+        cleanupFixtureOwnership = CleanupFixtureOwnership.EXTERNAL_HELPER_OWNED,
     )
 }

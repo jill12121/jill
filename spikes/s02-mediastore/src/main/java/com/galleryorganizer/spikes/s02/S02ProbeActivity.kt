@@ -48,6 +48,8 @@ data class S02ProbeRun(
     val cleanupAuthorization: CleanupAuthorization? = null,
 )
 
+private enum class CleanupPresence { PRESENT, ABSENT, QUERY_FAILED }
+
 class MediaStoreProbe(private val context: Context) {
     private val resolver = context.contentResolver
 
@@ -130,13 +132,18 @@ class MediaStoreProbe(private val context: Context) {
         granted: Boolean,
     ): S02ProbeResult = withContext(Dispatchers.IO) {
         val authorization = run.cleanupAuthorization ?: return@withContext run.result
-        val stillPresent = exists(authorization.sampleUri)
+        val presence = presenceOf(authorization.sampleUri)
         val state = when {
             !granted -> CleanupAuthorizationState.DENIED
-            stillPresent -> CleanupAuthorizationState.GRANTED_STILL_PRESENT
-            else -> CleanupAuthorizationState.GRANTED_REMOVED
+            presence == CleanupPresence.PRESENT ->
+                CleanupAuthorizationState.GRANTED_STILL_PRESENT
+            presence == CleanupPresence.ABSENT ->
+                CleanupAuthorizationState.GRANTED_REMOVED
+            else -> CleanupAuthorizationState.GRANTED_QUERY_FAILED
         }
-        if (stillPresent) deleteOwnedSample(authorization.sampleUri)
+        if (presence == CleanupPresence.PRESENT) {
+            deleteOwnedSample(authorization.sampleUri)
+        }
         run.result.copy(cleanupState = state)
     }
 
@@ -172,6 +179,8 @@ class MediaStoreProbe(private val context: Context) {
             var pageLastId = 0L
             var count = 0
             var duplicates = 0
+            var strictlyIncreasing = true
+            var queryArgsHonored = false
             val cursor = requireNotNull(
                 resolver.query(
                     MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
@@ -181,12 +190,26 @@ class MediaStoreProbe(private val context: Context) {
                 ),
             )
             cursor.use {
+                val honored = it.extras
+                    .getStringArray(ContentResolver.EXTRA_HONORED_ARGS)
+                    ?.toSet()
+                    .orEmpty()
+                queryArgsHonored = REQUIRED_QUERY_ARGS.all(honored::contains)
+                var previousId = lastId
                 while (it.moveToNext()) {
                     val id = it.getLong(0)
+                    if (id <= previousId) strictlyIncreasing = false
                     if (count == 0) firstId = id
                     pageLastId = id
                     if (!seen.add(id)) duplicates++
                     count++
+                    check(count <= PaginationEvidenceValidator.PAGE_SIZE) {
+                        "PAGE_SIZE_EXCEEDED"
+                    }
+                    check(strictlyIncreasing && duplicates == 0) {
+                        "NON_MONOTONIC_PAGE"
+                    }
+                    previousId = id
                 }
             }
             if (count == 0) break
@@ -197,8 +220,12 @@ class MediaStoreProbe(private val context: Context) {
                 pageLastId,
                 (System.nanoTime() - started) / 1_000_000,
                 duplicates,
+                strictlyIncreasing,
+                queryArgsHonored,
             )
+            if (!queryArgsHonored) break
             if (count != PaginationEvidenceValidator.PAGE_SIZE) break
+            check(pageLastId > lastId) { "PAGE_DID_NOT_ADVANCE" }
             lastId = pageLastId
         }
         return pages
@@ -231,9 +258,20 @@ class MediaStoreProbe(private val context: Context) {
         }
     }
 
-    private fun exists(uri: Uri): Boolean =
-        resolver.query(uri, arrayOf(MediaStore.Images.Media._ID), null, null, null)
-            ?.use { it.moveToFirst() } == true
+    private fun presenceOf(uri: Uri): CleanupPresence = try {
+        val cursor = resolver.query(
+            uri,
+            arrayOf(MediaStore.Images.Media._ID),
+            null,
+            null,
+            null,
+        ) ?: return CleanupPresence.QUERY_FAILED
+        cursor.use {
+            if (it.moveToFirst()) CleanupPresence.PRESENT else CleanupPresence.ABSENT
+        }
+    } catch (_: Exception) {
+        CleanupPresence.QUERY_FAILED
+    }
 
     private fun deleteOwnedSample(uri: Uri) {
         runCatching { resolver.delete(uri, null, null) }
@@ -248,6 +286,13 @@ class MediaStoreProbe(private val context: Context) {
     )
 
     private companion object {
+        val REQUIRED_QUERY_ARGS = setOf(
+            ContentResolver.QUERY_ARG_SQL_SELECTION,
+            ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS,
+            ContentResolver.QUERY_ARG_SORT_COLUMNS,
+            ContentResolver.QUERY_ARG_SORT_DIRECTION,
+            ContentResolver.QUERY_ARG_LIMIT,
+        )
         val PROBE_PNG: ByteArray = Base64.getDecoder().decode(
             "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk" +
                 "YAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
