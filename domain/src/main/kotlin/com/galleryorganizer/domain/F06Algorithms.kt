@@ -42,7 +42,10 @@ object SourceKeyNormalizer {
         val segments = path.replace('\\', '/').split('/').fold(mutableListOf<String>()) { result, part ->
             when (part) {
                 "", "." -> Unit
-                ".." -> if (result.isNotEmpty()) result.removeAt(result.lastIndex)
+                ".." -> {
+                    require(result.isNotEmpty()) { "Source path escapes its root." }
+                    result.removeAt(result.lastIndex)
+                }
                 else -> result += part
             }
             result
@@ -67,7 +70,15 @@ object FileNameSanitizer {
         val extension = if (dot > 0) normalized.substring(dot) else ""
         val extensionBytes = extension.encodeToByteArray().size
         val suffix = if (extensionBytes < maxUtf8Bytes) extension else ""
-        return truncateUtf8(normalized.removeSuffix(suffix), maxUtf8Bytes - suffix.encodeToByteArray().size) + suffix
+        var result = truncateUtf8(
+            normalized.removeSuffix(suffix),
+            maxUtf8Bytes - suffix.encodeToByteArray().size,
+        ) + suffix
+        if (result.isEmpty()) result = "_"
+        if (reserved.matches(result)) {
+            result = "_" + truncateUtf8(result, maxUtf8Bytes - 1)
+        }
+        return result
     }
 
     private fun truncateUtf8(value: String, maxBytes: Int): String {
@@ -136,6 +147,7 @@ object SelectionSnapshotMaterializer {
     ): SelectionSnapshot {
         require(scanGeneration > 0 && draftRevision > 0)
         val byKey = candidates.associateBy { it.sourceKey }
+        require(byKey.size == candidates.size) { "Candidate source keys must be unique." }
         require(selectedKeys.all(byKey::containsKey))
         return SelectionSnapshot(
             scanGeneration,

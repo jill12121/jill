@@ -4,6 +4,7 @@ import java.text.Normalizer
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class F06AlgorithmsTest {
@@ -32,6 +33,13 @@ class F06AlgorithmsTest {
     }
 
     @Test
+    fun `source key rejects a path that escapes its root`() {
+        assertFailsWith<IllegalArgumentException> {
+            SourceKeyNormalizer.normalize("media", "primary", "../a.jpg", 1, 1_000)
+        }
+    }
+
+    @Test
     fun `filename sanitizer applies NFC reserved names invalid chars and byte cap`() {
         assertEquals("é.txt", FileNameSanitizer.sanitize("e\u0301?.txt", 6))
         assertEquals("_CON", FileNameSanitizer.sanitize("CON"))
@@ -39,6 +47,12 @@ class F06AlgorithmsTest {
         assertTrue(long.encodeToByteArray().size <= 32)
         assertTrue(long.endsWith(".webp"))
         assertTrue(Normalizer.isNormalized(long, Normalizer.Form.NFC))
+        assertEquals("_", FileNameSanitizer.sanitize("图", 1))
+    }
+
+    @Test
+    fun `filename sanitizer does not create a reserved name after truncation`() {
+        assertEquals("_CO", FileNameSanitizer.sanitize("CONX", 3))
     }
 
     @Test
@@ -47,6 +61,11 @@ class F06AlgorithmsTest {
             "abcdef12",
             ShortImageIdCollisionRetry.choose("abcdef123456", setOf("abcdef", "abcdef1")),
         )
+    }
+
+    @Test
+    fun `short image id supports the smallest valid prefix`() {
+        assertEquals("a", ShortImageIdCollisionRetry.choose("abcdef", emptySet(), 1))
     }
 
     @Test
@@ -90,5 +109,17 @@ class F06AlgorithmsTest {
         assertEquals(listOf("a", "b"), snapshot.items.map { it.sourceKey })
         assertEquals(7, snapshot.scanGeneration)
         assertEquals(2, snapshot.items.size)
+    }
+
+    @Test
+    fun `selection snapshot rejects duplicate candidate source keys`() {
+        assertFailsWith<IllegalArgumentException> {
+            SelectionSnapshotMaterializer.materialize(
+                7,
+                3,
+                listOf(SelectionCandidate("a", "first"), SelectionCandidate("a", "second")),
+                setOf("a"),
+            )
+        }
     }
 }
