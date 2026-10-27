@@ -7,6 +7,8 @@ data class ProbeOwnership private constructor(val token: String) {
         get() = "$DIRECTORY_PREFIX$token"
     val sampleName: String
         get() = ".s01-sample-$token.bin"
+    val adoptionDeleteName: String
+        get() = ".s01-adoption-delete-$token.bin"
     val sampleBytes: ByteArray
         get() = "s01-owned-sample:$token".encodeToByteArray()
     val markerBytes: ByteArray
@@ -56,4 +58,32 @@ data class ProbeOwnership private constructor(val token: String) {
             MessageDigest.getInstance("SHA-256").digest(bytes)
                 .joinToString("") { "%02x".format(it) }
     }
+}
+
+object SafProbeRules {
+    fun classifyTreeDocumentId(documentId: String): RootKind {
+        val path = documentId.substringAfter(':').trimEnd('/').lowercase()
+        return when {
+            path == "download" || path.startsWith("download/") -> RootKind.DOWNLOAD
+            path == "pictures" || path.startsWith("pictures/") -> RootKind.PICTURES
+            else -> RootKind.OTHER
+        }
+    }
+
+    fun downloadRootSelection(documentId: String): DownloadRootSelection {
+        val path = documentId.substringAfter(':').trimEnd('/').lowercase()
+        return if (path == "download") {
+            DownloadRootSelection.TRUE
+        } else {
+            DownloadRootSelection.PROMPT_MESSAGE
+        }
+    }
+}
+
+class CleanupLedger<T> {
+    private val created = mutableListOf<T>()
+
+    fun register(value: T): T = value.also(created::add)
+
+    fun cleanupOrder(): List<T> = created.asReversed().distinct()
 }

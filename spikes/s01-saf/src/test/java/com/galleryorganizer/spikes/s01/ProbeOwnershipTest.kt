@@ -2,6 +2,7 @@ package com.galleryorganizer.spikes.s01
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -87,5 +88,34 @@ class ProbeOwnershipTest {
 
         assertEquals(ownership, validated)
         assertTrue(validated!!.directoryName.startsWith(".s01-probe-"))
+    }
+
+    @Test
+    fun `download child is not reported as direct download root selection`() {
+        assertEquals(
+            DownloadRootSelection.TRUE,
+            SafProbeRules.downloadRootSelection("primary:Download"),
+        )
+        assertEquals(
+            DownloadRootSelection.PROMPT_MESSAGE,
+            SafProbeRules.downloadRootSelection("primary:Download/GalleryOrganizer"),
+        )
+    }
+
+    @Test
+    fun `cleanup ledger retains a created item when later work fails`() {
+        val ledger = CleanupLedger<String>()
+
+        runCatching {
+            ledger.register("created.part")
+            error("rename failed")
+        }
+
+        assertEquals(listOf("created.part"), ledger.cleanupOrder())
+    }
+
+    @Test
+    fun `adoption delete candidate never reuses ownership sample`() {
+        assertNotEquals(ownership.sampleName, ownership.adoptionDeleteName)
     }
 }

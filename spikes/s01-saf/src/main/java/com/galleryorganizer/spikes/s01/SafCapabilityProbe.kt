@@ -20,7 +20,7 @@ class SafCapabilityProbe(private val context: Context) {
         val organizerRoot = DocumentsContract.buildDocumentUriUsingTree(
             root, DocumentsContract.getTreeDocumentId(root),
         )
-        val created = mutableListOf<Uri>()
+        val created = CleanupLedger<Uri>()
         var failure: Exception? = null
         var dirsReady = false
         var partReadback = false
@@ -52,9 +52,8 @@ class SafCapabilityProbe(private val context: Context) {
             ensureDirectory(trash, "meta")
             dirsReady = true
 
-            val binary = fileFlow(probeRoot, token, "application/octet-stream", "bin")
-            val webp = fileFlow(probeRoot, token, "image/webp", "webp")
-            created += binary.cleanupUris + webp.cleanupUris
+            val binary = fileFlow(probeRoot, token, "application/octet-stream", "bin", created)
+            val webp = fileFlow(probeRoot, token, "image/webp", "webp", created)
             partReadback = binary.partReadback && webp.partReadback
             renamed = binary.renamed && webp.renamed
             finalReadback = binary.finalReadback && webp.finalReadback
@@ -66,13 +65,13 @@ class SafCapabilityProbe(private val context: Context) {
             collideCreate = createCollision(probeRoot, webp.finalUri, webp.actualName, created)
             collideRename = renameCollision(probeRoot, token, created)
             val repeatedAlbums = requireNotNull(create(probeRoot, DIR_MIME, "Albums"))
-            if (repeatedAlbums != albums) created += repeatedAlbums
+            if (repeatedAlbums != albums) created.register(repeatedAlbums)
             dirIdempotent = classifyCreated(albums, repeatedAlbums, "Albums")
             performance = performanceProbe(probeRoot, token, created)
         } catch (caught: Exception) {
             failure = caught
         } finally {
-            created.asReversed().distinct().forEach {
+            created.cleanupOrder().forEach {
                 val deleted = runCatching { DocumentsContract.deleteDocument(resolver, it) }
                     .getOrDefault(false)
                 cleanup = (deleted || runCatching { metadata(it); false }.getOrDefault(true)) && cleanup
@@ -84,8 +83,7 @@ class SafCapabilityProbe(private val context: Context) {
             Build.VERSION.SECURITY_PATCH,
             S01ProbeResult.redactFingerprint(Build.FINGERPRINT),
             classifyRoot(root),
-            if (classifyRoot(root) == RootKind.DOWNLOAD) DownloadRootSelection.TRUE
-            else DownloadRootSelection.PROMPT_MESSAGE,
+            SafProbeRules.downloadRootSelection(DocumentsContract.getTreeDocumentId(root)),
             dirsReady, partReadback, renamed, renamedName, renamedMime, finalReadback,
             cleanup, collideCreate, collideRename, dirIdempotent, oldReadable,
             reinstallAdoptionRead = adoption.read,
@@ -109,33 +107,44 @@ class SafCapabilityProbe(private val context: Context) {
             root, DocumentsContract.getTreeDocumentId(root),
         )
         val ownedRoot = findOwnedRoot(organizerRoot) ?: return@withContext false
-        val uri = runCatching {
+        val created = CleanupLedger<Uri>()
+        val operationSucceeded = runCatching {
             val bytes = "s01-retry".encodeToByteArray()
-            requireNotNull(
+            val uri = created.register(requireNotNull(
                 create(ownedRoot.uri, "application/octet-stream", ".s01-retry.part"),
-            ).also {
-                write(it, bytes)
-                check(read(it).contentEquals(bytes))
-            }
-        }.getOrNull() ?: return@withContext false
-        runCatching { DocumentsContract.deleteDocument(resolver, uri) }.getOrDefault(false)
+            ))
+            write(uri, bytes)
+            check(read(uri).contentEquals(bytes))
+        }.isSuccess
+        val cleanupSucceeded = created.cleanupOrder().all {
+            runCatching { DocumentsContract.deleteDocument(resolver, it) }.getOrDefault(false)
+        }
+        operationSucceeded && cleanupSucceeded
     }
 
-    private fun fileFlow(parent: Uri, token: String, mime: String, extension: String): FileFlow {
+    private fun fileFlow(
+        parent: Uri,
+        token: String,
+        mime: String,
+        extension: String,
+        created: CleanupLedger<Uri>,
+    ): FileFlow {
         val partName = ".s01-$token.$extension.part"
         val finalName = ".s01-$token.$extension"
         val bytes = "s01-$mime-$token".encodeToByteArray()
-        val part = requireNotNull(create(parent, mime, partName))
+        val part = created.register(requireNotNull(create(parent, mime, partName)))
         check(metadata(part).name == partName)
         write(part, bytes)
         val partReadback = read(part).contentEquals(bytes)
-        val final = requireNotNull(DocumentsContract.renameDocument(resolver, part, finalName))
+        val final = created.register(
+            requireNotNull(DocumentsContract.renameDocument(resolver, part, finalName)),
+        )
         val actual = metadata(final)
         check(actual.name == finalName && actual.mime == mime)
         val oldReadable = runCatching { read(part); true }.getOrDefault(false)
         return FileFlow(
             partReadback, true, read(final).contentEquals(bytes), actual.name, actual.mime,
-            oldReadable, final, listOf(final),
+            oldReadable, final,
         )
     }
 
@@ -176,7 +185,19 @@ class SafCapabilityProbe(private val context: Context) {
             read(sample).contentEquals(ownedRoot.ownership.sampleBytes)
         }.getOrDefault(false)
         val orphanDelete = orphanWrite && runCatching {
-            DocumentsContract.deleteDocument(resolver, sample)
+            findChild(ownedRoot.uri, ownedRoot.ownership.adoptionDeleteName)?.let {
+                check(DocumentsContract.deleteDocument(resolver, it))
+            }
+            val candidate = requireNotNull(
+                create(
+                    ownedRoot.uri,
+                    "application/octet-stream",
+                    ownedRoot.ownership.adoptionDeleteName,
+                ),
+            )
+            write(candidate, ownedRoot.ownership.sampleBytes)
+            check(read(candidate).contentEquals(ownedRoot.ownership.sampleBytes))
+            DocumentsContract.deleteDocument(resolver, candidate)
         }.getOrDefault(false)
         val classification = when {
             orphanRead && orphanWrite && orphanDelete -> "READ_WRITE_DELETE"
@@ -215,25 +236,27 @@ class SafCapabilityProbe(private val context: Context) {
         parent: Uri,
         existing: Uri,
         name: String,
-        created: MutableList<Uri>,
+        created: CleanupLedger<Uri>,
     ): String = runCatching {
-        val duplicate = requireNotNull(create(parent, "image/webp", name)).also(created::add)
+        val duplicate = created.register(requireNotNull(create(parent, "image/webp", name)))
         classifyCreated(existing, duplicate, name)
     }.getOrElse { "ERROR_${it.javaClass.simpleName}" }
 
     private fun renameCollision(
         parent: Uri,
         token: String,
-        created: MutableList<Uri>,
+        created: CleanupLedger<Uri>,
     ): String = runCatching {
         val targetName = ".s01-collision-$token.bin"
-        val target = requireNotNull(create(parent, "application/octet-stream", targetName))
-            .also(created::add)
-        val source = requireNotNull(create(parent, "application/octet-stream", ".s01-source-$token.bin"))
-            .also(created::add)
-        val result = requireNotNull(DocumentsContract.renameDocument(resolver, source, targetName))
-            .also(created::add)
-        classifyCreated(target, result, targetName)
+        val target = created.register(
+            requireNotNull(create(parent, "application/octet-stream", targetName)),
+        )
+        val source = created.register(
+            requireNotNull(create(parent, "application/octet-stream", ".s01-source-$token.bin")),
+        )
+        val renamed = requireNotNull(DocumentsContract.renameDocument(resolver, source, targetName))
+            .also(created::register)
+        classifyCreated(target, renamed, targetName)
     }.getOrElse { "ERROR_${it.javaClass.simpleName}" }
 
     private fun classifyCreated(existing: Uri, result: Uri, requested: String): String {
@@ -248,10 +271,11 @@ class SafCapabilityProbe(private val context: Context) {
     private fun performanceProbe(
         root: Uri,
         token: String,
-        created: MutableList<Uri>,
+        created: CleanupLedger<Uri>,
     ): Performance {
-        val perf = requireNotNull(create(root, "application/octet-stream", ".s01-perf-$token.bin"))
-            .also(created::add)
+        val perf = created.register(
+            requireNotNull(create(root, "application/octet-stream", ".s01-perf-$token.bin")),
+        )
         val digest = MessageDigest.getInstance("SHA-256")
         val chunk = ByteArray(1024 * 1024)
         var peakHeap = usedHeap()
@@ -283,7 +307,9 @@ class SafCapabilityProbe(private val context: Context) {
                 }
             }
         }.getOrDefault(false)
-        val enumDir = requireNotNull(create(root, DIR_MIME, ".s01-enum-$token")).also(created::add)
+        val enumDir = created.register(
+            requireNotNull(create(root, DIR_MIME, ".s01-enum-$token")),
+        )
         val createStart = SystemClock.elapsedRealtimeNanos()
         repeat(2000) { create(enumDir, "application/octet-stream", "f$it") }
         val createMicros = (SystemClock.elapsedRealtimeNanos() - createStart) / 2000 / 1000
@@ -375,12 +401,7 @@ class SafCapabilityProbe(private val context: Context) {
         Runtime.getRuntime().run { totalMemory() - freeMemory() }
 
     private fun classifyRoot(root: Uri): RootKind {
-        val id = DocumentsContract.getTreeDocumentId(root).substringAfter(':').trimEnd('/').lowercase()
-        return when {
-            id == "download" || id.startsWith("download/") -> RootKind.DOWNLOAD
-            id == "pictures" || id.startsWith("pictures/") -> RootKind.PICTURES
-            else -> RootKind.OTHER
-        }
+        return SafProbeRules.classifyTreeDocumentId(DocumentsContract.getTreeDocumentId(root))
     }
 
     private data class Metadata(val name: String, val mime: String)
@@ -393,7 +414,7 @@ class SafCapabilityProbe(private val context: Context) {
     private data class FileFlow(
         val partReadback: Boolean, val renamed: Boolean, val finalReadback: Boolean,
         val actualName: String, val actualMime: String, val oldUriReadable: Boolean,
-        val finalUri: Uri, val cleanupUris: List<Uri>,
+        val finalUri: Uri,
     )
     private data class Adoption(
         val read: Boolean = false, val write: Boolean = false, val delete: Boolean = false,
