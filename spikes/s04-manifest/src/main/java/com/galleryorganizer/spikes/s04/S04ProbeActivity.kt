@@ -2,6 +2,7 @@ package com.galleryorganizer.spikes.s04
 
 import android.content.Context
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.DocumentsContract
 import androidx.activity.ComponentActivity
@@ -46,6 +47,11 @@ class ManifestAtomicProbe(private val context: Context) {
             if (preferences.contains(PENDING_TOKEN)) {
                 return@withContext S04ActionResult("PENDING_STAGE_EXISTS", result())
             }
+            val identity = runIdentity(tree)
+                ?: return@withContext S04ActionResult(
+                    "RUN_IDENTITY_MISMATCH",
+                    result("RUN_IDENTITY_MISMATCH"),
+                )
             val token = UUID.randomUUID().toString().replace("-", "")
             check(
                 preferences.edit()
@@ -54,6 +60,8 @@ class ManifestAtomicProbe(private val context: Context) {
                     .putString(PENDING_TOKEN, token)
                     .putString(PENDING_SESSION, S04ProcessSession.id)
                     .putString(PENDING_PHASE, S04PendingPhase.PREPARING.name)
+                    .putString(PENDING_RUN_ID, identity.runId)
+                    .putString(PENDING_TREE_HASH, identity.treeUriSha256)
                     .remove(observationKey(stage))
                     .commit(),
             )
@@ -131,6 +139,8 @@ class ManifestAtomicProbe(private val context: Context) {
             parseableCandidateCount = parseable.size,
             recoveryCandidate = RecoverySelector.choose(parseable),
             cleanupSucceeded = false,
+            runId = pending.runId,
+            treeUriSha256 = pending.treeUriSha256,
         )
         check(
             preferences.edit()
@@ -153,6 +163,9 @@ class ManifestAtomicProbe(private val context: Context) {
             preferences.getString(OVERWRITE, "NOT_RUN") ?: "NOT_RUN",
             exceptionClass,
             preferences.contains(PENDING_TOKEN),
+            preferences.getString(RUN_ID, null),
+            preferences.getString(RUN_TREE_HASH, null),
+            readProvenance(),
         )
     }
 
@@ -224,6 +237,8 @@ class ManifestAtomicProbe(private val context: Context) {
                 .remove(PENDING_TOKEN)
                 .remove(PENDING_SESSION)
                 .remove(PENDING_PHASE)
+                .remove(PENDING_RUN_ID)
+                .remove(PENDING_TREE_HASH)
                 .commit(),
         )
         return S04ActionResult("OBSERVED_${pending.stage.name}", result())
@@ -236,6 +251,8 @@ class ManifestAtomicProbe(private val context: Context) {
             parseableCandidateCount = 0,
             recoveryCandidate = RecoveryCandidate.NONE,
             cleanupSucceeded = false,
+            runId = pending.runId,
+            treeUriSha256 = pending.treeUriSha256,
         )
         preferences.edit()
             .putString(observationKey(pending.stage), encode(observation))
@@ -244,6 +261,8 @@ class ManifestAtomicProbe(private val context: Context) {
             .remove(PENDING_TOKEN)
             .remove(PENDING_SESSION)
             .remove(PENDING_PHASE)
+            .remove(PENDING_RUN_ID)
+            .remove(PENDING_TREE_HASH)
             .commit()
         return S04ActionResult(reason, result(reason))
     }
@@ -259,6 +278,8 @@ class ManifestAtomicProbe(private val context: Context) {
             preferences.getString(PENDING_PHASE, null)
                 ?.let(S04PendingPhase::valueOf)
                 ?: S04PendingPhase.READY,
+            requireNotNull(preferences.getString(PENDING_RUN_ID, null)),
+            requireNotNull(preferences.getString(PENDING_TREE_HASH, null)),
         )
     }.getOrNull()
 
@@ -268,6 +289,8 @@ class ManifestAtomicProbe(private val context: Context) {
         .remove(PENDING_TOKEN)
         .remove(PENDING_SESSION)
         .remove(PENDING_PHASE)
+        .remove(PENDING_RUN_ID)
+        .remove(PENDING_TREE_HASH)
         .commit()
 
     private fun isOwnedRoot(root: Uri, token: String): Boolean {
@@ -286,19 +309,37 @@ class ManifestAtomicProbe(private val context: Context) {
     }
 
     private fun overwriteProbe(root: Uri): String {
-        val name = ".s04-overwrite.json"
         return runCatching {
-            val existing = create(root, name, """{"generation":1}""")
-            val candidate = create(root, "$name.tmp", """{"generation":2}""")
-            val renamed = DocumentsContract.renameDocument(resolver, candidate, name)
+            create(
+                root,
+                ProviderOverwriteClassifier.OVERWRITE_NAME,
+                """{"generation":1}""",
+            )
+            val candidate = create(
+                root,
+                "${ProviderOverwriteClassifier.OVERWRITE_NAME}.tmp",
+                """{"generation":2}""",
+            )
+            val renamed = DocumentsContract.renameDocument(
+                resolver,
+                candidate,
+                ProviderOverwriteClassifier.OVERWRITE_NAME,
+            )
                 ?: return@runCatching "RETURNED_NULL"
-            when {
-                renamed == existing -> "OVERWROTE_EXISTING"
-                displayName(renamed) == name -> "DUPLICATE_EXACT"
-                else -> "AUTO_RENAMED"
-            }
+            val exact = findChildren(root, ProviderOverwriteClassifier.OVERWRITE_NAME)
+            val exactGenerations = exact.mapNotNull(::generation)
+            if (exactGenerations.size != exact.size) return@runCatching "INCONCLUSIVE"
+            ProviderOverwriteClassifier.classify(
+                exactGenerations,
+                displayName(renamed),
+                generation(renamed),
+            )
         }.getOrElse { "ERROR_${it.javaClass.simpleName}" }
     }
+
+    private fun generation(uri: Uri): Int? = runCatching {
+        JSONObject(read(uri)).getInt("generation")
+    }.getOrNull()
 
     private fun documentUri(tree: Uri): Uri =
         DocumentsContract.buildDocumentUriUsingTree(
@@ -329,11 +370,15 @@ class ManifestAtomicProbe(private val context: Context) {
     private fun read(uri: Uri): String =
         resolver.openInputStream(uri).use { requireNotNull(it).reader().readText() }
 
-    private fun findChild(parent: Uri, name: String): Uri? {
+    private fun findChild(parent: Uri, name: String): Uri? =
+        findChildren(parent, name).firstOrNull()
+
+    private fun findChildren(parent: Uri, name: String): List<Uri> {
         val children = DocumentsContract.buildChildDocumentsUriUsingTree(
             parent,
             DocumentsContract.getDocumentId(parent),
         )
+        val matches = mutableListOf<Uri>()
         resolver.query(
             children,
             arrayOf(
@@ -346,14 +391,13 @@ class ManifestAtomicProbe(private val context: Context) {
         )?.use { cursor ->
             while (cursor.moveToNext()) {
                 if (cursor.getString(1) == name) {
-                    return DocumentsContract.buildDocumentUriUsingTree(
-                        parent,
-                        cursor.getString(0),
+                    matches += DocumentsContract.buildDocumentUriUsingTree(
+                        parent, cursor.getString(0),
                     )
                 }
             }
         }
-        return null
+        return matches
     }
 
     private fun childCount(parent: Uri): Int {
@@ -388,22 +432,86 @@ class ManifestAtomicProbe(private val context: Context) {
         value.parseableCandidateCount,
         value.recoveryCandidate,
         value.cleanupSucceeded,
+        value.runId,
+        value.treeUriSha256,
     ).joinToString("|")
 
     private fun decode(stage: AtomicInterruption, value: String): StageObservation? =
         runCatching {
             val fields = value.split('|')
-            require(fields.size == 4)
+            require(fields.size == 6)
             StageObservation(
                 stage,
                 fields[0].toBooleanStrict(),
                 fields[1].toInt(),
                 RecoveryCandidate.valueOf(fields[2]),
                 fields[3].toBooleanStrict(),
+                fields[4],
+                fields[5],
             )
         }.getOrNull()
 
     private fun observationKey(stage: AtomicInterruption) = "observation_${stage.name}"
+
+    private fun runIdentity(tree: Uri): RunIdentity? {
+        val treeHash = sha256(tree.toString())
+        val currentProvenance = provenance()
+        val existingRunId = preferences.getString(RUN_ID, null)
+        if (existingRunId == null) {
+            val runId = UUID.randomUUID().toString()
+            val editor = preferences.edit()
+                .putString(RUN_ID, runId)
+                .putString(RUN_TREE_HASH, treeHash)
+                .putInt(PROVENANCE_SCHEMA, currentProvenance.schemaVersion)
+                .putString(PROVENANCE_VERSION, currentProvenance.probeVersion)
+                .putString(PROVENANCE_MODEL, currentProvenance.model)
+                .putInt(PROVENANCE_SDK, currentProvenance.sdkInt)
+                .putString(PROVENANCE_MANUFACTURER, currentProvenance.manufacturer)
+                .putString(PROVENANCE_PATCH, currentProvenance.securityPatch)
+                .putString(PROVENANCE_APP_NAME, currentProvenance.appVersionName)
+                .putLong(PROVENANCE_APP_CODE, currentProvenance.appVersionCode)
+                .putString(PROVENANCE_FINGERPRINT, currentProvenance.fingerprintSha256)
+                .remove(OVERWRITE)
+            AtomicInterruption.entries.forEach { editor.remove(observationKey(it)) }
+            check(editor.commit())
+            return RunIdentity(runId, treeHash)
+        }
+        if (
+            preferences.getString(RUN_TREE_HASH, null) != treeHash ||
+            readProvenance() != currentProvenance
+        ) {
+            return null
+        }
+        return RunIdentity(existingRunId, treeHash)
+    }
+
+    @Suppress("DEPRECATION")
+    private fun provenance(): S04ProbeProvenance {
+        val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+        return S04ProbeProvenance.fromRawFingerprint(
+            model = Build.MODEL,
+            sdkInt = Build.VERSION.SDK_INT,
+            manufacturer = Build.MANUFACTURER,
+            securityPatch = Build.VERSION.SECURITY_PATCH,
+            appVersionName = packageInfo.versionName ?: "UNKNOWN",
+            appVersionCode = packageInfo.longVersionCode,
+            rawFingerprint = Build.FINGERPRINT,
+        )
+    }
+
+    private fun readProvenance(): S04ProbeProvenance? = runCatching {
+        S04ProbeProvenance(
+            preferences.getInt(PROVENANCE_SCHEMA, -1),
+            requireNotNull(preferences.getString(PROVENANCE_VERSION, null)),
+            requireNotNull(preferences.getString(PROVENANCE_MODEL, null)),
+            preferences.getInt(PROVENANCE_SDK, -1),
+            requireNotNull(preferences.getString(PROVENANCE_MANUFACTURER, null)),
+            requireNotNull(preferences.getString(PROVENANCE_PATCH, null)),
+            requireNotNull(preferences.getString(PROVENANCE_APP_NAME, null)),
+            preferences.getLong(PROVENANCE_APP_CODE, -1),
+            requireNotNull(preferences.getString(PROVENANCE_FINGERPRINT, null)),
+        )
+    }.getOrNull()
 
     private data class PendingStage(
         val tree: Uri,
@@ -411,7 +519,11 @@ class ManifestAtomicProbe(private val context: Context) {
         val token: String,
         val processSession: String,
         val phase: S04PendingPhase,
+        val runId: String,
+        val treeUriSha256: String,
     )
+
+    private data class RunIdentity(val runId: String, val treeUriSha256: String)
 
     private companion object {
         const val ROOT_PREFIX = ".s04-probe-"
@@ -424,6 +536,19 @@ class ManifestAtomicProbe(private val context: Context) {
         const val PENDING_TOKEN = "pendingToken"
         const val PENDING_SESSION = "pendingSession"
         const val PENDING_PHASE = "pendingPhase"
+        const val PENDING_RUN_ID = "pendingRunId"
+        const val PENDING_TREE_HASH = "pendingTreeHash"
+        const val RUN_ID = "runId"
+        const val RUN_TREE_HASH = "runTreeHash"
+        const val PROVENANCE_SCHEMA = "provenanceSchema"
+        const val PROVENANCE_VERSION = "provenanceVersion"
+        const val PROVENANCE_MODEL = "provenanceModel"
+        const val PROVENANCE_SDK = "provenanceSdk"
+        const val PROVENANCE_MANUFACTURER = "provenanceManufacturer"
+        const val PROVENANCE_PATCH = "provenancePatch"
+        const val PROVENANCE_APP_NAME = "provenanceAppName"
+        const val PROVENANCE_APP_CODE = "provenanceAppCode"
+        const val PROVENANCE_FINGERPRINT = "provenanceFingerprintSha256"
         const val OVERWRITE = "overwrite"
     }
 }
