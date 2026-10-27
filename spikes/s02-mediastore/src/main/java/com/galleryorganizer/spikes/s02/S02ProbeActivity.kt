@@ -32,6 +32,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -47,6 +49,15 @@ data class S02ProbeRun(
     val result: S02ProbeResult,
     val cleanupAuthorization: CleanupAuthorization? = null,
 )
+
+class S02ProbeViewModel : ViewModel() {
+    var run by mutableStateOf<S02ProbeRun?>(null)
+        private set
+
+    fun updateRun(updated: S02ProbeRun) {
+        run = updated
+    }
+}
 
 private enum class CleanupPresence { PRESENT, ABSENT, QUERY_FAILED }
 
@@ -87,11 +98,12 @@ class MediaStoreProbe(private val context: Context) {
 
     suspend fun run(requestAttempted: Boolean): S02ProbeRun = withContext(Dispatchers.IO) {
         val permission = permissionState(requestAttempted)
+        val provenance = provenance()
         if (
             permission == MediaPermissionState.NOT_GRANTED ||
             permission == MediaPermissionState.DENIED
         ) {
-            return@withContext S02ProbeRun(emptyResult(permission))
+            return@withContext S02ProbeRun(emptyResult(permission, provenance))
         }
 
         var sample: Uri? = null
@@ -104,6 +116,7 @@ class MediaStoreProbe(private val context: Context) {
                 pages,
                 CleanupAuthorizationState.NOT_RUN,
                 emptyList(),
+                provenance = provenance,
             )
             if (result.outcome == S02SingleDeviceOutcome.FAIL) {
                 return@withContext S02ProbeRun(result)
@@ -119,7 +132,7 @@ class MediaStoreProbe(private val context: Context) {
         } catch (caught: Exception) {
             sample?.let(::deleteOwnedSample)
             S02ProbeRun(
-                emptyResult(permission).copy(
+                emptyResult(permission, provenance).copy(
                     cleanupState = CleanupAuthorizationState.REQUEST_FAILED,
                     exceptionClass = caught.javaClass.simpleName,
                 ),
@@ -277,12 +290,31 @@ class MediaStoreProbe(private val context: Context) {
         runCatching { resolver.delete(uri, null, null) }
     }
 
-    private fun emptyResult(permission: MediaPermissionState) = S02ProbeResult(
+    @Suppress("DEPRECATION")
+    private fun provenance(): S02ProbeProvenance {
+        val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+        return S02ProbeProvenance.fromRawFingerprint(
+            runId = UUID.randomUUID().toString(),
+            model = Build.MODEL,
+            sdkInt = Build.VERSION.SDK_INT,
+            manufacturer = Build.MANUFACTURER,
+            securityPatch = Build.VERSION.SECURITY_PATCH,
+            appVersionName = packageInfo.versionName ?: "UNKNOWN",
+            appVersionCode = packageInfo.longVersionCode,
+            rawFingerprint = Build.FINGERPRINT,
+        )
+    }
+
+    private fun emptyResult(
+        permission: MediaPermissionState,
+        provenance: S02ProbeProvenance,
+    ) = S02ProbeResult(
         permission,
         0,
         emptyList(),
         CleanupAuthorizationState.NOT_RUN,
         emptyList(),
+        provenance = provenance,
     )
 
     private companion object {
@@ -304,21 +336,23 @@ class S02ProbeActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val probe = MediaStoreProbe(this)
+        val probeState = ViewModelProvider(this)[S02ProbeViewModel::class.java]
         setContent {
-            var run by remember { mutableStateOf<S02ProbeRun?>(null) }
             var running by remember { mutableStateOf(false) }
             val scope = rememberCoroutineScope()
             val cleanupLauncher = rememberLauncherForActivityResult(
                 ActivityResultContracts.StartIntentSenderForResult(),
             ) { response ->
-                val pending = run ?: return@rememberLauncherForActivityResult
+                val pending = probeState.run ?: return@rememberLauncherForActivityResult
                 scope.launch {
                     running = true
                     val completed = probe.completeCleanup(
                         pending,
                         response.resultCode == Activity.RESULT_OK,
                     )
-                    run = pending.copy(result = completed, cleanupAuthorization = null)
+                    probeState.updateRun(
+                        pending.copy(result = completed, cleanupAuthorization = null),
+                    )
                     running = false
                 }
             }
@@ -327,7 +361,7 @@ class S02ProbeActivity : ComponentActivity() {
                 scope.launch {
                     running = true
                     val updated = probe.run(requestAttempted)
-                    run = updated
+                    probeState.updateRun(updated)
                     updated.cleanupAuthorization?.let {
                         cleanupLauncher.launch(
                             IntentSenderRequest.Builder(it.pendingIntent).build(),
@@ -364,7 +398,7 @@ class S02ProbeActivity : ComponentActivity() {
                             enabled = !running,
                             modifier = Modifier.fillMaxWidth(),
                         ) { Text(if (running) "Running..." else "Run S02 probe") }
-                        Text(run?.result?.toJson() ?: "PENDING")
+                        Text(probeState.run?.result?.toJson() ?: "PENDING")
                     }
                 }
             }

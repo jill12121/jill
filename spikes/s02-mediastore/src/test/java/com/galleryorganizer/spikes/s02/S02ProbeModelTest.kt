@@ -3,6 +3,7 @@ package com.galleryorganizer.spikes.s02
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class S02ProbeModelTest {
@@ -24,6 +25,41 @@ class S02ProbeModelTest {
             S02SingleDeviceOutcome.FAIL,
             passingResult().copy(exceptionClass = "QueryFailed").outcome,
         )
+        assertEquals(
+            S02SingleDeviceOutcome.FAIL,
+            passingResult().copy(
+                provenance = provenance().copy(runId = ""),
+            ).outcome,
+        )
+    }
+
+    @Test
+    fun `provenance hashes fingerprint and records reproducible run fields`() {
+        val provenance = S02ProbeProvenance.fromRawFingerprint(
+            runId = "run-123",
+            model = "model",
+            sdkInt = 35,
+            manufacturer = "maker",
+            securityPatch = "2026-10-01",
+            appVersionName = "0.3.1",
+            appVersionCode = 31,
+            rawFingerprint = "raw-fingerprint",
+        )
+
+        assertTrue(provenance.isValid)
+        assertEquals(64, provenance.fingerprintSha256.length)
+        assertFalse(provenance.toJson().contains("raw-fingerprint"))
+        assertTrue(provenance.toJson().contains("run-123"))
+    }
+
+    @Test
+    fun `view model retains probe run while activity UI is recreated`() {
+        val viewModel = S02ProbeViewModel()
+        val pending = S02ProbeRun(passingResult())
+
+        viewModel.updateRun(pending)
+
+        assertSame(pending, viewModel.run)
     }
 
     @Test
@@ -153,5 +189,17 @@ class S02ProbeModelTest {
         cleanupState = CleanupAuthorizationState.GRANTED_REMOVED,
         authorizationBatchSizes = listOf(1),
         cleanupFixtureOwnership = CleanupFixtureOwnership.EXTERNAL_HELPER_OWNED,
+        provenance = provenance(),
+    )
+
+    private fun provenance() = S02ProbeProvenance.fromRawFingerprint(
+        runId = "run-123",
+        model = "model",
+        sdkInt = 35,
+        manufacturer = "maker",
+        securityPatch = "2026-10-01",
+        appVersionName = "0.3.1",
+        appVersionCode = 31,
+        rawFingerprint = "raw-fingerprint",
     )
 }
