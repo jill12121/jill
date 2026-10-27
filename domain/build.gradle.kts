@@ -11,3 +11,9 @@ dependencies {
     testImplementation(kotlin("test"))
     testImplementation(libs.konsist)
 }
+
+sourceSets {
+    test {
+        resources.srcDir(rootProject.file("fixtures"))
+    }
+}

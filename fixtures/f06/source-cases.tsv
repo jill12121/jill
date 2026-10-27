@@ -1,11 +1,17 @@
-case	kind	root	path	size	mtime
-samsung-camera	MEDIA	primary	DCIM/Camera/IMG_0001.jpg	0	1700000000123
-xiaomi-download	MEDIA	primary	Download/相册/é.jpg	9223372036854775807	1700000000999
-pixel-motion	MEDIA	primary	DCIM/Camera/PXL_001.MP.jpg	4294967296	0
-windows-reserved	SAF	download	CON.jpg	1	1
-invalid-name	SAF	download	a<b>:c?.webp	1024	1000
-long-unicode	SAF	pictures	图图图图图图图图图图图图图图图图图图图图.webp	2048	2000
-nfc-composed	SAF	download	é.jpg	10	3000
-nfc-decomposed	SAF	download	é.jpg	10	3000
-duplicate-a	MEDIA	primary	Download/same.jpg	50	4000
-duplicate-b	MEDIA	primary	Download/same.jpg	50	4000
+case	kind	root	path	size	mtime	outcome	normalizedPath	batch	sanitizedName
+samsung-camera	MEDIA	primary	DCIM/Camera/IMG_0001.jpg	0	1700000000123	ACCEPT	DCIM/Camera/IMG_0001.jpg	DCIM	IMG_0001.jpg
+xiaomi-download	MEDIA	primary	Download/相册/é.jpg	9223372036854775807	1700000000999	ACCEPT	Download/相册/é.jpg	Download	é.jpg
+pixel-motion	MEDIA	primary	DCIM/Camera/PXL_001.MP.jpg	4294967296	0	ACCEPT	DCIM/Camera/PXL_001.MP.jpg	DCIM	PXL_001.MP.jpg
+windows-reserved	SAF	download	CON.jpg	1	1	ACCEPT	CON.jpg	__LOOSE__	_CON.jpg
+invalid-name	SAF	download	a<b>:c?.webp	1024	1000	ACCEPT	a<b>:c?.webp	__LOOSE__	abc.webp
+long-unicode	SAF	pictures	图图图图图图图图图图图图图图图图图图图图.webp	2048	2000	ACCEPT	图图图图图图图图图图图图图图图图图图图图.webp	__LOOSE__	图图图图图图图图图图图图图图图图图图图图.webp
+nfc-composed	SAF	download	é.jpg	10	3000	ACCEPT	é.jpg	__LOOSE__	é.jpg
+nfc-decomposed	SAF	download	é.jpg	10	3000	ACCEPT	é.jpg	__LOOSE__	é.jpg
+duplicate-a	MEDIA	primary	Download/same.jpg	50	4000	ACCEPT	Download/same.jpg	Download	same.jpg
+duplicate-b	MEDIA	primary	Download/same.jpg	50	4000	ACCEPT	Download/same.jpg	Download	same.jpg
+repeated-separator	SAF	download	a//b.jpg	1	1000	ACCEPT	a/b.jpg	a	b.jpg
+absolute-unix	SAF	download	/a.jpg	1	1000	REJECT	-	-	-
+absolute-rooted-windows	SAF	download	\a.jpg	1	1000	REJECT	-	-	-
+absolute-drive-windows	SAF	download	C:\a.jpg	1	1000	REJECT	-	-	-
+root-escape	SAF	download	a/../../b.jpg	1	1000	REJECT	-	-	-
+empty-path	SAF	download		1	1000	REJECT	-	-	-

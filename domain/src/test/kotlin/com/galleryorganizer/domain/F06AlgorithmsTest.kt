@@ -44,6 +44,35 @@ class F06AlgorithmsTest {
     }
 
     @Test
+    fun `fixture table drives source identity grouping and filename cases`() {
+        val acceptedKeys = mutableMapOf<String, String>()
+        fixtures().forEach { fixture ->
+            if (fixture.outcome == "REJECT") {
+                assertFailsWith<IllegalArgumentException>(fixture.caseName) {
+                    fixture.sourceKey()
+                }
+            } else {
+                val key = fixture.sourceKey()
+                acceptedKeys[fixture.caseName] = key
+                assertTrue(key.contains(":${fixture.normalizedPath}:"))
+                assertEquals(
+                    fixture.batch,
+                    BatchGrouper.group(listOf(SourceEntry(fixture.caseName, fixture.path)))
+                        .single().batch,
+                )
+                assertEquals(
+                    fixture.sanitizedName,
+                    FileNameSanitizer.sanitize(
+                        fixture.path.replace('\\', '/').substringAfterLast('/'),
+                    ),
+                )
+            }
+        }
+        assertEquals(acceptedKeys["duplicate-a"], acceptedKeys["duplicate-b"])
+        assertTrue(acceptedKeys["nfc-composed"] != acceptedKeys["nfc-decomposed"])
+    }
+
+    @Test
     fun `filename sanitizer applies NFC reserved names invalid chars and byte cap`() {
         assertEquals("é.txt", FileNameSanitizer.sanitize("e\u0301?.txt", 6))
         assertEquals("_CON", FileNameSanitizer.sanitize("CON"))
@@ -133,5 +162,37 @@ class F06AlgorithmsTest {
                 setOf("a"),
             )
         }
+    }
+
+    private fun fixtures(): List<SourceFixture> {
+        val stream = requireNotNull(javaClass.getResourceAsStream("/f06/source-cases.tsv"))
+        return stream.bufferedReader().useLines { lines ->
+            lines.drop(1).filter(String::isNotBlank).map { line ->
+                val columns = line.split('\t')
+                require(columns.size == 10) { "Invalid fixture row: $line" }
+                SourceFixture(
+                    columns[0], columns[1], columns[2], columns[3],
+                    columns[4].toLong(), columns[5].toLong(), columns[6],
+                    columns[7], columns[8], columns[9],
+                )
+            }.toList()
+        }
+    }
+
+    private data class SourceFixture(
+        val caseName: String,
+        val kind: String,
+        val root: String,
+        val path: String,
+        val size: Long,
+        val modifiedAtMillis: Long,
+        val outcome: String,
+        val normalizedPath: String,
+        val batch: String,
+        val sanitizedName: String,
+    ) {
+        fun sourceKey(): String = SourceKeyNormalizer.normalize(
+            kind, root, path, size, modifiedAtMillis,
+        )
     }
 }

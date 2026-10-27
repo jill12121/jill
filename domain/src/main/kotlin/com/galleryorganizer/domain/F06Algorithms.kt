@@ -43,6 +43,13 @@ object SourceKeyNormalizer {
         mtimeResolutionMillis: Long = 1_000,
     ): String {
         require(size >= 0 && mtimeResolutionMillis > 0)
+        require(path.isNotEmpty()) { "Source path must not be empty." }
+        require(!path.startsWith('/') && !path.startsWith('\\')) {
+            "Source path must be relative."
+        }
+        require(!WINDOWS_DRIVE_PATH.containsMatchIn(path)) {
+            "Source path must not be drive-qualified."
+        }
         val segments = path.replace('\\', '/').split('/').fold(mutableListOf<String>()) { result, part ->
             when (part) {
                 "", "." -> Unit
@@ -54,9 +61,12 @@ object SourceKeyNormalizer {
             }
             result
         }
+        require(segments.isNotEmpty()) { "Source path must identify a file." }
         val normalizedMtime = modifiedAtMillis / mtimeResolutionMillis * mtimeResolutionMillis
         return "${kind.uppercase(Locale.ROOT)}:$root:${segments.joinToString("/")}:$size:$normalizedMtime"
     }
+
+    private val WINDOWS_DRIVE_PATH = Regex("^[A-Za-z]:[\\\\/]")
 }
 
 object FileNameSanitizer {
