@@ -1,0 +1,5 @@
+caseName	manifest	observed	expectOutcome	expectedFields
+committed-match	f06/manifests/valid-committed-v1.json	f06/observed/committed-match.tsv	CLEAN	-
+committed-mismatch	f06/manifests/filesystem-mismatch.json	f06/observed/committed-mismatch.tsv	MISMATCH	filesystem.images[Day1/mm0002.jpg],filesystem.images[mm0003.png],filesystem.observed[stray04.webp]
+importing-in-progress	f06/manifests/valid-importing-v1.json	f06/observed/importing-in-progress.tsv	CLEAN	-
+importing-stray	f06/manifests/valid-importing-v1.json	f06/observed/importing-stray.tsv	MISMATCH	filesystem.observed[stray.webp]

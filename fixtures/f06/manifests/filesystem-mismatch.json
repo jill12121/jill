@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "albumId": "album-mismatch",
+  "state": "COMMITTED",
+  "createdAtEpochMillis": 1772005000000,
+  "committedAtEpochMillis": 1772005600000,
+  "images": [
+    {
+      "imageId": "mm0001",
+      "fileName": "mm0001.webp",
+      "order": 0,
+      "sizeBytes": 1000,
+      "modifiedAtMillis": 1000000,
+      "fpMethod": "sha256",
+      "fpValue": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "imageId": "mm0002",
+      "fileName": "Day1/mm0002.jpg",
+      "order": 1,
+      "sizeBytes": 2000,
+      "modifiedAtMillis": 2000000,
+      "fpMethod": "sha256",
+      "fpValue": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    {
+      "imageId": "mm0003",
+      "fileName": "mm0003.png",
+      "order": 2,
+      "sizeBytes": 3000,
+      "modifiedAtMillis": 3000000,
+      "fpMethod": "sha256",
+      "fpValue": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    }
+  ]
+}

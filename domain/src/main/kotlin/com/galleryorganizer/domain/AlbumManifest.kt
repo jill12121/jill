@@ -30,6 +30,7 @@ enum class ManifestIssueCode {
     MISSING_FIELD,
     INVALID_VALUE,
     DUPLICATE_IMAGE_ID,
+    FILESYSTEM_MISMATCH,
 }
 
 data class ManifestIssue(
