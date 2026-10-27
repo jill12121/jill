@@ -147,6 +147,120 @@ class S04ProbeModelTest {
         assertFalse(provenance.toJson().contains("raw-fingerprint"))
     }
 
+    @Test
+    fun `null child query is retryable failure rather than absence`() {
+        assertEquals(ChildQueryStatus.QUERY_FAILED, ChildQueryPolicy.classify(null))
+        assertEquals(ChildQueryStatus.ABSENT, ChildQueryPolicy.classify(0))
+        assertEquals(ChildQueryStatus.FOUND, ChildQueryPolicy.classify(1))
+    }
+
+    @Test
+    fun `preparing cleanup only uses persisted or unique exact root`() {
+        assertEquals(
+            PreparingRootRecovery.USE_PERSISTED_ROOT,
+            PreparingRootRecoveryPolicy.choose(
+                persistedRootAvailable = true,
+                queryStatus = ChildQueryStatus.QUERY_FAILED,
+                matchCount = 0,
+            ),
+        )
+        assertEquals(
+            PreparingRootRecovery.DELETE_UNIQUE_EXACT_MATCH,
+            PreparingRootRecoveryPolicy.choose(
+                persistedRootAvailable = false,
+                queryStatus = ChildQueryStatus.FOUND,
+                matchCount = 1,
+            ),
+        )
+        assertEquals(
+            PreparingRootRecovery.CLEAR_PENDING,
+            PreparingRootRecoveryPolicy.choose(
+                persistedRootAvailable = false,
+                queryStatus = ChildQueryStatus.ABSENT,
+                matchCount = 0,
+            ),
+        )
+        assertEquals(
+            PreparingRootRecovery.RETRY_QUERY,
+            PreparingRootRecoveryPolicy.choose(
+                persistedRootAvailable = false,
+                queryStatus = ChildQueryStatus.QUERY_FAILED,
+                matchCount = 0,
+            ),
+        )
+        assertEquals(
+            PreparingRootRecovery.REFUSE_AMBIGUOUS,
+            PreparingRootRecoveryPolicy.choose(
+                persistedRootAvailable = false,
+                queryStatus = ChildQueryStatus.FOUND,
+                matchCount = 2,
+            ),
+        )
+    }
+
+    @Test
+    fun `failed persisted delete confirms absence before completing cleanup`() {
+        assertEquals(
+            PreparingDeleteConfirmation.COMPLETE,
+            PreparingDeleteConfirmationPolicy.choose(
+                ChildQueryStatus.ABSENT,
+                matchCount = 0,
+            ),
+        )
+        assertEquals(
+            PreparingDeleteConfirmation.RETRY,
+            PreparingDeleteConfirmationPolicy.choose(
+                ChildQueryStatus.QUERY_FAILED,
+                matchCount = 0,
+            ),
+        )
+        assertEquals(
+            PreparingDeleteConfirmation.RETRY,
+            PreparingDeleteConfirmationPolicy.choose(
+                ChildQueryStatus.FOUND,
+                matchCount = 1,
+            ),
+        )
+        assertEquals(
+            PreparingDeleteConfirmation.REFUSE_AMBIGUOUS,
+            PreparingDeleteConfirmationPolicy.choose(
+                ChildQueryStatus.FOUND,
+                matchCount = 2,
+            ),
+        )
+    }
+
+    @Test
+    fun `legacy or malformed pending is explicit and blocks run reset`() {
+        assertEquals(
+            PendingRecordStatus.NONE,
+            PendingRecordPolicy.classify(
+                hasAnyPendingField = false,
+                allRequiredFieldsPresent = false,
+                valuesValid = false,
+            ),
+        )
+        assertEquals(
+            PendingRecordStatus.VALID,
+            PendingRecordPolicy.classify(
+                hasAnyPendingField = true,
+                allRequiredFieldsPresent = true,
+                valuesValid = true,
+            ),
+        )
+        assertEquals(
+            PendingRecordStatus.INCOMPATIBLE,
+            PendingRecordPolicy.classify(
+                hasAnyPendingField = true,
+                allRequiredFieldsPresent = false,
+                valuesValid = true,
+            ),
+        )
+        assertFalse(RunResetPolicy.canReset(PendingRecordStatus.VALID))
+        assertFalse(RunResetPolicy.canReset(PendingRecordStatus.INCOMPATIBLE))
+        assertTrue(RunResetPolicy.canReset(PendingRecordStatus.NONE))
+    }
+
     private fun observation(stage: AtomicInterruption) = StageObservation(
         stage,
         processRestartObserved = true,

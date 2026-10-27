@@ -25,6 +25,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.util.UUID
@@ -36,6 +38,7 @@ data class S04ActionResult(
 
 private object S04ProcessSession {
     val id: String = UUID.randomUUID().toString()
+    val stateMutex = Mutex()
 }
 
 class ManifestAtomicProbe(private val context: Context) {
@@ -44,7 +47,8 @@ class ManifestAtomicProbe(private val context: Context) {
 
     suspend fun prepare(tree: Uri, stage: AtomicInterruption): S04ActionResult =
         withContext(Dispatchers.IO) {
-            if (preferences.contains(PENDING_TOKEN)) {
+            S04ProcessSession.stateMutex.withLock {
+            if (pendingRecordStatus() != PendingRecordStatus.NONE) {
                 return@withContext S04ActionResult("PENDING_STAGE_EXISTS", result())
             }
             val identity = runIdentity(tree)
@@ -62,6 +66,7 @@ class ManifestAtomicProbe(private val context: Context) {
                     .putString(PENDING_PHASE, S04PendingPhase.PREPARING.name)
                     .putString(PENDING_RUN_ID, identity.runId)
                     .putString(PENDING_TREE_HASH, identity.treeUriSha256)
+                    .remove(PENDING_ROOT_URI)
                     .remove(observationKey(stage))
                     .commit(),
             )
@@ -70,6 +75,11 @@ class ManifestAtomicProbe(private val context: Context) {
                 val parent = documentUri(tree)
                 val createdRoot = createDirectory(parent, "$ROOT_PREFIX$token")
                 root = createdRoot
+                check(
+                    preferences.edit()
+                        .putString(PENDING_ROOT_URI, createdRoot.toString())
+                        .commit(),
+                )
                 check(displayName(createdRoot) == "$ROOT_PREFIX$token")
                 check(childCount(createdRoot) == 0)
                 create(createdRoot, MARKER_NAME, marker(token))
@@ -107,25 +117,39 @@ class ManifestAtomicProbe(private val context: Context) {
                 "PREPARED_${stage.name}; FORCE_STOP_AND_REOPEN",
                 result(),
             )
+            }
         }
 
     suspend fun observeAfterRestart(): S04ActionResult = withContext(Dispatchers.IO) {
-        val pending = pendingStage()
-            ?: return@withContext S04ActionResult("NO_PENDING_STAGE", result())
+        S04ProcessSession.stateMutex.withLock {
+        try {
+            observeAfterRestartOnIo()
+        } catch (_: ChildQueryFailure) {
+            S04ActionResult("QUERY_RETRY_REQUIRED", result())
+        }
+        }
+    }
+
+    private fun observeAfterRestartOnIo(): S04ActionResult {
+        val pending = when (val read = pendingStage()) {
+            PendingRead.None -> return S04ActionResult("NO_PENDING_STAGE", result())
+            is PendingRead.Incompatible -> return resolveIncompatiblePending(read)
+            is PendingRead.Valid -> read.value
+        }
         if (pending.processSession == S04ProcessSession.id) {
-            return@withContext S04ActionResult("PROCESS_RESTART_REQUIRED", result())
+            return S04ActionResult("PROCESS_RESTART_REQUIRED", result())
         }
         if (pending.phase == S04PendingPhase.PREPARING) {
-            return@withContext cleanupIncompletePreparation(pending)
+            return cleanupIncompletePreparation(pending)
         }
         if (pending.phase == S04PendingPhase.OBSERVED) {
-            return@withContext resumeObservedCleanup(pending)
+            return resumeObservedCleanup(pending)
         }
         val parent = documentUri(pending.tree)
         val root = findChild(parent, "$ROOT_PREFIX${pending.token}")
-            ?: return@withContext failPending(pending, "PROBE_ROOT_MISSING")
+            ?: return failPending(pending, "PROBE_ROOT_MISSING")
         if (!isOwnedRoot(root, pending.token)) {
-            return@withContext failPending(pending, "NOT_ADOPTABLE")
+            return failPending(pending, "NOT_ADOPTABLE")
         }
 
         val parseable = linkedSetOf<RecoveryCandidate>()
@@ -149,7 +173,18 @@ class ManifestAtomicProbe(private val context: Context) {
                 .putString(PENDING_PHASE, S04PendingPhase.OBSERVED.name)
                 .commit(),
         )
-        completeObservedCleanup(pending, root, observation)
+        return completeObservedCleanup(pending, root, observation)
+    }
+
+    suspend fun resetRun(): S04ActionResult = withContext(Dispatchers.IO) {
+        S04ProcessSession.stateMutex.withLock {
+        val pendingStatus = pendingRecordStatus()
+        if (!RunResetPolicy.canReset(pendingStatus)) {
+            return@withContext S04ActionResult("PENDING_STAGE_BLOCKS_RESET", result())
+        }
+        check(clearRunState(includePending = false))
+        S04ActionResult("RUN_RESET", result())
+        }
     }
 
     fun result(exceptionClass: String? = null): S04ProbeResult {
@@ -162,7 +197,7 @@ class ManifestAtomicProbe(private val context: Context) {
             observations,
             preferences.getString(OVERWRITE, "NOT_RUN") ?: "NOT_RUN",
             exceptionClass,
-            preferences.contains(PENDING_TOKEN),
+            pendingRecordStatus() != PendingRecordStatus.NONE,
             preferences.getString(RUN_ID, null),
             preferences.getString(RUN_TREE_HASH, null),
             readProvenance(),
@@ -170,26 +205,125 @@ class ManifestAtomicProbe(private val context: Context) {
     }
 
     private fun cleanupIncompletePreparation(pending: PendingStage): S04ActionResult {
-        val parent = documentUri(pending.tree)
-        val root = findChild(parent, "$ROOT_PREFIX${pending.token}")
-        if (root == null) {
+        val persistedRoot = pending.root
+        val query = if (persistedRoot == null) {
+            findChildren(documentUri(pending.tree), "$ROOT_PREFIX${pending.token}")
+        } else {
+            ChildQuery(ChildQueryStatus.ABSENT, emptyList())
+        }
+        val recovery = PreparingRootRecoveryPolicy.choose(
+            persistedRootAvailable = persistedRoot != null,
+            queryStatus = query.status,
+            matchCount = query.matches.size,
+        )
+        if (recovery == PreparingRootRecovery.CLEAR_PENDING) {
             clearPending()
             return S04ActionResult("INCOMPLETE_PREPARATION_DISCARDED", result())
         }
-        if (!isOwnedRoot(root, pending.token)) {
+        if (recovery == PreparingRootRecovery.RETRY_QUERY) {
+            return S04ActionResult("QUERY_RETRY_REQUIRED", result())
+        }
+        if (recovery == PreparingRootRecovery.REFUSE_AMBIGUOUS) {
             return S04ActionResult(
-                "INCOMPLETE_PREPARATION_NOT_ADOPTABLE",
-                result("NOT_ADOPTABLE"),
+                "INCOMPLETE_PREPARATION_AMBIGUOUS",
+                result("AMBIGUOUS_ROOT"),
             )
         }
+        val root = persistedRoot ?: query.matches.single()
         val cleaned = runCatching {
             DocumentsContract.deleteDocument(resolver, root)
         }.getOrDefault(false)
-        if (cleaned) clearPending()
+        if (cleaned) {
+            clearPending()
+            return S04ActionResult("INCOMPLETE_PREPARATION_CLEANED", result())
+        }
+        if (persistedRoot != null) {
+            val confirmation = findChildren(
+                documentUri(pending.tree),
+                "$ROOT_PREFIX${pending.token}",
+            )
+            when (
+                PreparingDeleteConfirmationPolicy.choose(
+                    confirmation.status,
+                    confirmation.matches.size,
+                )
+            ) {
+                PreparingDeleteConfirmation.COMPLETE -> {
+                    clearPending()
+                    return S04ActionResult(
+                        "INCOMPLETE_PREPARATION_ALREADY_CLEAN",
+                        result(),
+                    )
+                }
+                PreparingDeleteConfirmation.RETRY ->
+                    return S04ActionResult("CLEANUP_RETRY_REQUIRED", result())
+                PreparingDeleteConfirmation.REFUSE_AMBIGUOUS ->
+                    return S04ActionResult(
+                        "INCOMPLETE_PREPARATION_AMBIGUOUS",
+                        result("AMBIGUOUS_ROOT"),
+                    )
+            }
+        }
         return S04ActionResult(
-            if (cleaned) "INCOMPLETE_PREPARATION_CLEANED" else "CLEANUP_RETRY_REQUIRED",
+            "CLEANUP_RETRY_REQUIRED",
             result(),
         )
+    }
+
+    private fun resolveIncompatiblePending(
+        pending: PendingRead.Incompatible,
+    ): S04ActionResult {
+        val root = pending.root ?: pending.tree?.let { tree ->
+            pending.token?.let { token ->
+                val query = findChildren(documentUri(tree), "$ROOT_PREFIX$token")
+                when (query.status) {
+                    ChildQueryStatus.QUERY_FAILED ->
+                        return S04ActionResult("QUERY_RETRY_REQUIRED", result())
+                    ChildQueryStatus.ABSENT -> null
+                    ChildQueryStatus.FOUND -> {
+                        if (query.matches.size != 1) {
+                            return S04ActionResult(
+                                "INCOMPATIBLE_PENDING_AMBIGUOUS",
+                                result("AMBIGUOUS_ROOT"),
+                            )
+                        }
+                        query.matches.single()
+                    }
+                }
+            }
+        }
+        if (root != null) {
+            val cleaned = runCatching {
+                DocumentsContract.deleteDocument(resolver, root)
+            }.getOrDefault(false)
+            if (!cleaned) {
+                val tree = pending.tree
+                    ?: return S04ActionResult("CLEANUP_RETRY_REQUIRED", result())
+                val token = pending.token
+                    ?: return S04ActionResult("CLEANUP_RETRY_REQUIRED", result())
+                val confirmation = findChildren(
+                    documentUri(tree),
+                    "$ROOT_PREFIX$token",
+                )
+                when (
+                    PreparingDeleteConfirmationPolicy.choose(
+                        confirmation.status,
+                        confirmation.matches.size,
+                    )
+                ) {
+                    PreparingDeleteConfirmation.COMPLETE -> Unit
+                    PreparingDeleteConfirmation.RETRY ->
+                        return S04ActionResult("CLEANUP_RETRY_REQUIRED", result())
+                    PreparingDeleteConfirmation.REFUSE_AMBIGUOUS ->
+                        return S04ActionResult(
+                            "INCOMPATIBLE_PENDING_AMBIGUOUS",
+                            result("AMBIGUOUS_ROOT"),
+                        )
+                }
+            }
+        }
+        check(clearRunState(includePending = true))
+        return S04ActionResult("INCOMPATIBLE_PENDING_DISCARDED", result())
     }
 
     private fun resumeObservedCleanup(pending: PendingStage): S04ActionResult {
@@ -239,6 +373,7 @@ class ManifestAtomicProbe(private val context: Context) {
                 .remove(PENDING_PHASE)
                 .remove(PENDING_RUN_ID)
                 .remove(PENDING_TREE_HASH)
+                .remove(PENDING_ROOT_URI)
                 .commit(),
         )
         return S04ActionResult("OBSERVED_${pending.stage.name}", result())
@@ -263,25 +398,70 @@ class ManifestAtomicProbe(private val context: Context) {
             .remove(PENDING_PHASE)
             .remove(PENDING_RUN_ID)
             .remove(PENDING_TREE_HASH)
+            .remove(PENDING_ROOT_URI)
             .commit()
         return S04ActionResult(reason, result(reason))
     }
 
-    private fun pendingStage(): PendingStage? = runCatching {
-        PendingStage(
-            Uri.parse(requireNotNull(preferences.getString(PENDING_TREE, null))),
-            AtomicInterruption.valueOf(
-                requireNotNull(preferences.getString(PENDING_STAGE, null)),
-            ),
-            requireNotNull(preferences.getString(PENDING_TOKEN, null)),
-            requireNotNull(preferences.getString(PENDING_SESSION, null)),
-            preferences.getString(PENDING_PHASE, null)
-                ?.let(S04PendingPhase::valueOf)
-                ?: S04PendingPhase.READY,
-            requireNotNull(preferences.getString(PENDING_RUN_ID, null)),
-            requireNotNull(preferences.getString(PENDING_TREE_HASH, null)),
+    private fun pendingStage(): PendingRead {
+        if (pendingRecordStatus() == PendingRecordStatus.NONE) return PendingRead.None
+        val tree = preferences.getString(PENDING_TREE, null)
+            ?.takeIf(String::isNotBlank)
+            ?.let(Uri::parse)
+        val token = preferences.getString(PENDING_TOKEN, null)
+            ?.takeIf { it.matches(Regex("""[0-9a-f]{32}""")) }
+        val root = preferences.getString(PENDING_ROOT_URI, null)
+            ?.takeIf(String::isNotBlank)
+            ?.let(Uri::parse)
+        val valid = runCatching {
+            PendingStage(
+                requireNotNull(tree),
+                AtomicInterruption.valueOf(
+                    requireNotNull(preferences.getString(PENDING_STAGE, null)),
+                ),
+                requireNotNull(token),
+                requireNotNull(preferences.getString(PENDING_SESSION, null)),
+                S04PendingPhase.valueOf(
+                    requireNotNull(preferences.getString(PENDING_PHASE, null)),
+                ),
+                requireNotNull(preferences.getString(PENDING_RUN_ID, null)),
+                requireNotNull(preferences.getString(PENDING_TREE_HASH, null))
+                    .also { require(it.matches(Regex("""[0-9a-f]{64}"""))) },
+                root,
+            )
+        }.getOrNull()
+        return valid?.let(PendingRead::Valid)
+            ?: PendingRead.Incompatible(tree, token, root)
+    }
+
+    private fun pendingRecordStatus(): PendingRecordStatus {
+        val keys = listOf(
+            PENDING_TREE,
+            PENDING_STAGE,
+            PENDING_TOKEN,
+            PENDING_SESSION,
+            PENDING_PHASE,
+            PENDING_RUN_ID,
+            PENDING_TREE_HASH,
         )
-    }.getOrNull()
+        val hasAny = keys.any(preferences::contains) || preferences.contains(PENDING_ROOT_URI)
+        val allRequired = keys.all(preferences::contains)
+        val valuesValid = if (allRequired) {
+            runCatching {
+                AtomicInterruption.valueOf(
+                    requireNotNull(preferences.getString(PENDING_STAGE, null)),
+                )
+                S04PendingPhase.valueOf(
+                    requireNotNull(preferences.getString(PENDING_PHASE, null)),
+                )
+                requireNotNull(preferences.getString(PENDING_TOKEN, null))
+                    .matches(Regex("""[0-9a-f]{32}"""))
+            }.getOrDefault(false)
+        } else {
+            false
+        }
+        return PendingRecordPolicy.classify(hasAny, allRequired, valuesValid)
+    }
 
     private fun clearPending(): Boolean = preferences.edit()
         .remove(PENDING_TREE)
@@ -291,7 +471,36 @@ class ManifestAtomicProbe(private val context: Context) {
         .remove(PENDING_PHASE)
         .remove(PENDING_RUN_ID)
         .remove(PENDING_TREE_HASH)
+        .remove(PENDING_ROOT_URI)
         .commit()
+
+    private fun clearRunState(includePending: Boolean): Boolean {
+        val editor = preferences.edit()
+            .remove(RUN_ID)
+            .remove(RUN_TREE_HASH)
+            .remove(PROVENANCE_SCHEMA)
+            .remove(PROVENANCE_VERSION)
+            .remove(PROVENANCE_MODEL)
+            .remove(PROVENANCE_SDK)
+            .remove(PROVENANCE_MANUFACTURER)
+            .remove(PROVENANCE_PATCH)
+            .remove(PROVENANCE_APP_NAME)
+            .remove(PROVENANCE_APP_CODE)
+            .remove(PROVENANCE_FINGERPRINT)
+            .remove(OVERWRITE)
+        AtomicInterruption.entries.forEach { editor.remove(observationKey(it)) }
+        if (includePending) {
+            editor.remove(PENDING_TREE)
+                .remove(PENDING_STAGE)
+                .remove(PENDING_TOKEN)
+                .remove(PENDING_SESSION)
+                .remove(PENDING_PHASE)
+                .remove(PENDING_RUN_ID)
+                .remove(PENDING_TREE_HASH)
+                .remove(PENDING_ROOT_URI)
+        }
+        return editor.commit()
+    }
 
     private fun isOwnedRoot(root: Uri, token: String): Boolean {
         if (displayName(root) != "$ROOT_PREFIX$token") return false
@@ -327,14 +536,18 @@ class ManifestAtomicProbe(private val context: Context) {
             )
                 ?: return@runCatching "RETURNED_NULL"
             val exact = findChildren(root, ProviderOverwriteClassifier.OVERWRITE_NAME)
-            val exactGenerations = exact.mapNotNull(::generation)
-            if (exactGenerations.size != exact.size) return@runCatching "INCONCLUSIVE"
+            if (exact.status == ChildQueryStatus.QUERY_FAILED) throw ChildQueryFailure()
+            val exactGenerations = exact.matches.mapNotNull(::generation)
+            if (exactGenerations.size != exact.matches.size) return@runCatching "INCONCLUSIVE"
             ProviderOverwriteClassifier.classify(
                 exactGenerations,
                 displayName(renamed),
                 generation(renamed),
             )
-        }.getOrElse { "ERROR_${it.javaClass.simpleName}" }
+        }.getOrElse {
+            if (it is ChildQueryFailure) throw it
+            "ERROR_${it.javaClass.simpleName}"
+        }
     }
 
     private fun generation(uri: Uri): Int? = runCatching {
@@ -370,34 +583,42 @@ class ManifestAtomicProbe(private val context: Context) {
     private fun read(uri: Uri): String =
         resolver.openInputStream(uri).use { requireNotNull(it).reader().readText() }
 
-    private fun findChild(parent: Uri, name: String): Uri? =
-        findChildren(parent, name).firstOrNull()
+    private fun findChild(parent: Uri, name: String): Uri? {
+        val query = findChildren(parent, name)
+        if (query.status == ChildQueryStatus.QUERY_FAILED) throw ChildQueryFailure()
+        return query.matches.firstOrNull()
+    }
 
-    private fun findChildren(parent: Uri, name: String): List<Uri> {
+    private fun findChildren(parent: Uri, name: String): ChildQuery {
         val children = DocumentsContract.buildChildDocumentsUriUsingTree(
             parent,
             DocumentsContract.getDocumentId(parent),
         )
         val matches = mutableListOf<Uri>()
-        resolver.query(
-            children,
-            arrayOf(
-                DocumentsContract.Document.COLUMN_DOCUMENT_ID,
-                DocumentsContract.Document.COLUMN_DISPLAY_NAME,
-            ),
-            null,
-            null,
-            null,
-        )?.use { cursor ->
-            while (cursor.moveToNext()) {
-                if (cursor.getString(1) == name) {
-                    matches += DocumentsContract.buildDocumentUriUsingTree(
-                        parent, cursor.getString(0),
-                    )
+        val querySucceeded = runCatching {
+            val cursor = resolver.query(
+                children,
+                arrayOf(
+                    DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                    DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                ),
+                null,
+                null,
+                null,
+            ) ?: return@runCatching false
+            cursor.use {
+                while (it.moveToNext()) {
+                    if (it.getString(1) == name) {
+                        matches += DocumentsContract.buildDocumentUriUsingTree(
+                            parent, it.getString(0),
+                        )
+                    }
                 }
             }
-        }
-        return matches
+            true
+        }.getOrDefault(false)
+        val matchCount = matches.size.takeIf { querySucceeded }
+        return ChildQuery(ChildQueryPolicy.classify(matchCount), matches)
     }
 
     private fun childCount(parent: Uri): Int {
@@ -411,7 +632,7 @@ class ManifestAtomicProbe(private val context: Context) {
             null,
             null,
             null,
-        )?.use { it.count } ?: 0
+        )?.use { it.count } ?: throw ChildQueryFailure()
     }
 
     private fun displayName(uri: Uri): String = resolver.query(
@@ -521,7 +742,25 @@ class ManifestAtomicProbe(private val context: Context) {
         val phase: S04PendingPhase,
         val runId: String,
         val treeUriSha256: String,
+        val root: Uri?,
     )
+
+    private sealed interface PendingRead {
+        data object None : PendingRead
+        data class Valid(val value: PendingStage) : PendingRead
+        data class Incompatible(
+            val tree: Uri?,
+            val token: String?,
+            val root: Uri?,
+        ) : PendingRead
+    }
+
+    private data class ChildQuery(
+        val status: ChildQueryStatus,
+        val matches: List<Uri>,
+    )
+
+    private class ChildQueryFailure : RuntimeException()
 
     private data class RunIdentity(val runId: String, val treeUriSha256: String)
 
@@ -538,6 +777,7 @@ class ManifestAtomicProbe(private val context: Context) {
         const val PENDING_PHASE = "pendingPhase"
         const val PENDING_RUN_ID = "pendingRunId"
         const val PENDING_TREE_HASH = "pendingTreeHash"
+        const val PENDING_ROOT_URI = "pendingRootUri"
         const val RUN_ID = "runId"
         const val RUN_TREE_HASH = "runTreeHash"
         const val PROVENANCE_SCHEMA = "provenanceSchema"
@@ -570,8 +810,8 @@ class S04ProbeActivity : ComponentActivity() {
                     action = "S01_ROOT_REQUIRED"
                     return
                 }
+                running = true
                 scope.launch {
-                    running = true
                     val updated = probe.prepare(tree, stage)
                     action = updated.message
                     result = updated.result
@@ -596,8 +836,8 @@ class S04ProbeActivity : ComponentActivity() {
                         }
                         Button(
                             onClick = {
+                                running = true
                                 scope.launch {
-                                    running = true
                                     val updated = probe.observeAfterRestart()
                                     action = updated.message
                                     result = updated.result
@@ -607,6 +847,19 @@ class S04ProbeActivity : ComponentActivity() {
                             enabled = !running,
                             modifier = Modifier.fillMaxWidth(),
                         ) { Text("Observe after restart") }
+                        Button(
+                            onClick = {
+                                running = true
+                                scope.launch {
+                                    val updated = probe.resetRun()
+                                    action = updated.message
+                                    result = updated.result
+                                    running = false
+                                }
+                            },
+                            enabled = !running,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text("Start new run") }
                         Text(action)
                         Text(result.toJson())
                     }

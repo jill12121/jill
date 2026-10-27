@@ -15,6 +15,72 @@ enum class S04PendingPhase { PREPARING, READY, OBSERVED }
 
 enum class S04SingleDeviceOutcome { PASS, PENDING, FAIL }
 
+enum class ChildQueryStatus { FOUND, ABSENT, QUERY_FAILED }
+
+object ChildQueryPolicy {
+    fun classify(matchCount: Int?): ChildQueryStatus = when {
+        matchCount == null -> ChildQueryStatus.QUERY_FAILED
+        matchCount == 0 -> ChildQueryStatus.ABSENT
+        matchCount > 0 -> ChildQueryStatus.FOUND
+        else -> error("matchCount must not be negative")
+    }
+}
+
+enum class PreparingRootRecovery {
+    USE_PERSISTED_ROOT,
+    DELETE_UNIQUE_EXACT_MATCH,
+    CLEAR_PENDING,
+    RETRY_QUERY,
+    REFUSE_AMBIGUOUS,
+}
+
+object PreparingRootRecoveryPolicy {
+    fun choose(
+        persistedRootAvailable: Boolean,
+        queryStatus: ChildQueryStatus,
+        matchCount: Int,
+    ): PreparingRootRecovery = when {
+        persistedRootAvailable -> PreparingRootRecovery.USE_PERSISTED_ROOT
+        queryStatus == ChildQueryStatus.QUERY_FAILED -> PreparingRootRecovery.RETRY_QUERY
+        queryStatus == ChildQueryStatus.ABSENT -> PreparingRootRecovery.CLEAR_PENDING
+        matchCount == 1 -> PreparingRootRecovery.DELETE_UNIQUE_EXACT_MATCH
+        else -> PreparingRootRecovery.REFUSE_AMBIGUOUS
+    }
+}
+
+enum class PreparingDeleteConfirmation { COMPLETE, RETRY, REFUSE_AMBIGUOUS }
+
+object PreparingDeleteConfirmationPolicy {
+    fun choose(
+        queryStatus: ChildQueryStatus,
+        matchCount: Int,
+    ): PreparingDeleteConfirmation = when {
+        queryStatus == ChildQueryStatus.ABSENT -> PreparingDeleteConfirmation.COMPLETE
+        queryStatus == ChildQueryStatus.QUERY_FAILED -> PreparingDeleteConfirmation.RETRY
+        matchCount == 1 -> PreparingDeleteConfirmation.RETRY
+        else -> PreparingDeleteConfirmation.REFUSE_AMBIGUOUS
+    }
+}
+
+enum class PendingRecordStatus { NONE, VALID, INCOMPATIBLE }
+
+object PendingRecordPolicy {
+    fun classify(
+        hasAnyPendingField: Boolean,
+        allRequiredFieldsPresent: Boolean,
+        valuesValid: Boolean,
+    ): PendingRecordStatus = when {
+        !hasAnyPendingField -> PendingRecordStatus.NONE
+        allRequiredFieldsPresent && valuesValid -> PendingRecordStatus.VALID
+        else -> PendingRecordStatus.INCOMPATIBLE
+    }
+}
+
+object RunResetPolicy {
+    fun canReset(pendingStatus: PendingRecordStatus): Boolean =
+        pendingStatus == PendingRecordStatus.NONE
+}
+
 data class S04ProbeProvenance(
     val schemaVersion: Int,
     val probeVersion: String,
