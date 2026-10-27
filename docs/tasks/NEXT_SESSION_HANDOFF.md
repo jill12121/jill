@@ -1,80 +1,56 @@
 # Next Session Handoff
 
-## Repository State
+## Authority
 
-- Repository: `D:\WorkFile\gallery-organizer-v0.3.1`
-- Branch: `master`
-- Remote: `origin git@github.com:jill12121/jill.git`
-- Latest remote commit: `113e6b8 F02.2: fix release policy on PowerShell Core`
-- GitHub Actions: Verify run `39365176154` passed on `113e6b8`.
+Read `STATUS.md` first. It is the current authority for task state and gates.
+Do not infer device GO from CI or desktop tests.
 
-## Completed Baseline
+## Verified Code Baseline
 
-- F01: Android project, privacy baseline, controlled specifications, and CI.
-- F02/F02.1: module boundaries, capability-neutral ports, Hilt/KSP composition,
-  Android Library module types, and architecture guards.
-- F03/F03.1: platform-neutral states, errors, permissions, typed Plan payloads,
-  scan coverage, authorization waiting, and exhaustive transition tests.
-- F02.2: standard Gradle Wrapper, checksum, executable mode, EOL rules,
-  launcher icon, Linux CI, release merged-Manifest policy, and release runtime
-  dependency policy.
+- S01.2 `e4b5710`: probe-owned SAF sandbox; Remote Verify `40444298467`.
+- F06 `6fdd89f`: relative source identity and loaded TSV fixtures; Remote
+  Verify `40445342619`.
+- S02.1 `dec1951`: runtime permission, Bundle pagination evidence, controlled
+  cleanup authorization; Remote Verify `40446516962`.
+- S04.1 `45cecff`: persisted cutoff and post-restart recovery observation;
+  Remote Verify `40447648083`.
 
-Relevant commits:
+All remain subject to an independent review before the probe-suite is installed
+on physical devices.
 
-- `7047eb7 F03.1: correct domain state and typed plan contracts`
-- `8b4c8a7 F02.2: harden release policy and delivery reproducibility`
-- `113e6b8 F02.2: fix release policy on PowerShell Core`
+## Current State
 
-## Current Task
+- F01-F04: complete safety and test foundation.
+- F06: `IN_PROGRESS`; Golden Manifest and progressive pure-test E2E fixtures
+  remain.
+- S01/S02/S04: `REVIEW_PENDING`; device evidence remains PENDING.
+- F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
-F04 is `PLANNED`. Read `docs/tasks/F04.md` before implementation.
+## Next Exact Action
 
-Start with F04.1:
+1. Review S01.2, S02.1, and S04.1 against their task runbooks.
+2. Replace the full S01 build fingerprint in exported JSON with a hash.
+3. Assign owner, date, and concrete devices for Android 11, current target,
+   OEM family A, and OEM family B.
+4. Execute the matrix only after review acceptance.
+5. Record per-device JSON and GO/LIMITED_GO/NO_GO inputs.
 
-1. Write acceptance tests for deterministic operation sequencing.
-2. Add test-only in-memory implementations of the four storage ports.
-3. Add `FaultPlan` throw/partial-write/kill simulation by operation number.
-4. Prove no source deletion, false completion, real file access, or sleeps.
-5. Run domain, architecture, policy, lint, and build verification.
+## Hard Boundaries
 
-Only after F04.1 is green, continue to Room schema and uniqueness constraints.
-
-## Hard Boundary
-
-F04 permits app-private Room metadata and test-only in-memory Fakes. It does
-not permit:
-
-- MediaStore, SAF, `ContentResolver`, `DocumentFile`, or Download scanning.
-- Organizer-root creation, `.nomedia`, `.part`, Manifest, or disk Journal I/O.
-- Real copy, rename, SHA reads, restore, cleanup, or deletion.
-- WorkManager, foreground services, OCR, networking, accounts, or uploads.
-- Fake bindings in the release Hilt graph.
-
-S01 blocks workspace/copy execution, S02 blocks scanning/source cleanup, and
-S04 blocks disk Journal/recovery execution.
+- No production SAF, MediaStore, WorkspaceGateway, ManifestStore,
+  PermanentDeleter, disk Journal, copy, rename, cleanup, or recovery executor.
+- No Room schema change.
+- No J1/J2/J3 before required device decisions and ADRs.
+- F06 additions must remain pure Kotlin/domain and fixture driven.
 
 ## Verification Environment
-
-Local builds use:
 
 ```text
 JAVA_HOME=D:\WorkFile\.tools\temurin-17\jdk-17.0.20.1+1
 ANDROID_HOME=D:\WorkFile\.tools\android-sdk
-GRADLE_USER_HOME=%LOCALAPPDATA%\gallery-organizer-gradle-f03
+GRADLE_USER_HOME=D:\WorkFile\.tools\gradle-home-f02-1-serial
 ```
 
-Use `%LOCALAPPDATA%` for Gradle caches. Project-local caches under
-`D:\WorkFile\.tools` previously caused transform-cache move failures.
-
-## Completion Report
-
-```text
-Task: <ID and title>
-State: <COMPLETED / CONDITIONALLY_ACCEPTED / BLOCKED>
-Commit: <sha or not committed>
-Verification: <commands and result>
-Remote CI: <run id/status or not confirmed>
-Risk: <remaining risk>
-Deviation: <baseline deviation, if any>
-Next: <one exact next action>
-```
+The Kotlin daemon may report an AccessDenied temp-marker warning on this host;
+Gradle falls back to in-process compilation. Judge the final task result, not
+that warning alone.

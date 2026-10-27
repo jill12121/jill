@@ -18,21 +18,33 @@
 - S01.1: hardened SAF probe committed as `94866ec`; Remote Verify `39919115736` passed.
 - S02/S04 scaffold: combined probe APK committed as `5ffcac4`; Remote Verify
   `39932002281` passed; device results remain PENDING.
+- S01.2: probe-owned SAF mutation isolation committed as `e4b5710`; Remote
+  Verify `40444298467` passed; independent review remains required.
+- S02.1: runtime permission, bounded pagination evidence, and controlled cleanup
+  authorization committed as `dec1951`; Remote Verify `40446516962` passed.
+- S04.1: persisted two-stage restart observation committed as `45cecff`; Remote
+  Verify `40447648083` passed.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
-  commit `ca03b9d` passed Remote Verify `40440140530`; task remains IN_PROGRESS.
+  commit `ca03b9d` passed Remote Verify `40440140530`. Relative-path and
+  fixture-loader commit `6fdd89f` passed Remote Verify `40445342619`; task
+  remains IN_PROGRESS.
 
 ## Next Exact Action
 
-- Assign and schedule the REQUIRED S01/S02/S04 physical-device matrix.
+- Independently review S01.2/S02.1/S04.1, then assign and schedule the REQUIRED
+  physical-device matrix.
 
 ## Active Gates
 
 - F06: IN_PROGRESS; expand only through pure domain behavior and fixtures.
-- S01: DEVICE_PENDING; S01.1 code and Remote Verify are complete.
-- S02: DEVICE_PENDING; combined-APK scaffold is complete.
-- S04: DEVICE_PENDING; combined-APK scaffold is complete.
+- S01: REVIEW_PENDING; S01.2 ownership repair is CI-green; do not install until
+  reviewed.
+- S02: REVIEW_PENDING; S02.1 evidence repair is CI-green; device result is
+  PENDING.
+- S04: REVIEW_PENDING; S04.1 restart repair is CI-green; device result is
+  PENDING.
 - J1/J2/J3 and production storage execution remain BLOCKED until required
   device decisions are recorded.
 
@@ -78,5 +90,8 @@
 
 - S01/S02/S04 physical-device results are PENDING; emulator and desktop
   results cannot satisfy the REQUIRED matrix.
+- S01 result JSON still exposes the full build fingerprint; replace it with a
+  fingerprint hash before results are committed.
+- F06 Golden Manifest and progressive pure-test E2E fixtures remain pending.
 - J1/J2/J3 and all production workspace/Manifest/cleanup execution are blocked
   by those device decisions.

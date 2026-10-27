@@ -1,5 +1,9 @@
 {
-  "totalPages": 0, "pageMillis": [], "partialAccessVisible": false,
-  "authChunkOk": false, "exceptionClass": null,
+  "permissionState": "NOT_GRANTED",
+  "totalVisibleRows": 0,
+  "pages": [],
+  "cleanupState": "NOT_RUN",
+  "authorizationBatchSizes": [],
+  "exceptionClass": null,
   "decisionS02SingleDevice": "PENDING"
 }

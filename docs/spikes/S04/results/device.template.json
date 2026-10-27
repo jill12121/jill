@@ -1,4 +1,6 @@
 {
-  "atomicStageSurvivors": {}, "provOverwriteBehavior": "PENDING",
-  "exceptionClass": null, "decisionS04SingleDevice": "PENDING"
+  "stageObservations": {},
+  "providerOverwriteBehavior": "NOT_RUN",
+  "exceptionClass": null,
+  "decisionS04SingleDevice": "PENDING"
 }
