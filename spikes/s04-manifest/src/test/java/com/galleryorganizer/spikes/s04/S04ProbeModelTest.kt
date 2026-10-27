@@ -118,6 +118,58 @@ class S04ProbeModelTest {
     }
 
     @Test
+    fun `overwrite measurement starts only after owned fixtures are absent`() {
+        assertEquals(
+            OverwriteCleanupAction.RETRY_QUERY,
+            OverwriteCleanupPolicy.choose(ChildQueryStatus.QUERY_FAILED, ownedFixtureCount = 0),
+        )
+        assertEquals(
+            OverwriteCleanupAction.DELETE_OWNED,
+            OverwriteCleanupPolicy.choose(ChildQueryStatus.FOUND, ownedFixtureCount = 2),
+        )
+        assertEquals(
+            OverwriteCleanupAction.READY,
+            OverwriteCleanupPolicy.choose(ChildQueryStatus.FOUND, ownedFixtureCount = 0),
+        )
+        assertEquals(
+            OverwriteCleanupAction.READY,
+            OverwriteCleanupPolicy.choose(ChildQueryStatus.ABSENT, ownedFixtureCount = 0),
+        )
+    }
+
+    @Test
+    fun `overwrite ownership accepts marker and legacy reserved names only`() {
+        assertTrue(
+            OverwriteFixtureOwnership.isOwned(
+                "provider-generated-name.json",
+                OverwriteFixtureOwnership.MARKER,
+                2,
+            ),
+        )
+        assertTrue(
+            OverwriteFixtureOwnership.isOwned(
+                ProviderOverwriteClassifier.OVERWRITE_NAME,
+                marker = null,
+                generation = 1,
+            ),
+        )
+        assertFalse(
+            OverwriteFixtureOwnership.isOwned(
+                "manifest.json",
+                marker = null,
+                generation = 1,
+            ),
+        )
+        assertFalse(
+            OverwriteFixtureOwnership.isOwned(
+                ProviderOverwriteClassifier.OVERWRITE_NAME,
+                marker = null,
+                generation = 3,
+            ),
+        )
+    }
+
+    @Test
     fun `mixed run or tree observations cannot pass`() {
         val complete = AtomicInterruption.entries.associateWith { observation(it) }
         val stage = AtomicInterruption.AFTER_RENAME

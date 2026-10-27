@@ -26,6 +26,19 @@ object ChildQueryPolicy {
     }
 }
 
+enum class OverwriteCleanupAction { READY, DELETE_OWNED, RETRY_QUERY }
+
+object OverwriteCleanupPolicy {
+    fun choose(
+        queryStatus: ChildQueryStatus,
+        ownedFixtureCount: Int,
+    ): OverwriteCleanupAction = when {
+        queryStatus == ChildQueryStatus.QUERY_FAILED -> OverwriteCleanupAction.RETRY_QUERY
+        ownedFixtureCount > 0 -> OverwriteCleanupAction.DELETE_OWNED
+        else -> OverwriteCleanupAction.READY
+    }
+}
+
 enum class PreparingRootRecovery {
     USE_PERSISTED_ROOT,
     DELETE_UNIQUE_EXACT_MATCH,
@@ -174,6 +187,21 @@ object ProviderOverwriteClassifier {
     }
 
     const val OVERWRITE_NAME = ".s04-overwrite.json"
+}
+
+object OverwriteFixtureOwnership {
+    const val MARKER = "S04_OVERWRITE"
+
+    fun isOwned(
+        displayName: String,
+        marker: String?,
+        generation: Int?,
+    ): Boolean =
+        marker == MARKER ||
+            (
+                displayName == ProviderOverwriteClassifier.OVERWRITE_NAME ||
+                    displayName == "${ProviderOverwriteClassifier.OVERWRITE_NAME}.tmp"
+                ) && generation in 1..2
 }
 
 data class S04ProbeResult(

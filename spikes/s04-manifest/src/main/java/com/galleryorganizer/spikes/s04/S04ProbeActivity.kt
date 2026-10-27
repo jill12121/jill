@@ -519,15 +519,16 @@ class ManifestAtomicProbe(private val context: Context) {
 
     private fun overwriteProbe(root: Uri): String {
         return runCatching {
+            clearOwnedOverwriteFixtures(root)
             create(
                 root,
                 ProviderOverwriteClassifier.OVERWRITE_NAME,
-                """{"generation":1}""",
+                overwriteFixture(1),
             )
             val candidate = create(
                 root,
                 "${ProviderOverwriteClassifier.OVERWRITE_NAME}.tmp",
-                """{"generation":2}""",
+                overwriteFixture(2),
             )
             val renamed = DocumentsContract.renameDocument(
                 resolver,
@@ -549,6 +550,58 @@ class ManifestAtomicProbe(private val context: Context) {
             "ERROR_${it.javaClass.simpleName}"
         }
     }
+
+    private fun clearOwnedOverwriteFixtures(root: Uri) {
+        val initial = overwriteFixtures(root)
+        when (
+            OverwriteCleanupPolicy.choose(
+                initial.status,
+                initial.fixtures.size,
+            )
+        ) {
+            OverwriteCleanupAction.READY -> return
+            OverwriteCleanupAction.RETRY_QUERY -> throw ChildQueryFailure()
+            OverwriteCleanupAction.DELETE_OWNED -> Unit
+        }
+        initial.fixtures.forEach { fixture ->
+            runCatching { DocumentsContract.deleteDocument(resolver, fixture) }
+        }
+        val confirmation = overwriteFixtures(root)
+        if (
+            OverwriteCleanupPolicy.choose(
+                confirmation.status,
+                confirmation.fixtures.size,
+            ) != OverwriteCleanupAction.READY
+        ) {
+            throw ChildQueryFailure()
+        }
+    }
+
+    private fun overwriteFixtures(root: Uri): OverwriteFixtureQuery {
+        val children = listChildren(root)
+        if (children.status == ChildQueryStatus.QUERY_FAILED) {
+            return OverwriteFixtureQuery(children.status, emptyList())
+        }
+        val fixtures = mutableListOf<Uri>()
+        children.documents.forEach { child ->
+            if (child.displayName == MARKER_NAME) return@forEach
+            val json = runCatching { JSONObject(read(child.uri)) }.getOrNull()
+                ?: return OverwriteFixtureQuery(ChildQueryStatus.QUERY_FAILED, emptyList())
+            if (
+                OverwriteFixtureOwnership.isOwned(
+                    child.displayName,
+                    json.optString("fixture").takeIf(String::isNotEmpty),
+                    json.optInt("generation", -1).takeIf { it >= 0 },
+                )
+            ) {
+                fixtures += child.uri
+            }
+        }
+        return OverwriteFixtureQuery(children.status, fixtures)
+    }
+
+    private fun overwriteFixture(generation: Int): String =
+        """{"fixture":"${OverwriteFixtureOwnership.MARKER}","generation":$generation}"""
 
     private fun generation(uri: Uri): Int? = runCatching {
         JSONObject(read(uri)).getInt("generation")
@@ -590,11 +643,25 @@ class ManifestAtomicProbe(private val context: Context) {
     }
 
     private fun findChildren(parent: Uri, name: String): ChildQuery {
+        val children = listChildren(parent)
+        if (children.status == ChildQueryStatus.QUERY_FAILED) {
+            return ChildQuery(children.status, emptyList())
+        }
+        val matches = children.documents
+            .filter { it.displayName == name }
+            .map { it.uri }
+        return ChildQuery(
+            ChildQueryPolicy.classify(matches.size),
+            matches,
+        )
+    }
+
+    private fun listChildren(parent: Uri): ChildListing {
         val children = DocumentsContract.buildChildDocumentsUriUsingTree(
             parent,
             DocumentsContract.getDocumentId(parent),
         )
-        val matches = mutableListOf<Uri>()
+        val documents = mutableListOf<ChildDocument>()
         val querySucceeded = runCatching {
             val cursor = resolver.query(
                 children,
@@ -608,17 +675,16 @@ class ManifestAtomicProbe(private val context: Context) {
             ) ?: return@runCatching false
             cursor.use {
                 while (it.moveToNext()) {
-                    if (it.getString(1) == name) {
-                        matches += DocumentsContract.buildDocumentUriUsingTree(
-                            parent, it.getString(0),
-                        )
-                    }
+                    documents += ChildDocument(
+                        DocumentsContract.buildDocumentUriUsingTree(parent, it.getString(0)),
+                        it.getString(1),
+                    )
                 }
             }
             true
         }.getOrDefault(false)
-        val matchCount = matches.size.takeIf { querySucceeded }
-        return ChildQuery(ChildQueryPolicy.classify(matchCount), matches)
+        val documentCount = documents.size.takeIf { querySucceeded }
+        return ChildListing(ChildQueryPolicy.classify(documentCount), documents)
     }
 
     private fun childCount(parent: Uri): Int {
@@ -758,6 +824,18 @@ class ManifestAtomicProbe(private val context: Context) {
     private data class ChildQuery(
         val status: ChildQueryStatus,
         val matches: List<Uri>,
+    )
+
+    private data class ChildDocument(val uri: Uri, val displayName: String)
+
+    private data class ChildListing(
+        val status: ChildQueryStatus,
+        val documents: List<ChildDocument>,
+    )
+
+    private data class OverwriteFixtureQuery(
+        val status: ChildQueryStatus,
+        val fixtures: List<Uri>,
     )
 
     private class ChildQueryFailure : RuntimeException()
