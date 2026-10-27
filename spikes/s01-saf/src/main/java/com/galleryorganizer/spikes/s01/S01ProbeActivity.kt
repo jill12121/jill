@@ -91,8 +91,8 @@ class S01ProbeActivity : ComponentActivity() {
                             fontWeight = FontWeight.SemiBold,
                         )
                         Text(
-                            "Create GalleryOrganizer under Download first, then select that " +
-                                "directory. The selected directory is tested directly.",
+                            "Select the intended organizer root. The probe creates a random, " +
+                                "ownership-verified sandbox inside it and never mutates siblings.",
                             color = Color(0xFF4C5B54),
                         )
                         Button(

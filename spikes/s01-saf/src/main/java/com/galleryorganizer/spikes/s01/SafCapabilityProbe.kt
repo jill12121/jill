@@ -42,16 +42,18 @@ class SafCapabilityProbe(private val context: Context) {
         try {
             resolver.takePersistableUriPermission(root, READ_WRITE_FLAGS)
             rootFlags = flags(organizerRoot)
-            val albums = ensureDirectory(organizerRoot, "Albums")
-            ensureDirectory(organizerRoot, "Review")
-            val trash = ensureDirectory(organizerRoot, "Trash")
+            val ownedRoot = openOrCreateOwnedRoot(organizerRoot)
+            adoption = ownedRoot.adoption
+            val probeRoot = ownedRoot.uri
+            val albums = ensureDirectory(probeRoot, "Albums")
+            ensureDirectory(probeRoot, "Review")
+            val trash = ensureDirectory(probeRoot, "Trash")
             ensureDirectory(trash, "files")
             ensureDirectory(trash, "meta")
             dirsReady = true
 
-            adoption = adoptionProbe(organizerRoot, created)
-            val binary = fileFlow(organizerRoot, token, "application/octet-stream", "bin")
-            val webp = fileFlow(organizerRoot, token, "image/webp", "webp")
+            val binary = fileFlow(probeRoot, token, "application/octet-stream", "bin")
+            val webp = fileFlow(probeRoot, token, "image/webp", "webp")
             created += binary.cleanupUris + webp.cleanupUris
             partReadback = binary.partReadback && webp.partReadback
             renamed = binary.renamed && webp.renamed
@@ -61,12 +63,12 @@ class SafCapabilityProbe(private val context: Context) {
             oldReadable = webp.oldUriReadable
             fileFlags = flags(webp.finalUri)
 
-            collideCreate = createCollision(organizerRoot, webp.finalUri, webp.actualName, created)
-            collideRename = renameCollision(organizerRoot, token, created)
-            val repeatedAlbums = requireNotNull(create(organizerRoot, DIR_MIME, "Albums"))
+            collideCreate = createCollision(probeRoot, webp.finalUri, webp.actualName, created)
+            collideRename = renameCollision(probeRoot, token, created)
+            val repeatedAlbums = requireNotNull(create(probeRoot, DIR_MIME, "Albums"))
             if (repeatedAlbums != albums) created += repeatedAlbums
             dirIdempotent = classifyCreated(albums, repeatedAlbums, "Albums")
-            performance = performanceProbe(organizerRoot, token, created)
+            performance = performanceProbe(probeRoot, token, created)
         } catch (caught: Exception) {
             failure = caught
         } finally {
@@ -103,9 +105,12 @@ class SafCapabilityProbe(private val context: Context) {
         val organizerRoot = DocumentsContract.buildDocumentUriUsingTree(
             root, DocumentsContract.getTreeDocumentId(root),
         )
+        val ownedRoot = findOwnedRoot(organizerRoot) ?: return@withContext false
         val uri = runCatching {
             val bytes = "s01-retry".encodeToByteArray()
-            requireNotNull(create(organizerRoot, "application/octet-stream", ".s01-retry.part")).also {
+            requireNotNull(
+                create(ownedRoot.uri, "application/octet-stream", ".s01-retry.part"),
+            ).also {
                 write(it, bytes)
                 check(read(it).contentEquals(bytes))
             }
@@ -131,32 +136,76 @@ class SafCapabilityProbe(private val context: Context) {
         )
     }
 
-    private fun adoptionProbe(root: Uri, created: MutableList<Uri>): Adoption {
-        val marker = findChild(root, "root.json")
-        val orphan = findChild(root, ".s01-reinstall.bin")
-        if (marker == null) {
-            create(root, "application/json", "root.json")!!.also {
-                write(it, """{"schema":"s01-probe","version":1}""".encodeToByteArray())
-            }
-            create(root, "application/octet-stream", ".s01-reinstall.bin")!!.also {
-                write(it, "legacy".encodeToByteArray())
-            }
-            return Adoption()
+    private fun openOrCreateOwnedRoot(organizerRoot: Uri): OwnedRoot {
+        val existing = findOwnedRoot(organizerRoot)
+        if (existing != null) return existing.copy(adoption = adoptionProbe(existing))
+        val unownedCandidateSeen = children(organizerRoot).any {
+            it.mime == DIR_MIME && it.name.startsWith(ProbeOwnership.DIRECTORY_PREFIX)
         }
-        val markerRead = runCatching { read(marker).isNotEmpty() }.getOrDefault(false)
-        val orphanRead = orphan != null && runCatching { read(orphan).isNotEmpty() }.getOrDefault(false)
-        val orphanWrite = orphan != null && runCatching {
-            write(orphan, "adopted".encodeToByteArray()); true
+        val ownership = ProbeOwnership.create(
+            UUID.randomUUID().toString().replace("-", ""),
+        )
+        val root = requireNotNull(create(organizerRoot, DIR_MIME, ownership.directoryName))
+        check(metadata(root).name == ownership.directoryName)
+        check(childCount(root) == 0)
+        requireNotNull(create(root, "application/octet-stream", ProbeOwnership.MARKER_NAME)).also {
+            check(metadata(it).name == ProbeOwnership.MARKER_NAME)
+            write(it, ownership.markerBytes)
+        }
+        requireNotNull(create(root, "application/octet-stream", ownership.sampleName)).also {
+            check(metadata(it).name == ownership.sampleName)
+            write(it, ownership.sampleBytes)
+        }
+        return OwnedRoot(
+            root,
+            ownership,
+            Adoption(classification = if (unownedCandidateSeen) "NOT_ADOPTABLE" else "NOT_TESTED"),
+        )
+    }
+
+    private fun adoptionProbe(ownedRoot: OwnedRoot): Adoption {
+        val sample = requireNotNull(findChild(ownedRoot.uri, ownedRoot.ownership.sampleName))
+        val orphanRead = runCatching {
+            read(sample).contentEquals(ownedRoot.ownership.sampleBytes)
         }.getOrDefault(false)
-        val orphanDelete = orphan != null && runCatching {
-            DocumentsContract.deleteDocument(resolver, orphan)
+        val orphanWrite = orphanRead && runCatching {
+            write(sample, ownedRoot.ownership.sampleBytes)
+            read(sample).contentEquals(ownedRoot.ownership.sampleBytes)
+        }.getOrDefault(false)
+        val orphanDelete = orphanWrite && runCatching {
+            DocumentsContract.deleteDocument(resolver, sample)
         }.getOrDefault(false)
         val classification = when {
             orphanRead && orphanWrite && orphanDelete -> "READ_WRITE_DELETE"
             orphanRead -> "READ_ONLY_ORPHAN"
             else -> "INACCESSIBLE"
         }
-        return Adoption(markerRead && orphanRead, orphanWrite, orphanDelete, classification)
+        return Adoption(orphanRead, orphanWrite, orphanDelete, classification)
+    }
+
+    private fun findOwnedRoot(organizerRoot: Uri): OwnedRoot? {
+        return children(organizerRoot)
+            .asSequence()
+            .filter { it.mime == DIR_MIME && it.name.startsWith(ProbeOwnership.DIRECTORY_PREFIX) }
+            .mapNotNull { candidate ->
+                val marker = findChild(candidate.uri, ProbeOwnership.MARKER_NAME)
+                    ?: return@mapNotNull null
+                val markerBytes = runCatching { read(marker) }.getOrNull()
+                    ?: return@mapNotNull null
+                val markerText = markerBytes.decodeToString()
+                val sampleName = markerText.lineSequence()
+                    .firstOrNull { it.startsWith("sample=") }
+                    ?.substringAfter('=')
+                    ?: return@mapNotNull null
+                val sample = findChild(candidate.uri, sampleName) ?: return@mapNotNull null
+                val sampleBytes = runCatching { read(sample) }.getOrNull()
+                    ?: return@mapNotNull null
+                val ownership = ProbeOwnership.validate(
+                    candidate.name, markerBytes, sampleName, sampleBytes,
+                ) ?: return@mapNotNull null
+                OwnedRoot(candidate.uri, ownership, Adoption())
+            }
+            .firstOrNull()
     }
 
     private fun createCollision(
@@ -278,18 +327,33 @@ class SafCapabilityProbe(private val context: Context) {
     }
 
     private fun findChild(parent: Uri, name: String): Uri? {
+        return children(parent).firstOrNull { it.name == name }?.uri
+    }
+
+    private fun children(parent: Uri): List<Child> {
         val parentId = DocumentsContract.getDocumentId(parent)
         val children = DocumentsContract.buildChildDocumentsUriUsingTree(parent, parentId)
-        resolver.query(
+        return resolver.query(
             children,
-            arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME),
+            arrayOf(
+                DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                DocumentsContract.Document.COLUMN_MIME_TYPE,
+            ),
             null, null, null,
         )?.use {
-            while (it.moveToNext()) if (it.getString(1) == name) {
-                return DocumentsContract.buildDocumentUriUsingTree(parent, it.getString(0))
+            buildList {
+                while (it.moveToNext()) {
+                    add(
+                        Child(
+                            DocumentsContract.buildDocumentUriUsingTree(parent, it.getString(0)),
+                            it.getString(1),
+                            it.getString(2),
+                        ),
+                    )
+                }
             }
-        }
-        return null
+        }.orEmpty()
     }
 
     private fun childCount(parent: Uri): Int {
@@ -317,6 +381,12 @@ class SafCapabilityProbe(private val context: Context) {
     }
 
     private data class Metadata(val name: String, val mime: String)
+    private data class Child(val uri: Uri, val name: String, val mime: String)
+    private data class OwnedRoot(
+        val uri: Uri,
+        val ownership: ProbeOwnership,
+        val adoption: Adoption,
+    )
     private data class FileFlow(
         val partReadback: Boolean, val renamed: Boolean, val finalReadback: Boolean,
         val actualName: String, val actualMime: String, val oldUriReadable: Boolean,
