@@ -53,17 +53,21 @@ class ManifestAtomicProbe(private val context: Context) {
                     .putString(PENDING_STAGE, stage.name)
                     .putString(PENDING_TOKEN, token)
                     .putString(PENDING_SESSION, S04ProcessSession.id)
+                    .putString(PENDING_PHASE, S04PendingPhase.PREPARING.name)
+                    .remove(observationKey(stage))
                     .commit(),
             )
-            runCatching {
+            var root: Uri? = null
+            try {
                 val parent = documentUri(tree)
-                val root = createDirectory(parent, "$ROOT_PREFIX$token")
-                check(displayName(root) == "$ROOT_PREFIX$token")
-                check(childCount(root) == 0)
-                create(root, MARKER_NAME, marker(token))
-                val final = create(root, FINAL_NAME, """{"generation":1}""")
+                val createdRoot = createDirectory(parent, "$ROOT_PREFIX$token")
+                root = createdRoot
+                check(displayName(createdRoot) == "$ROOT_PREFIX$token")
+                check(childCount(createdRoot) == 0)
+                create(createdRoot, MARKER_NAME, marker(token))
+                val final = create(createdRoot, FINAL_NAME, """{"generation":1}""")
                 if (stage != AtomicInterruption.BEFORE_PROCESS_KILL) {
-                    val tmp = create(root, TMP_NAME, """{"generation":2}""")
+                    val tmp = create(createdRoot, TMP_NAME, """{"generation":2}""")
                     if (stage != AtomicInterruption.AFTER_PROCESS_KILL) {
                         requireNotNull(
                             DocumentsContract.renameDocument(resolver, final, BAK_NAME),
@@ -75,10 +79,20 @@ class ManifestAtomicProbe(private val context: Context) {
                         }
                     }
                 }
-            }.onFailure {
+                check(
+                    preferences.edit()
+                        .putString(PENDING_PHASE, S04PendingPhase.READY.name)
+                        .commit(),
+                )
+            } catch (caught: Exception) {
+                val failedRoot = root
+                val cleaned = failedRoot == null || runCatching {
+                    DocumentsContract.deleteDocument(resolver, failedRoot)
+                }.getOrDefault(false)
+                if (cleaned) clearPending()
                 return@withContext S04ActionResult(
-                    "PREPARE_FAILED_${it.javaClass.simpleName}",
-                    result(it.javaClass.simpleName),
+                    "PREPARE_FAILED_${caught.javaClass.simpleName}",
+                    result(caught.javaClass.simpleName),
                 )
             }
             S04ActionResult(
@@ -93,6 +107,12 @@ class ManifestAtomicProbe(private val context: Context) {
         if (pending.processSession == S04ProcessSession.id) {
             return@withContext S04ActionResult("PROCESS_RESTART_REQUIRED", result())
         }
+        if (pending.phase == S04PendingPhase.PREPARING) {
+            return@withContext cleanupIncompletePreparation(pending)
+        }
+        if (pending.phase == S04PendingPhase.OBSERVED) {
+            return@withContext resumeObservedCleanup(pending)
+        }
         val parent = documentUri(pending.tree)
         val root = findChild(parent, "$ROOT_PREFIX${pending.token}")
             ?: return@withContext failPending(pending, "PROBE_ROOT_MISSING")
@@ -105,25 +125,21 @@ class ManifestAtomicProbe(private val context: Context) {
         candidate(root, TMP_NAME, RecoveryCandidate.TMP)?.let(parseable::add)
         candidate(root, BAK_NAME, RecoveryCandidate.BAK)?.let(parseable::add)
         val overwrite = overwriteProbe(root)
-        val cleanup = runCatching {
-            DocumentsContract.deleteDocument(resolver, root)
-        }.getOrDefault(false)
         val observation = StageObservation(
             pending.stage,
             processRestartObserved = true,
             parseableCandidateCount = parseable.size,
             recoveryCandidate = RecoverySelector.choose(parseable),
-            cleanupSucceeded = cleanup,
+            cleanupSucceeded = false,
         )
-        preferences.edit()
-            .putString(observationKey(pending.stage), encode(observation))
-            .putString(OVERWRITE, overwrite)
-            .remove(PENDING_TREE)
-            .remove(PENDING_STAGE)
-            .remove(PENDING_TOKEN)
-            .remove(PENDING_SESSION)
-            .apply()
-        S04ActionResult("OBSERVED_${pending.stage.name}", result())
+        check(
+            preferences.edit()
+                .putString(observationKey(pending.stage), encode(observation))
+                .putString(OVERWRITE, overwrite)
+                .putString(PENDING_PHASE, S04PendingPhase.OBSERVED.name)
+                .commit(),
+        )
+        completeObservedCleanup(pending, root, observation)
     }
 
     fun result(exceptionClass: String? = null): S04ProbeResult {
@@ -136,7 +152,81 @@ class ManifestAtomicProbe(private val context: Context) {
             observations,
             preferences.getString(OVERWRITE, "NOT_RUN") ?: "NOT_RUN",
             exceptionClass,
+            preferences.contains(PENDING_TOKEN),
         )
+    }
+
+    private fun cleanupIncompletePreparation(pending: PendingStage): S04ActionResult {
+        val parent = documentUri(pending.tree)
+        val root = findChild(parent, "$ROOT_PREFIX${pending.token}")
+        if (root == null) {
+            clearPending()
+            return S04ActionResult("INCOMPLETE_PREPARATION_DISCARDED", result())
+        }
+        if (!isOwnedRoot(root, pending.token)) {
+            return S04ActionResult(
+                "INCOMPLETE_PREPARATION_NOT_ADOPTABLE",
+                result("NOT_ADOPTABLE"),
+            )
+        }
+        val cleaned = runCatching {
+            DocumentsContract.deleteDocument(resolver, root)
+        }.getOrDefault(false)
+        if (cleaned) clearPending()
+        return S04ActionResult(
+            if (cleaned) "INCOMPLETE_PREPARATION_CLEANED" else "CLEANUP_RETRY_REQUIRED",
+            result(),
+        )
+    }
+
+    private fun resumeObservedCleanup(pending: PendingStage): S04ActionResult {
+        val observation = preferences.getString(observationKey(pending.stage), null)
+            ?.let { decode(pending.stage, it) }
+            ?: return failPending(pending, "OBSERVATION_MISSING")
+        val parent = documentUri(pending.tree)
+        val root = findChild(parent, "$ROOT_PREFIX${pending.token}")
+        if (root == null) {
+            return finalizeCleanup(pending, observation)
+        }
+        if (!isOwnedRoot(root, pending.token)) {
+            return failPending(pending, "NOT_ADOPTABLE")
+        }
+        return completeObservedCleanup(pending, root, observation)
+    }
+
+    private fun completeObservedCleanup(
+        pending: PendingStage,
+        root: Uri,
+        observation: StageObservation,
+    ): S04ActionResult {
+        val cleaned = runCatching {
+            DocumentsContract.deleteDocument(resolver, root)
+        }.getOrDefault(false)
+        return if (cleaned) {
+            finalizeCleanup(pending, observation)
+        } else {
+            S04ActionResult("CLEANUP_RETRY_REQUIRED", result())
+        }
+    }
+
+    private fun finalizeCleanup(
+        pending: PendingStage,
+        observation: StageObservation,
+    ): S04ActionResult {
+        check(
+            preferences.edit()
+                .putString(
+                    observationKey(pending.stage),
+                    encode(observation.copy(cleanupSucceeded = true)),
+                )
+                .remove(PENDING_TREE)
+                .remove(PENDING_STAGE)
+                .remove(PENDING_TOKEN)
+                .remove(PENDING_SESSION)
+                .remove(PENDING_PHASE)
+                .commit(),
+        )
+        return S04ActionResult("OBSERVED_${pending.stage.name}", result())
     }
 
     private fun failPending(pending: PendingStage, reason: String): S04ActionResult {
@@ -153,7 +243,8 @@ class ManifestAtomicProbe(private val context: Context) {
             .remove(PENDING_STAGE)
             .remove(PENDING_TOKEN)
             .remove(PENDING_SESSION)
-            .apply()
+            .remove(PENDING_PHASE)
+            .commit()
         return S04ActionResult(reason, result(reason))
     }
 
@@ -165,8 +256,19 @@ class ManifestAtomicProbe(private val context: Context) {
             ),
             requireNotNull(preferences.getString(PENDING_TOKEN, null)),
             requireNotNull(preferences.getString(PENDING_SESSION, null)),
+            preferences.getString(PENDING_PHASE, null)
+                ?.let(S04PendingPhase::valueOf)
+                ?: S04PendingPhase.READY,
         )
     }.getOrNull()
+
+    private fun clearPending(): Boolean = preferences.edit()
+        .remove(PENDING_TREE)
+        .remove(PENDING_STAGE)
+        .remove(PENDING_TOKEN)
+        .remove(PENDING_SESSION)
+        .remove(PENDING_PHASE)
+        .commit()
 
     private fun isOwnedRoot(root: Uri, token: String): Boolean {
         if (displayName(root) != "$ROOT_PREFIX$token") return false
@@ -308,6 +410,7 @@ class ManifestAtomicProbe(private val context: Context) {
         val stage: AtomicInterruption,
         val token: String,
         val processSession: String,
+        val phase: S04PendingPhase,
     )
 
     private companion object {
@@ -320,6 +423,7 @@ class ManifestAtomicProbe(private val context: Context) {
         const val PENDING_STAGE = "pendingStage"
         const val PENDING_TOKEN = "pendingToken"
         const val PENDING_SESSION = "pendingSession"
+        const val PENDING_PHASE = "pendingPhase"
         const val OVERWRITE = "overwrite"
     }
 }

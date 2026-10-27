@@ -24,6 +24,14 @@ class S04ProbeModelTest {
             S04SingleDeviceOutcome.PENDING,
             S04ProbeResult(observations - AtomicInterruption.AFTER_RENAME, "AUTO_RENAMED").outcome,
         )
+        assertEquals(
+            S04SingleDeviceOutcome.PENDING,
+            S04ProbeResult(
+                observations,
+                "AUTO_RENAMED",
+                pendingStagePresent = true,
+            ).outcome,
+        )
     }
 
     @Test
@@ -80,5 +88,25 @@ class S04ProbeModelTest {
             RecoverySelector.choose(setOf(RecoveryCandidate.BAK)),
         )
         assertEquals(RecoveryCandidate.NONE, RecoverySelector.choose(emptySet()))
+    }
+
+    @Test
+    fun `only closed provider overwrite outcomes can pass`() {
+        val complete = AtomicInterruption.entries.associateWith {
+            StageObservation(
+                it,
+                processRestartObserved = true,
+                parseableCandidateCount = 1,
+                recoveryCandidate = RecoveryCandidate.FINAL,
+                cleanupSucceeded = true,
+            )
+        }
+
+        listOf("RETURNED_NULL", "UNKNOWN", "ERROR_IllegalStateException").forEach {
+            assertEquals(
+                S04SingleDeviceOutcome.FAIL,
+                S04ProbeResult(complete, it).outcome,
+            )
+        }
     }
 }

@@ -9,6 +9,8 @@ enum class AtomicInterruption {
 
 enum class RecoveryCandidate { FINAL, TMP, BAK, NONE }
 
+enum class S04PendingPhase { PREPARING, READY, OBSERVED }
+
 enum class S04SingleDeviceOutcome { PASS, PENDING, FAIL }
 
 data class StageObservation(
@@ -32,12 +34,16 @@ data class S04ProbeResult(
     val observations: Map<AtomicInterruption, StageObservation>,
     val providerOverwriteBehavior: String,
     val exceptionClass: String? = null,
+    val pendingStagePresent: Boolean = false,
 ) {
     val outcome: S04SingleDeviceOutcome
         get() {
             if (
                 exceptionClass != null ||
-                providerOverwriteBehavior.startsWith("ERROR_") ||
+                (
+                    providerOverwriteBehavior != "NOT_RUN" &&
+                        providerOverwriteBehavior !in ACCEPTED_OVERWRITE_BEHAVIORS
+                    ) ||
                 observations.values.any {
                     !it.processRestartObserved ||
                         it.parseableCandidateCount < 1 ||
@@ -47,6 +53,7 @@ data class S04ProbeResult(
             ) {
                 return S04SingleDeviceOutcome.FAIL
             }
+            if (pendingStagePresent) return S04SingleDeviceOutcome.PENDING
             return if (
                 observations.keys == AtomicInterruption.entries.toSet() &&
                 providerOverwriteBehavior != "NOT_RUN"
@@ -68,6 +75,15 @@ data class S04ProbeResult(
         return """{"stageObservations":$stages,"providerOverwriteBehavior":""" +
             """"$providerOverwriteBehavior","exceptionClass":""" +
             (exceptionClass?.let { "\"$it\"" } ?: "null") +
+            ""","pendingStagePresent":$pendingStagePresent""" +
             ""","decisionS04SingleDevice":"$outcome"}"""
+    }
+
+    private companion object {
+        val ACCEPTED_OVERWRITE_BEHAVIORS = setOf(
+            "OVERWROTE_EXISTING",
+            "DUPLICATE_EXACT",
+            "AUTO_RENAMED",
+        )
     }
 }
