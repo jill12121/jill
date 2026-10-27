@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -56,6 +57,14 @@ class S02ProbeViewModel : ViewModel() {
 
     fun updateRun(updated: S02ProbeRun) {
         run = updated
+    }
+
+    fun completeCleanup(probe: MediaStoreProbe, granted: Boolean) {
+        val pending = run ?: return
+        viewModelScope.launch {
+            val completed = probe.completeCleanup(pending, granted)
+            run = pending.copy(result = completed, cleanupAuthorization = null)
+        }
     }
 }
 
@@ -335,7 +344,7 @@ class MediaStoreProbe(private val context: Context) {
 class S02ProbeActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val probe = MediaStoreProbe(this)
+        val probe = MediaStoreProbe(applicationContext)
         val probeState = ViewModelProvider(this)[S02ProbeViewModel::class.java]
         setContent {
             var running by remember { mutableStateOf(false) }
@@ -343,18 +352,12 @@ class S02ProbeActivity : ComponentActivity() {
             val cleanupLauncher = rememberLauncherForActivityResult(
                 ActivityResultContracts.StartIntentSenderForResult(),
             ) { response ->
-                val pending = probeState.run ?: return@rememberLauncherForActivityResult
-                scope.launch {
-                    running = true
-                    val completed = probe.completeCleanup(
-                        pending,
-                        response.resultCode == Activity.RESULT_OK,
-                    )
-                    probeState.updateRun(
-                        pending.copy(result = completed, cleanupAuthorization = null),
-                    )
-                    running = false
-                }
+                running = true
+                probeState.completeCleanup(
+                    probe,
+                    response.resultCode == Activity.RESULT_OK,
+                )
+                running = false
             }
 
             fun execute(requestAttempted: Boolean) {

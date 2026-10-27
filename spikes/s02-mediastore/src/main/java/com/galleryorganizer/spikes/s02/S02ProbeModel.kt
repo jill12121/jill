@@ -93,8 +93,8 @@ data class PageEvidence(
     val lastId: Long,
     val pageMillis: Long,
     val duplicateCount: Int,
-    val strictlyIncreasing: Boolean = true,
-    val queryArgsHonored: Boolean = true,
+    val strictlyIncreasing: Boolean = false,
+    val queryArgsHonored: Boolean = false,
 )
 
 object PaginationEvidenceValidator {

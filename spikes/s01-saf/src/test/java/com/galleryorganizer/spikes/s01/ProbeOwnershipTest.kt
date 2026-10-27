@@ -115,6 +115,22 @@ class ProbeOwnershipTest {
     }
 
     @Test
+    fun `cleanup ledger attempts every item after one deletion fails`() {
+        val ledger = CleanupLedger<String>()
+        ledger.register("first")
+        ledger.register("second")
+        val attempted = mutableListOf<String>()
+
+        val succeeded = ledger.cleanup {
+            attempted += it
+            it != "second"
+        }
+
+        assertEquals(listOf("second", "first"), attempted)
+        assertEquals(false, succeeded)
+    }
+
+    @Test
     fun `adoption delete candidate never reuses ownership sample`() {
         assertNotEquals(ownership.sampleName, ownership.adoptionDeleteName)
     }

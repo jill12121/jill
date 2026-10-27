@@ -108,6 +108,11 @@ class S02ProbeModelTest {
         }
         assertFalse(
             PaginationEvidenceValidator.isValid(
+                listOf(PageEvidence(0, 1, 1, 1, 1, 0)),
+            ),
+        )
+        assertFalse(
+            PaginationEvidenceValidator.isValid(
                 listOf(PageEvidence(0, 501, 1, 501, 10, 0)),
             ),
         )

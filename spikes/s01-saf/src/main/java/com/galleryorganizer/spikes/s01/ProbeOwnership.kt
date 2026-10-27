@@ -86,4 +86,10 @@ class CleanupLedger<T> {
     fun register(value: T): T = value.also(created::add)
 
     fun cleanupOrder(): List<T> = created.asReversed().distinct()
+
+    fun cleanup(delete: (T) -> Boolean): Boolean {
+        var succeeded = true
+        cleanupOrder().forEach { succeeded = delete(it) && succeeded }
+        return succeeded
+    }
 }

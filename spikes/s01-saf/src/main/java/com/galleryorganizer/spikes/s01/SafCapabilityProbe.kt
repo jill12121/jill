@@ -71,10 +71,10 @@ class SafCapabilityProbe(private val context: Context) {
         } catch (caught: Exception) {
             failure = caught
         } finally {
-            created.cleanupOrder().forEach {
+            cleanup = created.cleanup {
                 val deleted = runCatching { DocumentsContract.deleteDocument(resolver, it) }
                     .getOrDefault(false)
-                cleanup = (deleted || runCatching { metadata(it); false }.getOrDefault(true)) && cleanup
+                deleted || runCatching { metadata(it); false }.getOrDefault(true)
             }
         }
 
@@ -116,7 +116,7 @@ class SafCapabilityProbe(private val context: Context) {
             write(uri, bytes)
             check(read(uri).contentEquals(bytes))
         }.isSuccess
-        val cleanupSucceeded = created.cleanupOrder().all {
+        val cleanupSucceeded = created.cleanup {
             runCatching { DocumentsContract.deleteDocument(resolver, it) }.getOrDefault(false)
         }
         operationSucceeded && cleanupSucceeded
@@ -184,21 +184,29 @@ class SafCapabilityProbe(private val context: Context) {
             write(sample, ownedRoot.ownership.sampleBytes)
             read(sample).contentEquals(ownedRoot.ownership.sampleBytes)
         }.getOrDefault(false)
-        val orphanDelete = orphanWrite && runCatching {
+        val created = CleanupLedger<Uri>()
+        val deleteOperationSucceeded = orphanWrite && runCatching {
             findChild(ownedRoot.uri, ownedRoot.ownership.adoptionDeleteName)?.let {
                 check(DocumentsContract.deleteDocument(resolver, it))
             }
-            val candidate = requireNotNull(
+            val candidate = created.register(requireNotNull(
                 create(
                     ownedRoot.uri,
                     "application/octet-stream",
                     ownedRoot.ownership.adoptionDeleteName,
                 ),
-            )
+            ))
             write(candidate, ownedRoot.ownership.sampleBytes)
             check(read(candidate).contentEquals(ownedRoot.ownership.sampleBytes))
-            DocumentsContract.deleteDocument(resolver, candidate)
-        }.getOrDefault(false)
+            check(DocumentsContract.deleteDocument(resolver, candidate))
+        }.isSuccess
+        val cleanupSucceeded = created.cleanup {
+            runCatching {
+                DocumentsContract.deleteDocument(resolver, it) ||
+                    runCatching { metadata(it); false }.getOrDefault(true)
+            }.getOrDefault(false)
+        }
+        val orphanDelete = deleteOperationSucceeded && cleanupSucceeded
         val classification = when {
             orphanRead && orphanWrite && orphanDelete -> "READ_WRITE_DELETE"
             orphanRead -> "READ_ONLY_ORPHAN"
