@@ -3,8 +3,8 @@
 ## Current Task
 
 - ID: S01/S02/S04
-- Sub-step: Independent spike review and REQUIRED physical-device matrix
-- State: REVIEW_PENDING (device evidence PENDING; matrix owner UNASSIGNED)
+- Sub-step: REQUIRED physical-device matrix
+- State: DEVICE_PENDING (independent review complete; matrix owner UNASSIGNED)
 
 ## Completed
 
@@ -59,6 +59,14 @@
   overwrite fixtures are marker-owned and idempotently cleaned. Commits
   `103b64d` and `23cad83` passed Remote Verify `40488714646` and
   `40491590364`. All 13 S04 unit tests are green.
+- S01.4/S02.4/S04.3 independent review found five P1 correctness gaps in
+  initialization rollback, cleanup confirmation, stale completion handling,
+  overwrite evidence accumulation, and recovery read failures. Commit
+  `ad470f5` closes those gaps and related fail-closed cases. Current unit-test
+  counts are S01 19, S02 9, and S04 16.
+- Spike release isolation commit `80e5a11` blocks direct and transitive
+  production-module dependencies on `:spikes:*`, enforces distinct probe/helper
+  application IDs, and rejects shared UIDs. Remote Verify `40630087003` passed.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
@@ -73,19 +81,19 @@
 
 ## Next Exact Action
 
-- Independently review S01.4/S02.4/S04.3 runbooks and APKs, then assign and
-  schedule the REQUIRED physical-device matrix.
+- Assign and schedule the REQUIRED physical-device matrix, then execute the
+  reviewed S01.4/S02.4/S04.3 runbooks on every required device.
 
 ## Active Gates
 
 - F06: COMPLETE; golden manifest fixtures and the progressive pure-domain E2E
   are delivered. Storage executors stay outside F06 and remain gated.
-- S01: REVIEW_PENDING; S01.4 ownership and cleanup hardening is CI-green; do
-  not install until reviewed.
-- S02: REVIEW_PENDING; S02.4 external-helper ownership and strict provenance
-  validation are CI-green; independent review and device result are PENDING.
-- S04: REVIEW_PENDING; S04.3 durable recovery, overwrite, and provenance
-  hardening is CI-green; device result is PENDING.
+- S01: DEVICE_PENDING; independent review is complete and CI-green. Required
+  device rows remain PENDING.
+- S02: DEVICE_PENDING; external-helper ownership, strict provenance, and
+  release isolation are independently reviewed and CI-green.
+- S04: DEVICE_PENDING; durable recovery, overwrite, and provenance hardening
+  are independently reviewed and CI-green.
 - J1/J2/J3 and production storage execution remain BLOCKED until required
   device decisions are recorded.
 
