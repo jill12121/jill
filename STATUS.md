@@ -3,8 +3,8 @@
 ## Current Task
 
 - ID: S01/S02/S04 and S05
-- Sub-step: REQUIRED physical-device matrix; S05.2b Android benchmark adapter
-- State: DEVICE_PENDING; S05.2a COMPLETE
+- Sub-step: REQUIRED physical-device matrix; S05.2c measured benchmark run
+- State: DEVICE_PENDING; S05.2b HARNESS_COMPLETE
 
 ## Completed
 
@@ -75,6 +75,12 @@
   millisecond metrics, sticky OOM, and post-completion mutation rejection were
   committed as `662a0fa`; Remote Verify `40638974591` passed. All 10 S05 tests
   are green. No Android fetcher or production cache is implemented.
+- S05.2b: isolated `com.galleryorganizer.spikes.s05.harness` APK generates
+  deterministic app-private PNG fixtures, automatically scrolls a bounded
+  grid, records fetch/frame/heap/OOM metrics through S05.2a, and writes bounded
+  provenance plus results under its own `filesDir`. Commit `4e06c44` passed
+  Remote Verify `40646181752`; debug/release harness tests are green and the
+  permission-free debug APK passed v2 signature verification.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
@@ -91,8 +97,9 @@
 
 - Assign and schedule the REQUIRED physical-device matrix, then execute the
   reviewed S01.4/S02.4/S04.3 runbooks on every required device.
-- In parallel, implement S05.2b as an isolated Android app-private fixture and
-  fetch/scroll adapter that feeds S05.2a without entering the release app.
+- Install and execute the S05.2b harness on the required physical-device
+  matrix, collect `s05-results/latest.json`, and review budgets/fallbacks
+  without wiring the harness into the release app.
 
 ## Active Gates
 
@@ -104,9 +111,10 @@
   release isolation are independently reviewed and CI-green.
 - S04: DEVICE_PENDING; durable recovery, overwrite, and provenance hardening
   are independently reviewed and CI-green.
-- S05: MEASUREMENT_CORE_COMPLETE / ANDROID_HARNESS_PENDING; S05.1/S05.2a are
-  pure and CI-green, but no measured fetch/scroll evidence exists and I04
-  remains blocked.
+- S05: ANDROID_HARNESS_COMPLETE / DEVICE_EVIDENCE_PENDING; S05.1/S05.2a remain
+  pure and CI-green, and S05.2b is isolated from production. No physical-device
+  fetch/scroll evidence exists, so final budgets are not frozen and I04 remains
+  blocked.
 - J1/J2/J3 and production storage execution remain BLOCKED until required
   device decisions are recorded.
 
@@ -155,7 +163,7 @@
 
 - S01/S02/S04 physical-device results are PENDING; emulator and desktop
   results cannot satisfy the REQUIRED matrix.
-- S05 has no Android harness or measured fetch/scroll result; its current
-  budget values are classifier inputs rather than frozen production limits.
+- S05 has an isolated Android harness but no measured physical-device result;
+  its current budget values remain provisional classifier inputs.
 - J1/J2/J3 and all production workspace/Manifest/cleanup execution are blocked
   by those device decisions.

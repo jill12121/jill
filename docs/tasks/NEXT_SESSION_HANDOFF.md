@@ -40,6 +40,8 @@ Do not infer device GO from CI or desktop tests.
   fallback contract; Remote Verify `40633881235` passed.
 - S05.2a `662a0fa`: thread-safe frame/fetch/OOM recorder and nearest-rank P95
   aggregation; Remote Verify `40638974591` passed.
+- S05.2b `4e06c44`: isolated permission-free Android app-private fixture and
+  fetch/scroll harness; Remote Verify `40646181752` passed.
 - F06 manifest pipeline `4fb0649` -> `2c99d22` -> `bb070e2` -> `5a3abff` ->
   `881f023`: strict JSON parser, manifest codec, golden fixtures, filesystem
   verifier, and manifest factory plus progressive pure-domain E2E; latest
@@ -54,9 +56,10 @@ still required before any aggregate device decision.
 - F06: `COMPLETE` within its pure-domain scope; golden manifest fixtures and
   the progressive pure-domain E2E are delivered (35 domain tests green).
 - S01/S02/S04: `DEVICE_PENDING`; independent review is complete.
-- Spike unit tests: S01 19, S02 9, S04 16, S05 10; all green.
-- S05.1/S05.2a: `COMPLETE`; S05.2b Android fetch/scroll adapter and measured
-  evidence are PENDING. I04 remains blocked.
+- Spike unit tests: S01 19, S02 9, S04 16, S05 core 10, S05 harness 3 per
+  build variant; all green.
+- S05.1/S05.2a/S05.2b: `COMPLETE`; physical-device fetch/scroll evidence is
+  PENDING. I04 remains blocked.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action
@@ -65,9 +68,9 @@ still required before any aggregate device decision.
    OEM family A, and OEM family B.
 2. Execute the reviewed physical-device matrix.
 3. Record per-device JSON and GO/LIMITED_GO/NO_GO inputs.
-4. In parallel, implement isolated S05.2b Android app-private fixture and
-   fetch/scroll adapter; do not wire it into production or claim final budgets
-   without evidence.
+4. Install and execute the isolated S05.2b harness on the device matrix,
+   collect `s05-results/latest.json`, and review budgets/fallbacks without
+   wiring it into production.
 
 ## Hard Boundaries
 
@@ -76,7 +79,7 @@ still required before any aggregate device decision.
 - No Room schema change.
 - No J1/J2/J3 before required device decisions and ADRs.
 - F06 additions must remain pure Kotlin/domain and fixture driven.
-- S05.1 does not authorize I04, production ThumbnailSource, cache persistence,
+- S05.2b does not authorize I04, production ThumbnailSource, cache persistence,
   external media access, or Paging integration.
 
 ## Verification Environment
