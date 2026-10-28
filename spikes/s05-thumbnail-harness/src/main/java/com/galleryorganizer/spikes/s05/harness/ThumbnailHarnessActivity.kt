@@ -18,7 +18,6 @@ import android.widget.TextView
 import com.galleryorganizer.spikes.s05.ThumbnailBenchmarkBudget
 import com.galleryorganizer.spikes.s05.ThumbnailBenchmarkClassifier
 import com.galleryorganizer.spikes.s05.ThumbnailBenchmarkRecorder
-import org.json.JSONObject
 import java.io.File
 import kotlin.concurrent.thread
 
@@ -105,23 +104,19 @@ class ThumbnailHarnessActivity : Activity() {
             metrics,
             ThumbnailBenchmarkBudget(300, 96, 256L * 1024 * 1024, 24, 20, 0),
         )
-        val json = JSONObject()
-            .put("schema", 1)
-            .put("storage", provenance.storage)
-            .put("fixtureCount", provenance.count)
-            .put("fixtureEdgePx", provenance.edgePx)
-            .put("fixtureSeed", provenance.seed)
-            .put("fixtureBytes", provenance.totalBytes)
-            .put("fixtureSha256", provenance.sha256)
-            .put("frameSamples", metrics.frameSampleCount)
-            .put("fetchSamples", metrics.fetchSampleCount)
-            .put("failedFetches", metrics.failedFetchCount)
-            .put("peakHeapBytes", metrics.peakHeapBytes)
-            .put("frameP95Millis", metrics.frameP95Millis)
-            .put("fetchP95Millis", metrics.fetchP95Millis)
-            .put("oomObserved", metrics.oomObserved)
-            .put("decision", result.decision.name)
-            .put("violations", result.violations.joinToString(","))
+        val json = BenchmarkEvidence(
+            device = readDeviceProvenance(),
+            fixture = provenance,
+            frameSamples = metrics.frameSampleCount,
+            fetchSamples = metrics.fetchSampleCount,
+            failedFetches = metrics.failedFetchCount,
+            peakHeapBytes = metrics.peakHeapBytes,
+            frameP95Millis = metrics.frameP95Millis,
+            fetchP95Millis = metrics.fetchP95Millis,
+            oomObserved = metrics.oomObserved,
+            decision = result.decision.name,
+            violations = result.violations.map { it.name },
+        ).toJson()
         val output = File(filesDir, "s05-results/latest.json")
         val writeFailure = runCatching {
             check(output.parentFile?.mkdirs() == true || output.parentFile?.isDirectory == true)
@@ -129,6 +124,8 @@ class ThumbnailHarnessActivity : Activity() {
         }.exceptionOrNull()
         status.text = "${result.decision}: ${metrics.frameSampleCount} frames, " +
             "${metrics.fetchSampleCount} fetches\n" +
+            "${json.optString("deviceManufacturer")} ${json.optString("deviceModel")} " +
+            "API ${json.optInt("deviceApiLevel")}\n" +
             (writeFailure?.let { "Result write failed: ${it.javaClass.simpleName}" }
                 ?: output.absolutePath)
     }

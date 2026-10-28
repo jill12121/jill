@@ -84,4 +84,59 @@ class ThumbnailHarnessCoreTest {
         assertEquals(2, metrics.frameSampleCount)
         assertEquals(64, metrics.peakHeapBytes)
     }
+
+    @Test
+    fun `evidence json binds device provenance and never leaks raw fingerprint`() {
+        val rawFingerprint = "brand/model/device:14/UQ1A/1234567:user/release-keys"
+        val store = AppPrivateFixtureStore(context)
+        val fixture = store.prepare(FixtureSpec(count = 2, edgePx = 32, seed = 3))
+        val device = deviceProvenance(
+            manufacturer = "iQOO",
+            model = "V2304A",
+            apiLevel = 34,
+            release = "14",
+            securityPatch = "2024-06-01",
+            buildFingerprint = rawFingerprint,
+        )
+
+        val json = BenchmarkEvidence(
+            device = device,
+            fixture = fixture,
+            frameSamples = 360,
+            fetchSamples = 637,
+            failedFetches = 0,
+            peakHeapBytes = 4096L,
+            frameP95Millis = 16L,
+            fetchP95Millis = 6L,
+            oomObserved = false,
+            decision = "PASS",
+            violations = emptyList(),
+        ).toJson()
+        val text = json.toString()
+
+        assertEquals(S05_HARNESS_SCHEMA, json.getInt("schema"))
+        assertEquals("iQOO", json.getString("deviceManufacturer"))
+        assertEquals("V2304A", json.getString("deviceModel"))
+        assertEquals(34, json.getInt("deviceApiLevel"))
+        assertEquals("14", json.getString("deviceRelease"))
+        assertEquals("2024-06-01", json.getString("deviceSecurityPatch"))
+        assertEquals(sha256Hex(rawFingerprint), json.getString("deviceFingerprintSha256"))
+        assertEquals(64, json.getString("deviceFingerprintSha256").length)
+        assertEquals(360, json.getInt("frameSamples"))
+        assertEquals("PASS", json.getString("decision"))
+        assertFalse(text.contains(rawFingerprint))
+        assertFalse(text.contains("release-keys"))
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `device provenance rejects a fingerprint hash that is not sha256 hex`() {
+        DeviceProvenance(
+            manufacturer = "iQOO",
+            model = "V2304A",
+            apiLevel = 34,
+            release = "14",
+            securityPatch = "2024-06-01",
+            fingerprintSha256 = "raw-fingerprint",
+        )
+    }
 }

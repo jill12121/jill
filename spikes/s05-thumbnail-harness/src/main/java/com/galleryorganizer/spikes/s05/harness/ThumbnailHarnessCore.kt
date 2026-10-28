@@ -4,7 +4,9 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
+import android.os.Build
 import com.galleryorganizer.spikes.s05.ThumbnailBenchmarkRecorder
+import org.json.JSONObject
 import java.io.File
 import java.security.MessageDigest
 
@@ -27,6 +29,98 @@ data class FixtureProvenance(
     val totalBytes: Long,
     val sha256: String,
 )
+
+const val S05_HARNESS_SCHEMA = 2
+
+data class DeviceProvenance(
+    val manufacturer: String,
+    val model: String,
+    val apiLevel: Int,
+    val release: String,
+    val securityPatch: String,
+    val fingerprintSha256: String,
+) {
+    init {
+        require(manufacturer.isNotBlank())
+        require(model.isNotBlank())
+        require(apiLevel > 0)
+        require(release.isNotBlank())
+        require(securityPatch.isNotBlank())
+        require(fingerprintSha256.matches(FINGERPRINT_HASH))
+    }
+
+    private companion object {
+        val FINGERPRINT_HASH = Regex("[0-9a-f]{64}")
+    }
+}
+
+fun sha256Hex(value: String): String =
+    MessageDigest.getInstance("SHA-256")
+        .digest(value.toByteArray(Charsets.UTF_8))
+        .joinToString("") { "%02x".format(it) }
+
+fun deviceProvenance(
+    manufacturer: String,
+    model: String,
+    apiLevel: Int,
+    release: String,
+    securityPatch: String,
+    buildFingerprint: String,
+): DeviceProvenance = DeviceProvenance(
+    manufacturer = manufacturer,
+    model = model,
+    apiLevel = apiLevel,
+    release = release,
+    securityPatch = securityPatch,
+    fingerprintSha256 = sha256Hex(buildFingerprint),
+)
+
+fun readDeviceProvenance(): DeviceProvenance = deviceProvenance(
+    manufacturer = Build.MANUFACTURER.orEmpty().ifBlank { "unknown" },
+    model = Build.MODEL.orEmpty().ifBlank { "unknown" },
+    apiLevel = Build.VERSION.SDK_INT,
+    release = Build.VERSION.RELEASE.orEmpty().ifBlank { "unknown" },
+    securityPatch = Build.VERSION.SECURITY_PATCH.orEmpty().ifBlank { "unknown" },
+    buildFingerprint = Build.FINGERPRINT.orEmpty(),
+)
+
+data class BenchmarkEvidence(
+    val device: DeviceProvenance,
+    val fixture: FixtureProvenance,
+    val frameSamples: Int,
+    val fetchSamples: Int,
+    val failedFetches: Int,
+    val peakHeapBytes: Long,
+    val frameP95Millis: Long,
+    val fetchP95Millis: Long,
+    val oomObserved: Boolean,
+    val decision: String,
+    val violations: List<String>,
+) {
+    fun toJson(): JSONObject = JSONObject()
+        .put("schema", S05_HARNESS_SCHEMA)
+        .put("deviceManufacturer", device.manufacturer)
+        .put("deviceModel", device.model)
+        .put("deviceApiLevel", device.apiLevel)
+        .put("deviceRelease", device.release)
+        .put("deviceSecurityPatch", device.securityPatch)
+        .put("deviceFingerprintSha256", device.fingerprintSha256)
+        .put("storage", fixture.storage)
+        .put("fixtureCount", fixture.count)
+        .put("fixtureEdgePx", fixture.edgePx)
+        .put("fixtureSeed", fixture.seed)
+        .put("fixtureBytes", fixture.totalBytes)
+        .put("fixtureSha256", fixture.sha256)
+        .put("frameSamples", frameSamples)
+        .put("fetchSamples", fetchSamples)
+        .put("failedFetches", failedFetches)
+        .put("peakHeapBytes", peakHeapBytes)
+        .put("frameP95Millis", frameP95Millis)
+        .put("fetchP95Millis", fetchP95Millis)
+        .put("oomObserved", oomObserved)
+        .put("decision", decision)
+        .put("violations", violations.joinToString(","))
+}
 
 class AppPrivateFixtureStore(context: Context) {
     private val root = File(context.filesDir, FIXTURE_DIRECTORY)
