@@ -37,14 +37,28 @@
 - S02.3: pending cleanup authorization now survives Activity recreation, and
   exported evidence binds schema/probe/run/app/device provenance while exposing
   only a SHA-256 build fingerprint hash; committed as `14e6e9e`; Remote Verify
-  `40471142170` passed. All 6 S02 unit tests are green.
+  `40471142170` passed. At that baseline, all 6 S02 unit tests were green.
+- S01/S02 lifecycle hardening: cleanup attempts all tracked S01 entries,
+  adoption delete candidates are failure-safe, S02 completion stays in the
+  retained ViewModel, and pagination evidence defaults fail closed; commit
+  `2ed4e7f` passed Remote Verify `40482946612`.
+- S02.4: independent helper APK `com.galleryorganizer.spikes.s02.fixturehelper`
+  creates the random-token fixture under a distinct UID. S02 validates owner,
+  path, MIME, name, token, and bounded payload before delete authorization;
+  commit `a9ef42a` passed Remote Verify `40623103758`. All 8 S02 unit tests
+  are green.
 - S04.2: durable `PREPARING` -> `READY` -> `OBSERVED` phases make observation
   and cleanup crash-resumable; committed as `31f24dd`; Remote Verify
   `40472524359` passed.
 - S04.3: overwrite behavior is classified by exact names and parsed
   generations, and every stage is bound to one run, tree hash, app, and device
   provenance; committed as `15abf47`; Remote Verify `40475288809` passed. All
-  7 S04 unit tests are green.
+  7 S04 unit tests were green at that baseline.
+- S04 recovery and overwrite hardening: incompatible pending records, query
+  uncertainty, ambiguous roots, and unconfirmed deletion now fail closed;
+  overwrite fixtures are marker-owned and idempotently cleaned. Commits
+  `103b64d` and `23cad83` passed Remote Verify `40488714646` and
+  `40491590364`. All 13 S04 unit tests are green.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
@@ -59,9 +73,8 @@
 
 ## Next Exact Action
 
-- Independently review S01.4/S02.3/S04.3, define and review the S02
-  external-helper-owned fixture path, then assign and schedule the REQUIRED
-  physical-device matrix.
+- Independently review S01.4/S02.4/S04.3 runbooks and APKs, then assign and
+  schedule the REQUIRED physical-device matrix.
 
 ## Active Gates
 
@@ -69,9 +82,8 @@
   are delivered. Storage executors stay outside F06 and remain gated.
 - S01: REVIEW_PENDING; S01.4 ownership and cleanup hardening is CI-green; do
   not install until reviewed.
-- S02: REVIEW_PENDING; S02.3 pagination, cleanup, lifecycle, and provenance
-  hardening is CI-green; its conclusive external-helper fixture path and device
-  result are PENDING.
+- S02: REVIEW_PENDING; S02.4 external-helper ownership and strict provenance
+  validation are CI-green; independent review and device result are PENDING.
 - S04: REVIEW_PENDING; S04.3 durable recovery, overwrite, and provenance
   hardening is CI-green; device result is PENDING.
 - J1/J2/J3 and production storage execution remain BLOCKED until required

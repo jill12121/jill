@@ -23,10 +23,17 @@ Do not infer device GO from CI or desktop tests.
   `40469408370`.
 - S02.3 `14e6e9e`: pending cleanup survives Activity recreation and evidence is
   bound to schema/probe/run/app/device provenance; Remote Verify `40471142170`.
+- S01/S02 hardening `2ed4e7f`: failure-safe cleanup, retained completion, and
+  fail-closed pagination defaults; Remote Verify `40482946612`.
 - S04.2 `31f24dd`: durable PREPARING/READY/OBSERVED phases and resumable
   post-observation cleanup; Remote Verify `40472524359`.
 - S04.3 `15abf47`: content-based overwrite classification and run/root/device
   provenance binding; Remote Verify `40475288809`.
+- S04 recovery `103b64d` and overwrite retry-safety `23cad83`: ambiguous,
+  incompatible, or uncertain state requires retry and owned fixtures are
+  idempotent; Remote Verify `40488714646` and `40491590364`.
+- S02.4 `a9ef42a`: separate-UID fixture helper and strict owner/path/MIME/name/
+  token/payload validation; Remote Verify `40623103758`.
 - F06 manifest pipeline `4fb0649` -> `2c99d22` -> `bb070e2` -> `5a3abff` ->
   `881f023`: strict JSON parser, manifest codec, golden fixtures, filesystem
   verifier, and manifest factory plus progressive pure-domain E2E; latest
@@ -41,18 +48,17 @@ probe-suite is installed on physical devices.
 - F06: `COMPLETE` within its pure-domain scope; golden manifest fixtures and
   the progressive pure-domain E2E are delivered (35 domain tests green).
 - S01/S02/S04: `REVIEW_PENDING`; device evidence remains PENDING.
-- Spike unit tests: S01 15, S02 6, S04 7; all green at the verified baseline.
+- Spike unit tests: S01 16, S02 8, S04 13; all green at the verified baseline.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action
 
-1. Review S01.4, S02.3, and S04.3 against their task runbooks.
-2. Define and review the S02 external-helper-owned fixture path required for a
-   conclusive cleanup result.
-3. Assign owner, date, and concrete devices for Android 11, current target,
+1. Review S01.4, S02.4, and S04.3 against their task runbooks and inspect both
+   S02 APKs before installation.
+2. Assign owner, date, and concrete devices for Android 11, current target,
    OEM family A, and OEM family B.
-4. Execute the matrix only after review acceptance.
-5. Record per-device JSON and GO/LIMITED_GO/NO_GO inputs.
+3. Execute the matrix only after review acceptance.
+4. Record per-device JSON and GO/LIMITED_GO/NO_GO inputs.
 
 ## Hard Boundaries
 
