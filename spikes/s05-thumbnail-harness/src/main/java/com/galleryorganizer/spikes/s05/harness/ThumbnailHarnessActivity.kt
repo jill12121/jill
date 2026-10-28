@@ -73,8 +73,11 @@ class ThumbnailHarnessActivity : Activity() {
                 }
             }
         }
-        grid.adapter = ThumbnailGridAdapter(store.files, AppPrivateThumbnailFetcher(recorder))
         running = true
+        grid.adapter = ThumbnailGridAdapter(
+            store.files,
+            AppPrivateThumbnailFetcher(recorder, active = { running }),
+        )
         Choreographer.getInstance().postFrameCallback(callback)
         var toEnd = true
         val scroll = object : Runnable {
@@ -90,6 +93,7 @@ class ThumbnailHarnessActivity : Activity() {
             running = false
             handler.removeCallbacks(scroll)
             Choreographer.getInstance().removeFrameCallback(callback)
+            grid.smoothScrollBy(0, 0)
             recorder.complete()
             publish(provenance, recorder)
         }, 10_000)
@@ -119,10 +123,14 @@ class ThumbnailHarnessActivity : Activity() {
             .put("decision", result.decision.name)
             .put("violations", result.violations.joinToString(","))
         val output = File(filesDir, "s05-results/latest.json")
-        output.parentFile?.mkdirs()
-        output.writeText(json.toString(2))
+        val writeFailure = runCatching {
+            check(output.parentFile?.mkdirs() == true || output.parentFile?.isDirectory == true)
+            output.writeText(json.toString(2))
+        }.exceptionOrNull()
         status.text = "${result.decision}: ${metrics.frameSampleCount} frames, " +
-            "${metrics.fetchSampleCount} fetches\n${output.absolutePath}"
+            "${metrics.fetchSampleCount} fetches\n" +
+            (writeFailure?.let { "Result write failed: ${it.javaClass.simpleName}" }
+                ?: output.absolutePath)
     }
 }
 

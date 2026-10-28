@@ -49,6 +49,24 @@ class ThumbnailHarnessCoreTest {
     }
 
     @Test
+    fun `late fetch after run stops is ignored without touching completed recorder`() {
+        val store = AppPrivateFixtureStore(context)
+        store.prepare(FixtureSpec(count = 1, edgePx = 32, seed = 13))
+        val recorder = ThumbnailBenchmarkRecorder()
+        var active = true
+        val fetcher = AppPrivateThumbnailFetcher(recorder, active = { active })
+
+        assertNotNull(fetcher.fetch(store.files.single()))
+        active = false
+        recorder.complete()
+
+        assertEquals(null, fetcher.fetch(store.files.single()))
+        val metrics = recorder.snapshot()
+        assertEquals(1, metrics.fetchSampleCount)
+        assertTrue(metrics.runCompleted)
+    }
+
+    @Test
     fun `frame adapter ignores origin and stops at configured sample bound`() {
         val recorder = ThumbnailBenchmarkRecorder()
         val adapter = FrameIntervalAdapter(

@@ -77,21 +77,25 @@ class AppPrivateThumbnailFetcher(
     private val recorder: ThumbnailBenchmarkRecorder,
     private val nanoTime: () -> Long = System::nanoTime,
     private val heapBytes: () -> Long = ::usedHeapBytes,
+    private val active: () -> Boolean = { true },
 ) {
     fun fetch(file: File): Bitmap? {
+        if (!active()) return null
         val started = nanoTime()
-        return try {
-            val bitmap = file.takeIf(File::isFile)?.let { BitmapFactory.decodeFile(it.absolutePath) }
-            bitmap.also {
-                recorder.recordFetch(nanoTime() - started, bitmap != null, heapBytes())
-            }
+        val bitmap = try {
+            file.takeIf(File::isFile)?.let { BitmapFactory.decodeFile(it.absolutePath) }
         } catch (_: OutOfMemoryError) {
-            recorder.recordOom(heapBytes())
-            null
+            if (active()) recorder.recordOom(heapBytes())
+            return null
         } catch (_: Exception) {
-            recorder.recordFetch(nanoTime() - started, false, heapBytes())
             null
         }
+        if (!active()) {
+            bitmap?.recycle()
+            return null
+        }
+        recorder.recordFetch(nanoTime() - started, bitmap != null, heapBytes())
+        return bitmap
     }
 }
 
