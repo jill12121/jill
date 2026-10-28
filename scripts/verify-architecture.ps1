@@ -35,7 +35,8 @@ foreach ($module in @(
     ":data",
     ":presentation",
     ":spikes:s02-fixture-contract",
-    ":spikes:s02-fixture-helper"
+    ":spikes:s02-fixture-helper",
+    ":spikes:s05-thumbnail"
 )) {
     if ($settings -notmatch [regex]::Escape("include(`"$module`")")) {
         throw "Required architecture module is not included: $module"
@@ -88,6 +89,14 @@ $helperManifest = Get-ProjectFileContent "spikes/s02-fixture-helper/src/main/And
 $probeManifest = Get-ProjectFileContent "spikes/probe-suite/src/main/AndroidManifest.xml"
 if ($helperManifest -match 'sharedUserId' -or $probeManifest -match 'sharedUserId') {
     throw "Probe suite and S02 fixture helper must not share an Android UID"
+}
+$s05Build = Get-ProjectFileContent "spikes/s05-thumbnail/build.gradle.kts"
+if (
+    $s05Build -notmatch [regex]::Escape("alias(libs.plugins.kotlin.jvm)") -or
+    $s05Build -match 'alias\(libs\.plugins\.android\.' -or
+    $s05Build -match 'project\(":'
+) {
+    throw "S05.1 contract module must remain dependency-free Kotlin/JVM"
 }
 
 $expectedDependencies = @{

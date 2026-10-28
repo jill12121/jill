@@ -37,6 +37,7 @@ try {
         Get-Item -LiteralPath (Join-Path $projectRoot "spikes/probe-suite/src/main/AndroidManifest.xml")
         Get-Item -LiteralPath (Join-Path $projectRoot "spikes/s02-fixture-helper/build.gradle.kts")
         Get-Item -LiteralPath (Join-Path $projectRoot "spikes/s02-fixture-helper/src/main/AndroidManifest.xml")
+        Get-Item -LiteralPath (Join-Path $projectRoot "spikes/s05-thumbnail/build.gradle.kts")
     ) | Where-Object { $_.FullName -notmatch '[\\/]+build[\\/]' }
     foreach ($file in $fixtureFiles) {
         $relativePath = $file.FullName.Substring($projectRoot.Length).TrimStart('\')
@@ -113,6 +114,15 @@ try {
         -Value "`ndependencies { implementation(project(`":spikes:s02-fixture-helper`")) }"
     Assert-VerificationFails `
         -ExpectedMessage "Probe suite must not depend on the external fixture helper APK"
+    Copy-Item -Force -LiteralPath `
+        (Join-Path $projectRoot "spikes/probe-suite/build.gradle.kts") `
+        -Destination $probeSuiteBuildPath
+
+    $s05BuildPath = Join-Path $fixtureRoot "spikes/s05-thumbnail/build.gradle.kts"
+    Add-Content -LiteralPath $s05BuildPath `
+        -Value "`ndependencies { implementation(project(`":data`")) }"
+    Assert-VerificationFails `
+        -ExpectedMessage "S05.1 contract module must remain dependency-free Kotlin/JVM"
 
     Write-Output "Architecture guard tests passed."
 }
