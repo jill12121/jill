@@ -3,8 +3,8 @@
 ## Current Task
 
 - ID: S01/S02/S04 and S05
-- Sub-step: REQUIRED physical-device matrix; S05.2 isolated benchmark harness
-- State: DEVICE_PENDING; S05.1 COMPLETE
+- Sub-step: REQUIRED physical-device matrix; S05.2b Android benchmark adapter
+- State: DEVICE_PENDING; S05.2a COMPLETE
 
 ## Completed
 
@@ -70,8 +70,11 @@
 - S05.1: dependency-free Kotlin/JVM benchmark contract classifies complete,
   failed, pending, and invalid thumbnail runs and freezes the fallback order
   from prefetch to cache to cell size. Commit `1183739` passed Remote Verify
-  `40633881235`; all 6 S05 tests are green. No fetcher or production cache is
-  implemented.
+  `40633881235`.
+- S05.2a: synchronized frame/fetch/OOM recorder, nearest-rank P95, rounded-up
+  millisecond metrics, sticky OOM, and post-completion mutation rejection were
+  committed as `662a0fa`; Remote Verify `40638974591` passed. All 10 S05 tests
+  are green. No Android fetcher or production cache is implemented.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
@@ -88,8 +91,8 @@
 
 - Assign and schedule the REQUIRED physical-device matrix, then execute the
   reviewed S01.4/S02.4/S04.3 runbooks on every required device.
-- In parallel, implement S05.2 as an isolated fetch/scroll harness that feeds
-  measured evidence into the S05.1 contract without entering the release app.
+- In parallel, implement S05.2b as an isolated Android app-private fixture and
+  fetch/scroll adapter that feeds S05.2a without entering the release app.
 
 ## Active Gates
 
@@ -101,8 +104,9 @@
   release isolation are independently reviewed and CI-green.
 - S04: DEVICE_PENDING; durable recovery, overwrite, and provenance hardening
   are independently reviewed and CI-green.
-- S05: CONTRACT_COMPLETE / HARNESS_PENDING; S05.1 is pure and CI-green, but no
-  measured fetch/scroll evidence exists and I04 remains blocked.
+- S05: MEASUREMENT_CORE_COMPLETE / ANDROID_HARNESS_PENDING; S05.1/S05.2a are
+  pure and CI-green, but no measured fetch/scroll evidence exists and I04
+  remains blocked.
 - J1/J2/J3 and production storage execution remain BLOCKED until required
   device decisions are recorded.
 
@@ -151,7 +155,7 @@
 
 - S01/S02/S04 physical-device results are PENDING; emulator and desktop
   results cannot satisfy the REQUIRED matrix.
-- S05 has no measured fetch/scroll result; its current budget values are
-  classifier inputs rather than frozen production limits.
+- S05 has no Android harness or measured fetch/scroll result; its current
+  budget values are classifier inputs rather than frozen production limits.
 - J1/J2/J3 and all production workspace/Manifest/cleanup execution are blocked
   by those device decisions.
