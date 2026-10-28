@@ -34,31 +34,37 @@ Do not infer device GO from CI or desktop tests.
   idempotent; Remote Verify `40488714646` and `40491590364`.
 - S02.4 `a9ef42a`: separate-UID fixture helper and strict owner/path/MIME/name/
   token/payload validation; Remote Verify `40623103758`.
+- Independent spike review `ad470f5` and release isolation `80e5a11`: five P1
+  findings were closed and Remote Verify `40630087003` passed.
+- S05.1 `1183739`: dependency-free thumbnail benchmark classifier and ordered
+  fallback contract; Remote Verify `40633881235` passed.
 - F06 manifest pipeline `4fb0649` -> `2c99d22` -> `bb070e2` -> `5a3abff` ->
   `881f023`: strict JSON parser, manifest codec, golden fixtures, filesystem
   verifier, and manifest factory plus progressive pure-domain E2E; latest
   check `122047757478` succeeded. F06 is COMPLETE.
 
-All spike repairs remain subject to an independent review before the
-probe-suite is installed on physical devices.
+S01.4/S02.4/S04.3 independent review is complete. Physical-device evidence is
+still required before any aggregate device decision.
 
 ## Current State
 
 - F01-F04: complete safety and test foundation.
 - F06: `COMPLETE` within its pure-domain scope; golden manifest fixtures and
   the progressive pure-domain E2E are delivered (35 domain tests green).
-- S01/S02/S04: `REVIEW_PENDING`; device evidence remains PENDING.
-- Spike unit tests: S01 16, S02 8, S04 13; all green at the verified baseline.
+- S01/S02/S04: `DEVICE_PENDING`; independent review is complete.
+- Spike unit tests: S01 19, S02 9, S04 16, S05 6; all green.
+- S05.1: `COMPLETE`; S05.2 fetch/scroll harness and measured evidence are
+  PENDING. I04 remains blocked.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action
 
-1. Review S01.4, S02.4, and S04.3 against their task runbooks and inspect both
-   S02 APKs before installation.
-2. Assign owner, date, and concrete devices for Android 11, current target,
+1. Assign owner, date, and concrete devices for Android 11, current target,
    OEM family A, and OEM family B.
-3. Execute the matrix only after review acceptance.
-4. Record per-device JSON and GO/LIMITED_GO/NO_GO inputs.
+2. Execute the reviewed physical-device matrix.
+3. Record per-device JSON and GO/LIMITED_GO/NO_GO inputs.
+4. In parallel, implement isolated S05.2 fixture fetch/scroll measurement;
+   do not wire it into production or claim final budgets without evidence.
 
 ## Hard Boundaries
 
@@ -67,6 +73,8 @@ probe-suite is installed on physical devices.
 - No Room schema change.
 - No J1/J2/J3 before required device decisions and ADRs.
 - F06 additions must remain pure Kotlin/domain and fixture driven.
+- S05.1 does not authorize I04, production ThumbnailSource, cache persistence,
+  external media access, or Paging integration.
 
 ## Verification Environment
 
