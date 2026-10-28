@@ -81,6 +81,10 @@
   provenance plus results under its own `filesDir`. Commit `4e06c44` passed
   Remote Verify `40646181752`; debug/release harness tests are green and the
   permission-free debug APK passed v2 signature verification.
+- S05.2b completion hardening: version `0.1.1` stops fetch/frame sampling before
+  recorder completion, ignores late grid fetches, and reports result-write
+  failures in-page instead of exiting. Commit `7fcc3d9` passed Remote Verify
+  `40656014739`; all 4 harness tests pass for debug and release variants.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
