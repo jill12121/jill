@@ -46,6 +46,16 @@ $appBuild = Get-ProjectFileContent "app/build.gradle.kts"
 if ($appBuild -match 'project\(":spikes:') {
     throw "Production app must not depend on spike modules"
 }
+foreach ($buildFile in @(
+    "core/contract/build.gradle.kts",
+    "domain/build.gradle.kts",
+    "data/build.gradle.kts",
+    "presentation/build.gradle.kts"
+)) {
+    if ((Get-ProjectFileContent $buildFile) -match 'project\(":spikes:') {
+        throw "Production modules must not depend on spike modules"
+    }
+}
 $probeSuiteBuild = Get-ProjectFileContent "spikes/probe-suite/build.gradle.kts"
 if ($probeSuiteBuild -match 'project\(":spikes:s02-fixture-helper"\)') {
     throw "Probe suite must not depend on the external fixture helper APK"
@@ -57,9 +67,27 @@ if (
 ) {
     throw "S02 fixture helper must remain an independently installed application"
 }
+$probeApplicationId = [regex]::Match(
+    $probeSuiteBuild,
+    'applicationId\s*=\s*"([^"]+)"'
+)
+$helperApplicationId = [regex]::Match(
+    $helperBuild,
+    'applicationId\s*=\s*"([^"]+)"'
+)
+if (
+    -not $probeApplicationId.Success -or
+    -not $helperApplicationId.Success -or
+    $probeApplicationId.Groups[1].Value -ne "com.galleryorganizer.spikes.suite" -or
+    $helperApplicationId.Groups[1].Value -ne "com.galleryorganizer.spikes.s02.fixturehelper" -or
+    $probeApplicationId.Groups[1].Value -eq $helperApplicationId.Groups[1].Value
+) {
+    throw "Probe suite and fixture helper must use distinct application IDs"
+}
 $helperManifest = Get-ProjectFileContent "spikes/s02-fixture-helper/src/main/AndroidManifest.xml"
-if ($helperManifest -match 'sharedUserId') {
-    throw "S02 fixture helper must not share an Android UID"
+$probeManifest = Get-ProjectFileContent "spikes/probe-suite/src/main/AndroidManifest.xml"
+if ($helperManifest -match 'sharedUserId' -or $probeManifest -match 'sharedUserId') {
+    throw "Probe suite and S02 fixture helper must not share an Android UID"
 }
 
 $expectedDependencies = @{

@@ -34,6 +34,7 @@ try {
         Get-ChildItem -LiteralPath (Join-Path $projectRoot "app/src/main/java") -Recurse -File
         Get-Item -LiteralPath (Join-Path $projectRoot "app/build.gradle.kts")
         Get-Item -LiteralPath (Join-Path $projectRoot "spikes/probe-suite/build.gradle.kts")
+        Get-Item -LiteralPath (Join-Path $projectRoot "spikes/probe-suite/src/main/AndroidManifest.xml")
         Get-Item -LiteralPath (Join-Path $projectRoot "spikes/s02-fixture-helper/build.gradle.kts")
         Get-Item -LiteralPath (Join-Path $projectRoot "spikes/s02-fixture-helper/src/main/AndroidManifest.xml")
     ) | Where-Object { $_.FullName -notmatch '[\\/]+build[\\/]' }
@@ -89,7 +90,25 @@ try {
     Copy-Item -Force -LiteralPath (Join-Path $projectRoot "app/build.gradle.kts") `
         -Destination $appBuildPath
 
+    $dataBuildPath = Join-Path $fixtureRoot "data/build.gradle.kts"
+    Add-Content -LiteralPath $dataBuildPath `
+        -Value "`ndependencies { implementation(project(`":spikes:s02-mediastore`")) }"
+    Assert-VerificationFails -ExpectedMessage "Production modules must not depend on spike modules"
+    Copy-Item -Force -LiteralPath (Join-Path $projectRoot "data/build.gradle.kts") `
+        -Destination $dataBuildPath
+
+    $helperApplicationId = "com.galleryorganizer.spikes.s02.fixturehelper"
     $probeSuiteBuildPath = Join-Path $fixtureRoot "spikes/probe-suite/build.gradle.kts"
+    $probeSuiteBuild = Get-Content -Raw -LiteralPath $probeSuiteBuildPath
+    $probeSuiteBuild = $probeSuiteBuild -replace `
+        'applicationId\s*=\s*"com\.galleryorganizer\.spikes\.suite"', `
+        "applicationId = `"$helperApplicationId`""
+    Set-Content -NoNewline -LiteralPath $probeSuiteBuildPath -Value $probeSuiteBuild
+    Assert-VerificationFails -ExpectedMessage "Probe suite and fixture helper must use distinct application IDs"
+    Copy-Item -Force -LiteralPath `
+        (Join-Path $projectRoot "spikes/probe-suite/build.gradle.kts") `
+        -Destination $probeSuiteBuildPath
+
     Add-Content -LiteralPath $probeSuiteBuildPath `
         -Value "`ndependencies { implementation(project(`":spikes:s02-fixture-helper`")) }"
     Assert-VerificationFails `
