@@ -66,6 +66,13 @@ class S02ProbeModelTest {
     }
 
     @Test
+    fun `cleanup completion applies only to the run that requested it`() {
+        assertTrue(CleanupCompletionGuard.isCurrent("run-1", "run-1"))
+        assertFalse(CleanupCompletionGuard.isCurrent("run-2", "run-1"))
+        assertFalse(CleanupCompletionGuard.isCurrent(null, "run-1"))
+    }
+
+    @Test
     fun `cleanup evidence and partial grant control final outcome`() {
         assertEquals(S02SingleDeviceOutcome.PASS, passingResult().outcome)
         assertEquals(

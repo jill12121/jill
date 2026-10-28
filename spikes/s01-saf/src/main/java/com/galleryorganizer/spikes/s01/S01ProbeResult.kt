@@ -48,13 +48,19 @@ data class S01ProbeResult(
     val outcome: S01SingleDeviceOutcome
         get() = when {
             exceptionClass != null || !organizerRootReady || !partWriteReadback ||
-                !renameSucceeded || !finalReadback || !cleanupSucceeded ->
+                !renameSucceeded || !finalReadback || !cleanupSucceeded ||
+                !collisionEvidenceComplete(collideCreate) ||
+                !collisionEvidenceComplete(collideRename) ||
+                !collisionEvidenceComplete(createDirIdempotent) ->
                 S01SingleDeviceOutcome.FAIL
             !forceStopRetryPassed || !deviceRebootRetryPassed ||
                 !reinstallAdoptionRead || !reinstallAdoptionWrite ||
                 !reinstallAdoptionDelete -> S01SingleDeviceOutcome.PARTIAL
             else -> S01SingleDeviceOutcome.PASS
         }
+
+    private fun collisionEvidenceComplete(value: String): Boolean =
+        value.isNotBlank() && value != "NOT_RUN" && !value.startsWith("ERROR_")
 
     fun reportLines(): List<String> = listOf(
         "device=$deviceModel / SDK $androidSdk", "root=$rootKind",

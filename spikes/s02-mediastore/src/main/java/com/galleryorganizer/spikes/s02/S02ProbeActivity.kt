@@ -62,7 +62,14 @@ class S02ProbeViewModel : ViewModel() {
         val pending = run ?: return
         viewModelScope.launch {
             val completed = probe.completeCleanup(pending, granted)
-            run = pending.copy(result = completed, cleanupAuthorization = null)
+            if (
+                CleanupCompletionGuard.isCurrent(
+                    run?.result?.provenance?.runId,
+                    pending.result.provenance.runId,
+                )
+            ) {
+                run = pending.copy(result = completed, cleanupAuthorization = null)
+            }
         }
     }
 }

@@ -54,10 +54,19 @@ class S01ProbeActivity : ComponentActivity() {
                 ActivityResultContracts.OpenDocumentTree(),
             ) { uri ->
                 if (uri != null) {
-                    preferences.edit().putString("treeUri", uri.toString()).apply()
+                    val previous = preferences.getString("treeUri", null)?.let(Uri::parse)
                     scope.launch {
                         running = true
-                        persist(probe.run(uri))
+                        val updated = probe.run(uri)
+                        if (probe.hasPersistedGrant(uri)) {
+                            check(
+                                preferences.edit().putString("treeUri", uri.toString()).commit(),
+                            )
+                            if (previous != null && previous != uri) {
+                                probe.releasePersistedGrant(previous)
+                            }
+                        }
+                        persist(updated)
                         running = false
                     }
                 }

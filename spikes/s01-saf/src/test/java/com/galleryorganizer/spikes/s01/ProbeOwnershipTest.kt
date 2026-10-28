@@ -3,6 +3,7 @@ package com.galleryorganizer.spikes.s01
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -128,6 +129,37 @@ class ProbeOwnershipTest {
 
         assertEquals(listOf("second", "first"), attempted)
         assertEquals(false, succeeded)
+    }
+
+    @Test
+    fun `creation rollback deletes every item in reverse order on failure`() {
+        val ledger = CleanupLedger<String>()
+        val attempted = mutableListOf<String>()
+
+        val failure = runCatching {
+            ledger.rollbackOnFailure<Unit>(
+                delete = {
+                    attempted += it
+                    it != "child"
+                },
+            ) {
+                ledger.register("root")
+                ledger.register("child")
+                error("sample write failed")
+            }
+        }.exceptionOrNull()
+
+        assertEquals("sample write failed", failure?.message)
+        assertEquals(listOf("child", "root"), attempted)
+        assertEquals(1, failure?.suppressedExceptions?.size)
+    }
+
+    @Test
+    fun `cleanup is confirmed only by delete or explicit absence`() {
+        assertTrue(SafCleanupPolicy.isConfirmed(true, querySucceeded = false, present = true))
+        assertTrue(SafCleanupPolicy.isConfirmed(false, querySucceeded = true, present = false))
+        assertFalse(SafCleanupPolicy.isConfirmed(false, querySucceeded = false, present = false))
+        assertFalse(SafCleanupPolicy.isConfirmed(false, querySucceeded = true, present = true))
     }
 
     @Test

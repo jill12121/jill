@@ -26,6 +26,17 @@ object ChildQueryPolicy {
     }
 }
 
+enum class UniqueChildResolution { ABSENT, UNIQUE, AMBIGUOUS, QUERY_FAILED }
+
+object UniqueChildPolicy {
+    fun resolve(status: ChildQueryStatus, matchCount: Int): UniqueChildResolution = when {
+        status == ChildQueryStatus.QUERY_FAILED -> UniqueChildResolution.QUERY_FAILED
+        status == ChildQueryStatus.ABSENT -> UniqueChildResolution.ABSENT
+        matchCount == 1 -> UniqueChildResolution.UNIQUE
+        else -> UniqueChildResolution.AMBIGUOUS
+    }
+}
+
 enum class OverwriteCleanupAction { READY, DELETE_OWNED, RETRY_QUERY }
 
 object OverwriteCleanupPolicy {
@@ -92,6 +103,14 @@ object PendingRecordPolicy {
 object RunResetPolicy {
     fun canReset(pendingStatus: PendingRecordStatus): Boolean =
         pendingStatus == PendingRecordStatus.NONE
+}
+
+object IncompatiblePendingCleanupPolicy {
+    fun canDelete(
+        hasTreeAndToken: Boolean,
+        uniqueExactRoot: Boolean,
+        ownedMarkerVerified: Boolean,
+    ): Boolean = hasTreeAndToken && uniqueExactRoot && ownedMarkerVerified
 }
 
 data class S04ProbeProvenance(
@@ -187,6 +206,22 @@ object ProviderOverwriteClassifier {
     }
 
     const val OVERWRITE_NAME = ".s04-overwrite.json"
+
+    fun isClosed(value: String): Boolean = value in CLOSED_BEHAVIORS
+
+    private val CLOSED_BEHAVIORS = setOf(
+        "OVERWROTE_EXISTING",
+        "DUPLICATE_EXACT",
+        "AUTO_RENAMED",
+    )
+}
+
+object OverwriteEvidencePolicy {
+    fun accumulate(previous: String, current: String): String = when {
+        previous != "NOT_RUN" && !ProviderOverwriteClassifier.isClosed(previous) -> previous
+        !ProviderOverwriteClassifier.isClosed(current) -> current
+        else -> current
+    }
 }
 
 object OverwriteFixtureOwnership {
@@ -228,7 +263,7 @@ data class S04ProbeResult(
                 provenance?.isValid != true ||
                 (
                     providerOverwriteBehavior != "NOT_RUN" &&
-                        providerOverwriteBehavior !in ACCEPTED_OVERWRITE_BEHAVIORS
+                        !ProviderOverwriteClassifier.isClosed(providerOverwriteBehavior)
                     ) ||
                 observations.values.any {
                     it.runId != runId ||
@@ -270,14 +305,6 @@ data class S04ProbeResult(
             ""","treeUriSha256":${treeUriSha256?.jsonString() ?: "null"}""" +
             ""","provenance":${provenance?.toJson() ?: "null"}""" +
             ""","decisionS04SingleDevice":"$outcome"}"""
-    }
-
-    private companion object {
-        val ACCEPTED_OVERWRITE_BEHAVIORS = setOf(
-            "OVERWROTE_EXISTING",
-            "DUPLICATE_EXACT",
-            "AUTO_RENAMED",
-        )
     }
 }
 

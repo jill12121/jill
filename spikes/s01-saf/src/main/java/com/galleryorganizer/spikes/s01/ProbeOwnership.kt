@@ -92,4 +92,23 @@ class CleanupLedger<T> {
         cleanupOrder().forEach { succeeded = delete(it) && succeeded }
         return succeeded
     }
+
+    fun <R> rollbackOnFailure(delete: (T) -> Boolean, operation: () -> R): R {
+        try {
+            return operation()
+        } catch (caught: Exception) {
+            if (!cleanup(delete)) {
+                caught.addSuppressed(IllegalStateException("Creation rollback was incomplete"))
+            }
+            throw caught
+        }
+    }
+}
+
+object SafCleanupPolicy {
+    fun isConfirmed(
+        deleteReturned: Boolean,
+        querySucceeded: Boolean,
+        present: Boolean,
+    ): Boolean = deleteReturned || (querySucceeded && !present)
 }

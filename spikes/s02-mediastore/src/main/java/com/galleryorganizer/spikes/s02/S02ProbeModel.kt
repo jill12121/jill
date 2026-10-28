@@ -138,6 +138,11 @@ object CleanupAuthorizationChunker {
     fun chunk(ids: List<Long>): List<List<Long>> = ids.chunked(MAX_BATCH_SIZE)
 }
 
+object CleanupCompletionGuard {
+    fun isCurrent(currentRunId: String?, pendingRunId: String): Boolean =
+        currentRunId == pendingRunId
+}
+
 data class S02ProbeResult(
     val permissionState: MediaPermissionState,
     val totalVisibleRows: Int,

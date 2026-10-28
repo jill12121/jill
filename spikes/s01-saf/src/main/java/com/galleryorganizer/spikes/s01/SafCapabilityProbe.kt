@@ -71,11 +71,7 @@ class SafCapabilityProbe(private val context: Context) {
         } catch (caught: Exception) {
             failure = caught
         } finally {
-            cleanup = created.cleanup {
-                val deleted = runCatching { DocumentsContract.deleteDocument(resolver, it) }
-                    .getOrDefault(false)
-                deleted || runCatching { metadata(it); false }.getOrDefault(true)
-            }
+            cleanup = created.cleanup(::deleteConfirmed)
         }
 
         S01ProbeResult(
@@ -157,22 +153,33 @@ class SafCapabilityProbe(private val context: Context) {
         val ownership = ProbeOwnership.create(
             UUID.randomUUID().toString().replace("-", ""),
         )
-        val root = requireNotNull(create(organizerRoot, DIR_MIME, ownership.directoryName))
-        check(metadata(root).name == ownership.directoryName)
-        check(childCount(root) == 0)
-        requireNotNull(create(root, "application/octet-stream", ProbeOwnership.MARKER_NAME)).also {
-            check(metadata(it).name == ProbeOwnership.MARKER_NAME)
-            write(it, ownership.markerBytes)
+        val initializing = CleanupLedger<Uri>()
+        return initializing.rollbackOnFailure(::deleteConfirmed) {
+            val root = initializing.register(
+                requireNotNull(create(organizerRoot, DIR_MIME, ownership.directoryName)),
+            )
+            check(metadata(root).name == ownership.directoryName)
+            check(childCount(root) == 0)
+            initializing.register(
+                requireNotNull(create(root, "application/octet-stream", ProbeOwnership.MARKER_NAME)),
+            ).also {
+                check(metadata(it).name == ProbeOwnership.MARKER_NAME)
+                write(it, ownership.markerBytes)
+            }
+            initializing.register(
+                requireNotNull(create(root, "application/octet-stream", ownership.sampleName)),
+            ).also {
+                check(metadata(it).name == ownership.sampleName)
+                write(it, ownership.sampleBytes)
+            }
+            OwnedRoot(
+                root,
+                ownership,
+                Adoption(
+                    classification = if (unownedCandidateSeen) "NOT_ADOPTABLE" else "NOT_TESTED",
+                ),
+            )
         }
-        requireNotNull(create(root, "application/octet-stream", ownership.sampleName)).also {
-            check(metadata(it).name == ownership.sampleName)
-            write(it, ownership.sampleBytes)
-        }
-        return OwnedRoot(
-            root,
-            ownership,
-            Adoption(classification = if (unownedCandidateSeen) "NOT_ADOPTABLE" else "NOT_TESTED"),
-        )
     }
 
     private fun adoptionProbe(ownedRoot: OwnedRoot): Adoption {
@@ -200,12 +207,7 @@ class SafCapabilityProbe(private val context: Context) {
             check(read(candidate).contentEquals(ownedRoot.ownership.sampleBytes))
             check(DocumentsContract.deleteDocument(resolver, candidate))
         }.isSuccess
-        val cleanupSucceeded = created.cleanup {
-            runCatching {
-                DocumentsContract.deleteDocument(resolver, it) ||
-                    runCatching { metadata(it); false }.getOrDefault(true)
-            }.getOrDefault(false)
-        }
+        val cleanupSucceeded = created.cleanup(::deleteConfirmed)
         val orphanDelete = deleteOperationSucceeded && cleanupSucceeded
         val classification = when {
             orphanRead && orphanWrite && orphanDelete -> "READ_WRITE_DELETE"
@@ -356,6 +358,28 @@ class SafCapabilityProbe(private val context: Context) {
         null, null, null,
     )!!.use { check(it.moveToFirst()); Metadata(it.getString(0), it.getString(1)) }
 
+    private fun deleteConfirmed(uri: Uri): Boolean {
+        val deleted = runCatching {
+            DocumentsContract.deleteDocument(resolver, uri)
+        }.getOrDefault(false)
+        if (deleted) return true
+        val present = runCatching {
+            val cursor = resolver.query(
+                uri,
+                arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID),
+                null,
+                null,
+                null,
+            ) ?: return@runCatching null
+            cursor.use { it.moveToFirst() }
+        }.getOrNull()
+        return SafCleanupPolicy.isConfirmed(
+            deleteReturned = false,
+            querySucceeded = present != null,
+            present = present ?: true,
+        )
+    }
+
     private fun flags(uri: Uri): List<String> {
         val value = resolver.query(
             uri, arrayOf(DocumentsContract.Document.COLUMN_FLAGS), null, null, null,
@@ -370,7 +394,7 @@ class SafCapabilityProbe(private val context: Context) {
     private fun children(parent: Uri): List<Child> {
         val parentId = DocumentsContract.getDocumentId(parent)
         val children = DocumentsContract.buildChildDocumentsUriUsingTree(parent, parentId)
-        return resolver.query(
+        return requireNotNull(resolver.query(
             children,
             arrayOf(
                 DocumentsContract.Document.COLUMN_DOCUMENT_ID,
@@ -378,7 +402,7 @@ class SafCapabilityProbe(private val context: Context) {
                 DocumentsContract.Document.COLUMN_MIME_TYPE,
             ),
             null, null, null,
-        )?.use {
+        )).use {
             buildList {
                 while (it.moveToNext()) {
                     add(
@@ -390,20 +414,32 @@ class SafCapabilityProbe(private val context: Context) {
                     )
                 }
             }
-        }.orEmpty()
+        }
     }
 
     private fun childCount(parent: Uri): Int {
         val children = DocumentsContract.buildChildDocumentsUriUsingTree(
             parent, DocumentsContract.getDocumentId(parent),
         )
-        return resolver.query(children, arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID), null, null, null)
-            ?.use { it.count } ?: 0
+        return requireNotNull(
+            resolver.query(
+                children,
+                arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID),
+                null,
+                null,
+                null,
+            ),
+        ).use { it.count }
     }
 
-    private fun hasPersistedGrant(root: Uri) = resolver.persistedUriPermissions.any {
+    fun hasPersistedGrant(root: Uri) = resolver.persistedUriPermissions.any {
         it.uri == root && it.isReadPermission && it.isWritePermission
     }
+
+    fun releasePersistedGrant(root: Uri): Boolean = runCatching {
+        resolver.releasePersistableUriPermission(root, READ_WRITE_FLAGS)
+        true
+    }.getOrDefault(false)
 
     private fun usedHeap(): Long =
         Runtime.getRuntime().run { totalMemory() - freeMemory() }

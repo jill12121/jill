@@ -157,6 +157,10 @@ class ManifestAtomicProbe(private val context: Context) {
         candidate(root, TMP_NAME, RecoveryCandidate.TMP)?.let(parseable::add)
         candidate(root, BAK_NAME, RecoveryCandidate.BAK)?.let(parseable::add)
         val overwrite = overwriteProbe(root)
+        val accumulatedOverwrite = OverwriteEvidencePolicy.accumulate(
+            preferences.getString(OVERWRITE, "NOT_RUN") ?: "NOT_RUN",
+            overwrite,
+        )
         val observation = StageObservation(
             pending.stage,
             processRestartObserved = true,
@@ -169,7 +173,7 @@ class ManifestAtomicProbe(private val context: Context) {
         check(
             preferences.edit()
                 .putString(observationKey(pending.stage), encode(observation))
-                .putString(OVERWRITE, overwrite)
+                .putString(OVERWRITE, accumulatedOverwrite)
                 .putString(PENDING_PHASE, S04PendingPhase.OBSERVED.name)
                 .commit(),
         )
@@ -230,81 +234,64 @@ class ManifestAtomicProbe(private val context: Context) {
             )
         }
         val root = persistedRoot ?: query.matches.single()
-        val cleaned = runCatching {
+        runCatching {
             DocumentsContract.deleteDocument(resolver, root)
-        }.getOrDefault(false)
-        if (cleaned) {
-            clearPending()
-            return S04ActionResult("INCOMPLETE_PREPARATION_CLEANED", result())
         }
-        if (persistedRoot != null) {
-            val confirmation = findChildren(
-                documentUri(pending.tree),
-                "$ROOT_PREFIX${pending.token}",
-            )
-            when (
-                PreparingDeleteConfirmationPolicy.choose(
-                    confirmation.status,
-                    confirmation.matches.size,
-                )
-            ) {
-                PreparingDeleteConfirmation.COMPLETE -> {
-                    clearPending()
-                    return S04ActionResult(
-                        "INCOMPLETE_PREPARATION_ALREADY_CLEAN",
-                        result(),
-                    )
-                }
-                PreparingDeleteConfirmation.RETRY ->
-                    return S04ActionResult("CLEANUP_RETRY_REQUIRED", result())
-                PreparingDeleteConfirmation.REFUSE_AMBIGUOUS ->
-                    return S04ActionResult(
-                        "INCOMPLETE_PREPARATION_AMBIGUOUS",
-                        result("AMBIGUOUS_ROOT"),
-                    )
-            }
-        }
-        return S04ActionResult(
-            "CLEANUP_RETRY_REQUIRED",
-            result(),
+        val confirmation = findChildren(
+            documentUri(pending.tree),
+            "$ROOT_PREFIX${pending.token}",
         )
+        when (
+            PreparingDeleteConfirmationPolicy.choose(
+                confirmation.status,
+                confirmation.matches.size,
+            )
+        ) {
+            PreparingDeleteConfirmation.COMPLETE -> {
+                clearPending()
+                return S04ActionResult("INCOMPLETE_PREPARATION_CLEANED", result())
+            }
+            PreparingDeleteConfirmation.RETRY ->
+                return S04ActionResult("CLEANUP_RETRY_REQUIRED", result())
+            PreparingDeleteConfirmation.REFUSE_AMBIGUOUS ->
+                return S04ActionResult(
+                    "INCOMPLETE_PREPARATION_AMBIGUOUS",
+                    result("AMBIGUOUS_ROOT"),
+                )
+        }
     }
 
     private fun resolveIncompatiblePending(
         pending: PendingRead.Incompatible,
     ): S04ActionResult {
-        val root = pending.root ?: pending.tree?.let { tree ->
-            pending.token?.let { token ->
-                val query = findChildren(documentUri(tree), "$ROOT_PREFIX$token")
-                when (query.status) {
-                    ChildQueryStatus.QUERY_FAILED ->
-                        return S04ActionResult("QUERY_RETRY_REQUIRED", result())
-                    ChildQueryStatus.ABSENT -> null
-                    ChildQueryStatus.FOUND -> {
-                        if (query.matches.size != 1) {
-                            return S04ActionResult(
-                                "INCOMPATIBLE_PENDING_AMBIGUOUS",
-                                result("AMBIGUOUS_ROOT"),
-                            )
-                        }
-                        query.matches.single()
-                    }
-                }
-            }
-        }
-        if (root != null) {
-            val cleaned = runCatching {
-                DocumentsContract.deleteDocument(resolver, root)
-            }.getOrDefault(false)
-            if (!cleaned) {
-                val tree = pending.tree
-                    ?: return S04ActionResult("CLEANUP_RETRY_REQUIRED", result())
-                val token = pending.token
-                    ?: return S04ActionResult("CLEANUP_RETRY_REQUIRED", result())
-                val confirmation = findChildren(
-                    documentUri(tree),
-                    "$ROOT_PREFIX$token",
+        val tree = pending.tree
+            ?: return S04ActionResult("INCOMPATIBLE_PENDING_UNSAFE", result())
+        val token = pending.token
+            ?: return S04ActionResult("INCOMPATIBLE_PENDING_UNSAFE", result())
+        val query = findChildren(documentUri(tree), "$ROOT_PREFIX$token")
+        when (UniqueChildPolicy.resolve(query.status, query.matches.size)) {
+            UniqueChildResolution.QUERY_FAILED ->
+                return S04ActionResult("QUERY_RETRY_REQUIRED", result())
+            UniqueChildResolution.AMBIGUOUS ->
+                return S04ActionResult(
+                    "INCOMPATIBLE_PENDING_AMBIGUOUS",
+                    result("AMBIGUOUS_ROOT"),
                 )
+            UniqueChildResolution.ABSENT -> Unit
+            UniqueChildResolution.UNIQUE -> {
+                val root = query.matches.single()
+                val owned = isOwnedRoot(root, token)
+                if (
+                    !IncompatiblePendingCleanupPolicy.canDelete(
+                        hasTreeAndToken = true,
+                        uniqueExactRoot = true,
+                        ownedMarkerVerified = owned,
+                    )
+                ) {
+                    return S04ActionResult("INCOMPATIBLE_PENDING_NOT_ADOPTABLE", result())
+                }
+                runCatching { DocumentsContract.deleteDocument(resolver, root) }
+                val confirmation = findChildren(documentUri(tree), "$ROOT_PREFIX$token")
                 when (
                     PreparingDeleteConfirmationPolicy.choose(
                         confirmation.status,
@@ -346,13 +333,24 @@ class ManifestAtomicProbe(private val context: Context) {
         root: Uri,
         observation: StageObservation,
     ): S04ActionResult {
-        val cleaned = runCatching {
+        runCatching {
             DocumentsContract.deleteDocument(resolver, root)
-        }.getOrDefault(false)
-        return if (cleaned) {
-            finalizeCleanup(pending, observation)
-        } else {
-            S04ActionResult("CLEANUP_RETRY_REQUIRED", result())
+        }
+        val confirmation = findChildren(
+            documentUri(pending.tree),
+            "$ROOT_PREFIX${pending.token}",
+        )
+        return when (
+            PreparingDeleteConfirmationPolicy.choose(
+                confirmation.status,
+                confirmation.matches.size,
+            )
+        ) {
+            PreparingDeleteConfirmation.COMPLETE -> finalizeCleanup(pending, observation)
+            PreparingDeleteConfirmation.RETRY ->
+                S04ActionResult("CLEANUP_RETRY_REQUIRED", result())
+            PreparingDeleteConfirmation.REFUSE_AMBIGUOUS ->
+                S04ActionResult("CLEANUP_AMBIGUOUS", result("AMBIGUOUS_ROOT"))
         }
     }
 
@@ -503,9 +501,13 @@ class ManifestAtomicProbe(private val context: Context) {
     }
 
     private fun isOwnedRoot(root: Uri, token: String): Boolean {
-        if (displayName(root) != "$ROOT_PREFIX$token") return false
+        val rootName = runCatching { displayName(root) }
+            .getOrElse { throw ChildQueryFailure() }
+        if (rootName != "$ROOT_PREFIX$token") return false
         val marker = findChild(root, MARKER_NAME) ?: return false
-        return runCatching { read(marker) == marker(token) }.getOrDefault(false)
+        val markerContent = runCatching { read(marker) }
+            .getOrElse { throw ChildQueryFailure() }
+        return markerContent == marker(token)
     }
 
     private fun candidate(
@@ -514,7 +516,8 @@ class ManifestAtomicProbe(private val context: Context) {
         type: RecoveryCandidate,
     ): RecoveryCandidate? {
         val uri = findChild(root, name) ?: return null
-        return if (runCatching { JSONObject(read(uri)) }.isSuccess) type else null
+        val content = runCatching { read(uri) }.getOrElse { throw ChildQueryFailure() }
+        return if (runCatching { JSONObject(content) }.isSuccess) type else null
     }
 
     private fun overwriteProbe(root: Uri): String {
@@ -603,9 +606,10 @@ class ManifestAtomicProbe(private val context: Context) {
     private fun overwriteFixture(generation: Int): String =
         """{"fixture":"${OverwriteFixtureOwnership.MARKER}","generation":$generation}"""
 
-    private fun generation(uri: Uri): Int? = runCatching {
-        JSONObject(read(uri)).getInt("generation")
-    }.getOrNull()
+    private fun generation(uri: Uri): Int? {
+        val content = runCatching { read(uri) }.getOrElse { throw ChildQueryFailure() }
+        return runCatching { JSONObject(content).getInt("generation") }.getOrNull()
+    }
 
     private fun documentUri(tree: Uri): Uri =
         DocumentsContract.buildDocumentUriUsingTree(
@@ -638,8 +642,13 @@ class ManifestAtomicProbe(private val context: Context) {
 
     private fun findChild(parent: Uri, name: String): Uri? {
         val query = findChildren(parent, name)
-        if (query.status == ChildQueryStatus.QUERY_FAILED) throw ChildQueryFailure()
-        return query.matches.firstOrNull()
+        return when (UniqueChildPolicy.resolve(query.status, query.matches.size)) {
+            UniqueChildResolution.ABSENT -> null
+            UniqueChildResolution.UNIQUE -> query.matches.single()
+            UniqueChildResolution.AMBIGUOUS,
+            UniqueChildResolution.QUERY_FAILED,
+            -> throw ChildQueryFailure()
+        }
     }
 
     private fun findChildren(parent: Uri, name: String): ChildQuery {

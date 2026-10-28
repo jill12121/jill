@@ -4,10 +4,10 @@
   "pages": [],
   "cleanupState": "NOT_RUN",
   "authorizationBatchSizes": [],
-  "cleanupFixtureOwnership": "APP_OWNED",
+  "cleanupFixtureEvidence": null,
   "provenance": {
-    "schemaVersion": 1,
-    "probeVersion": "S02.3",
+    "schemaVersion": 2,
+    "probeVersion": "S02.4",
     "runId": "REQUIRED",
     "model": "REQUIRED",
     "sdkInt": 30,

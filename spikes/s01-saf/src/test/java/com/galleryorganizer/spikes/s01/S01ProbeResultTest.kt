@@ -28,6 +28,24 @@ class S01ProbeResultTest {
     }
 
     @Test
+    fun `missing collision evidence cannot pass`() {
+        listOf("NOT_RUN", "ERROR_SecurityException").forEach { incomplete ->
+            assertEquals(
+                S01SingleDeviceOutcome.FAIL,
+                completeResult().copy(collideCreate = incomplete).outcome,
+            )
+            assertEquals(
+                S01SingleDeviceOutcome.FAIL,
+                completeResult().copy(collideRename = incomplete).outcome,
+            )
+            assertEquals(
+                S01SingleDeviceOutcome.FAIL,
+                completeResult().copy(createDirIdempotent = incomplete).outcome,
+            )
+        }
+    }
+
+    @Test
     fun `json uses fixed safe schema and state round trips`() {
         val result = completeResult()
         val json = result.toJson()

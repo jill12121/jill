@@ -98,6 +98,26 @@ class S04ProbeModelTest {
     }
 
     @Test
+    fun `overwrite failure remains sticky across later stages`() {
+        assertEquals(
+            "AUTO_RENAMED",
+            OverwriteEvidencePolicy.accumulate("NOT_RUN", "AUTO_RENAMED"),
+        )
+        assertEquals(
+            "INCONCLUSIVE",
+            OverwriteEvidencePolicy.accumulate("INCONCLUSIVE", "AUTO_RENAMED"),
+        )
+        assertEquals(
+            "ERROR_IOException",
+            OverwriteEvidencePolicy.accumulate("AUTO_RENAMED", "ERROR_IOException"),
+        )
+        assertEquals(
+            "DUPLICATE_EXACT",
+            OverwriteEvidencePolicy.accumulate("AUTO_RENAMED", "DUPLICATE_EXACT"),
+        )
+    }
+
+    @Test
     fun `overwrite classification uses exact names and parsed generations`() {
         assertEquals(
             "OVERWROTE_EXISTING",
@@ -207,6 +227,26 @@ class S04ProbeModelTest {
     }
 
     @Test
+    fun `exact child lookup rejects ambiguity`() {
+        assertEquals(
+            UniqueChildResolution.QUERY_FAILED,
+            UniqueChildPolicy.resolve(ChildQueryStatus.QUERY_FAILED, 0),
+        )
+        assertEquals(
+            UniqueChildResolution.ABSENT,
+            UniqueChildPolicy.resolve(ChildQueryStatus.ABSENT, 0),
+        )
+        assertEquals(
+            UniqueChildResolution.UNIQUE,
+            UniqueChildPolicy.resolve(ChildQueryStatus.FOUND, 1),
+        )
+        assertEquals(
+            UniqueChildResolution.AMBIGUOUS,
+            UniqueChildPolicy.resolve(ChildQueryStatus.FOUND, 2),
+        )
+    }
+
+    @Test
     fun `preparing cleanup only uses persisted or unique exact root`() {
         assertEquals(
             PreparingRootRecovery.USE_PERSISTED_ROOT,
@@ -311,6 +351,38 @@ class S04ProbeModelTest {
         assertFalse(RunResetPolicy.canReset(PendingRecordStatus.VALID))
         assertFalse(RunResetPolicy.canReset(PendingRecordStatus.INCOMPATIBLE))
         assertTrue(RunResetPolicy.canReset(PendingRecordStatus.NONE))
+    }
+
+    @Test
+    fun `incompatible pending deletion requires complete verified ownership`() {
+        assertTrue(
+            IncompatiblePendingCleanupPolicy.canDelete(
+                hasTreeAndToken = true,
+                uniqueExactRoot = true,
+                ownedMarkerVerified = true,
+            ),
+        )
+        assertFalse(
+            IncompatiblePendingCleanupPolicy.canDelete(
+                hasTreeAndToken = false,
+                uniqueExactRoot = true,
+                ownedMarkerVerified = true,
+            ),
+        )
+        assertFalse(
+            IncompatiblePendingCleanupPolicy.canDelete(
+                hasTreeAndToken = true,
+                uniqueExactRoot = false,
+                ownedMarkerVerified = true,
+            ),
+        )
+        assertFalse(
+            IncompatiblePendingCleanupPolicy.canDelete(
+                hasTreeAndToken = true,
+                uniqueExactRoot = true,
+                ownedMarkerVerified = false,
+            ),
+        )
     }
 
     private fun observation(stage: AtomicInterruption) = StageObservation(
