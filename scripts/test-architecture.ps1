@@ -38,6 +38,8 @@ try {
         Get-Item -LiteralPath (Join-Path $projectRoot "spikes/s02-fixture-helper/build.gradle.kts")
         Get-Item -LiteralPath (Join-Path $projectRoot "spikes/s02-fixture-helper/src/main/AndroidManifest.xml")
         Get-Item -LiteralPath (Join-Path $projectRoot "spikes/s05-thumbnail/build.gradle.kts")
+        Get-Item -LiteralPath (Join-Path $projectRoot "spikes/s05-thumbnail-harness/build.gradle.kts")
+        Get-Item -LiteralPath (Join-Path $projectRoot "spikes/s05-thumbnail-harness/src/main/AndroidManifest.xml")
     ) | Where-Object { $_.FullName -notmatch '[\\/]+build[\\/]' }
     foreach ($file in $fixtureFiles) {
         $relativePath = $file.FullName.Substring($projectRoot.Length).TrimStart('\')
@@ -123,6 +125,20 @@ try {
         -Value "`ndependencies { implementation(project(`":data`")) }"
     Assert-VerificationFails `
         -ExpectedMessage "S05.1 contract module must remain dependency-free Kotlin/JVM"
+    Copy-Item -Force -LiteralPath `
+        (Join-Path $projectRoot "spikes/s05-thumbnail/build.gradle.kts") `
+        -Destination $s05BuildPath
+
+    $s05HarnessManifestPath = Join-Path $fixtureRoot (
+        "spikes/s05-thumbnail-harness/src/main/AndroidManifest.xml"
+    )
+    $s05HarnessManifest = Get-Content -Raw -LiteralPath $s05HarnessManifestPath
+    $s05HarnessManifest = $s05HarnessManifest -replace `
+        '<manifest xmlns:android="http://schemas.android.com/apk/res/android">', `
+        '$0<uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />'
+    Set-Content -NoNewline -LiteralPath $s05HarnessManifestPath -Value $s05HarnessManifest
+    Assert-VerificationFails `
+        -ExpectedMessage "S05 harness must not request permissions or share an Android UID"
 
     Write-Output "Architecture guard tests passed."
 }

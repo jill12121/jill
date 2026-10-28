@@ -1,0 +1,146 @@
+package com.galleryorganizer.spikes.s05.harness
+
+import android.app.Activity
+import android.graphics.Color
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.view.Choreographer
+import android.view.View
+import android.view.ViewGroup
+import android.widget.AbsListView
+import android.widget.BaseAdapter
+import android.widget.Button
+import android.widget.GridView
+import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.TextView
+import com.galleryorganizer.spikes.s05.ThumbnailBenchmarkBudget
+import com.galleryorganizer.spikes.s05.ThumbnailBenchmarkClassifier
+import com.galleryorganizer.spikes.s05.ThumbnailBenchmarkRecorder
+import org.json.JSONObject
+import java.io.File
+import kotlin.concurrent.thread
+
+class ThumbnailHarnessActivity : Activity() {
+    private val handler = Handler(Looper.getMainLooper())
+    private lateinit var status: TextView
+    private lateinit var grid: GridView
+    private var running = false
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        status = TextView(this).apply { text = "Ready: app-private fixtures only" }
+        grid = GridView(this).apply {
+            numColumns = 3
+            verticalSpacing = 4
+            horizontalSpacing = 4
+        }
+        val start = Button(this).apply {
+            text = "Run benchmark"
+            setOnClickListener {
+                isEnabled = false
+                status.text = "Preparing controlled fixtures..."
+                startRun()
+            }
+        }
+        setContentView(
+            LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(16, 16, 16, 16)
+                addView(start)
+                addView(status)
+                addView(grid, LinearLayout.LayoutParams(-1, 0, 1f))
+            },
+        )
+    }
+
+    private fun startRun() {
+        thread(name = "s05-fixture-prepare") {
+            val store = AppPrivateFixtureStore(this)
+            val provenance = store.prepare(FixtureSpec(count = 96, edgePx = 256, seed = 520))
+            runOnUiThread { runScroll(store, provenance) }
+        }
+    }
+
+    private fun runScroll(store: AppPrivateFixtureStore, provenance: FixtureProvenance) {
+        val recorder = ThumbnailBenchmarkRecorder()
+        val frames = FrameIntervalAdapter(recorder, maximumSamples = 360)
+        val callback = object : Choreographer.FrameCallback {
+            override fun doFrame(frameTimeNanos: Long) {
+                if (running && frames.onFrame(frameTimeNanos)) {
+                    Choreographer.getInstance().postFrameCallback(this)
+                }
+            }
+        }
+        grid.adapter = ThumbnailGridAdapter(store.files, AppPrivateThumbnailFetcher(recorder))
+        running = true
+        Choreographer.getInstance().postFrameCallback(callback)
+        var toEnd = true
+        val scroll = object : Runnable {
+            override fun run() {
+                if (!running) return
+                grid.smoothScrollToPosition(if (toEnd) store.files.lastIndex else 0)
+                toEnd = !toEnd
+                handler.postDelayed(this, 1_000)
+            }
+        }
+        handler.post(scroll)
+        handler.postDelayed({
+            running = false
+            handler.removeCallbacks(scroll)
+            Choreographer.getInstance().removeFrameCallback(callback)
+            recorder.complete()
+            publish(provenance, recorder)
+        }, 10_000)
+    }
+
+    private fun publish(provenance: FixtureProvenance, recorder: ThumbnailBenchmarkRecorder) {
+        val metrics = recorder.snapshot()
+        val result = ThumbnailBenchmarkClassifier.classify(
+            metrics,
+            ThumbnailBenchmarkBudget(300, 96, 256L * 1024 * 1024, 24, 20, 0),
+        )
+        val json = JSONObject()
+            .put("schema", 1)
+            .put("storage", provenance.storage)
+            .put("fixtureCount", provenance.count)
+            .put("fixtureEdgePx", provenance.edgePx)
+            .put("fixtureSeed", provenance.seed)
+            .put("fixtureBytes", provenance.totalBytes)
+            .put("fixtureSha256", provenance.sha256)
+            .put("frameSamples", metrics.frameSampleCount)
+            .put("fetchSamples", metrics.fetchSampleCount)
+            .put("failedFetches", metrics.failedFetchCount)
+            .put("peakHeapBytes", metrics.peakHeapBytes)
+            .put("frameP95Millis", metrics.frameP95Millis)
+            .put("fetchP95Millis", metrics.fetchP95Millis)
+            .put("oomObserved", metrics.oomObserved)
+            .put("decision", result.decision.name)
+            .put("violations", result.violations.joinToString(","))
+        val output = File(filesDir, "s05-results/latest.json")
+        output.parentFile?.mkdirs()
+        output.writeText(json.toString(2))
+        status.text = "${result.decision}: ${metrics.frameSampleCount} frames, " +
+            "${metrics.fetchSampleCount} fetches\n${output.absolutePath}"
+    }
+}
+
+private class ThumbnailGridAdapter(
+    private val files: List<File>,
+    private val fetcher: AppPrivateThumbnailFetcher,
+) : BaseAdapter() {
+    override fun getCount() = files.size
+    override fun getItem(position: Int) = files[position]
+    override fun getItemId(position: Int) = position.toLong()
+
+    override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+        val image = (convertView as? ImageView) ?: ImageView(parent.context).apply {
+            layoutParams = AbsListView.LayoutParams(256, 256)
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            setBackgroundColor(Color.LTGRAY)
+        }
+        image.setImageBitmap(fetcher.fetch(files[position]))
+        return image
+    }
+}

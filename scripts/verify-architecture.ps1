@@ -36,7 +36,8 @@ foreach ($module in @(
     ":presentation",
     ":spikes:s02-fixture-contract",
     ":spikes:s02-fixture-helper",
-    ":spikes:s05-thumbnail"
+    ":spikes:s05-thumbnail",
+    ":spikes:s05-thumbnail-harness"
 )) {
     if ($settings -notmatch [regex]::Escape("include(`"$module`")")) {
         throw "Required architecture module is not included: $module"
@@ -97,6 +98,24 @@ if (
     $s05Build -match 'project\(":'
 ) {
     throw "S05.1 contract module must remain dependency-free Kotlin/JVM"
+}
+$s05HarnessBuild = Get-ProjectFileContent "spikes/s05-thumbnail-harness/build.gradle.kts"
+if (
+    $s05HarnessBuild -notmatch [regex]::Escape("alias(libs.plugins.android.application)") -or
+    $s05HarnessBuild -notmatch 'applicationId\s*=\s*"com\.galleryorganizer\.spikes\.s05\.harness"' -or
+    $s05HarnessBuild -notmatch [regex]::Escape('project(":spikes:s05-thumbnail")') -or
+    $s05HarnessBuild -match 'project\(":(?!spikes:s05-thumbnail")'
+) {
+    throw "S05 harness must remain an isolated application depending only on the S05 contract"
+}
+$s05HarnessManifest = Get-ProjectFileContent (
+    "spikes/s05-thumbnail-harness/src/main/AndroidManifest.xml"
+)
+if (
+    $s05HarnessManifest -match '<uses-permission' -or
+    $s05HarnessManifest -match 'sharedUserId'
+) {
+    throw "S05 harness must not request permissions or share an Android UID"
 }
 
 $expectedDependencies = @{
