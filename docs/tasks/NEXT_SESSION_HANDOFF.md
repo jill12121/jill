@@ -44,6 +44,11 @@ Do not infer device GO from CI or desktop tests.
   fetch/scroll harness; Remote Verify `40646181752` passed.
 - S05.2b hardening `7fcc3d9`: version `0.1.1` prevents late fetches from
   touching a completed recorder; Remote Verify `40656014739` passed.
+- S05.2c `290e4a5`: schema-2 result JSON binds each run to manufacturer, model,
+  API level, Android release, security patch level, and a SHA-256 fingerprint
+  hash (no raw `Build.FINGERPRINT`); `scripts/verify-s05-evidence.ps1` and its
+  negative guard `scripts/test-s05-evidence.ps1` review the exported matrix.
+  Remote Verify `40667099458` passed.
 - F06 manifest pipeline `4fb0649` -> `2c99d22` -> `bb070e2` -> `5a3abff` ->
   `881f023`: strict JSON parser, manifest codec, golden fixtures, filesystem
   verifier, and manifest factory plus progressive pure-domain E2E; latest
@@ -58,10 +63,10 @@ still required before any aggregate device decision.
 - F06: `COMPLETE` within its pure-domain scope; golden manifest fixtures and
   the progressive pure-domain E2E are delivered (35 domain tests green).
 - S01/S02/S04: `DEVICE_PENDING`; independent review is complete.
-- Spike unit tests: S01 19, S02 9, S04 16, S05 core 10, S05 harness 4 per
+- Spike unit tests: S01 19, S02 9, S04 16, S05 core 10, S05 harness 6 per
   build variant; all green.
-- S05.1/S05.2a/S05.2b: `COMPLETE`; physical-device fetch/scroll evidence is
-  PENDING. I04 remains blocked.
+- S05.1/S05.2a/S05.2b/S05.2c: `COMPLETE`; physical-device fetch/scroll
+  evidence is PENDING. I04 remains blocked.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action
@@ -73,6 +78,9 @@ still required before any aggregate device decision.
 4. Install and execute the isolated S05.2b harness on the device matrix,
    collect `s05-results/latest.json`, and review budgets/fallbacks without
    wiring it into production.
+5. Store each exported result as `docs/evidence/s05/{android11,target,oem-a,
+   oem-b}.json` and run `scripts/verify-s05-evidence.ps1`. Four distinct PASS
+   rows are required for aggregate GO; one iQOO 11S row is not sufficient.
 
 ## Hard Boundaries
 

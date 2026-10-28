@@ -3,8 +3,8 @@
 ## Current Task
 
 - ID: S01/S02/S04 and S05
-- Sub-step: REQUIRED physical-device matrix; S05.2c measured benchmark run
-- State: DEVICE_PENDING; S05.2b HARNESS_COMPLETE
+- Sub-step: REQUIRED physical-device matrix; S05.2c evidence review
+- State: DEVICE_PENDING; S05.2c EVIDENCE_TOOLING_COMPLETE
 
 ## Completed
 
@@ -85,6 +85,18 @@
   recorder completion, ignores late grid fetches, and reports result-write
   failures in-page instead of exiting. Commit `7fcc3d9` passed Remote Verify
   `40656014739`; all 4 harness tests pass for debug and release variants.
+- S05.2c: harness result schema 2 adds manufacturer, model, API level, Android
+  release, security patch level, and a SHA-256 hash of the build fingerprint,
+  so exported evidence binds to one physical device without leaving the raw
+  `Build.FINGERPRINT`. Harness version `0.1.2` is committed as `290e4a5` and
+  passed Remote Verify `40667099458`.
+  `scripts/verify-s05-evidence.ps1` rejects schema drift, raw fingerprint
+  fragments, identity fields, fixture drift, duplicate device hashes, and PASS
+  claims without sufficient samples or with failures; aggregate GO is printed
+  only for four distinct PASS rows. `scripts/test-s05-evidence.ps1` keeps those
+  rules under negative test and runs in Remote Verify. All 6 harness tests pass
+  for debug and release variants; the `0.1.2` debug APK passed v2 signature
+  verification.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
@@ -104,6 +116,10 @@
 - Install and execute the S05.2b harness on the required physical-device
   matrix, collect `s05-results/latest.json`, and review budgets/fallbacks
   without wiring the harness into the release app.
+- Copy each exported S05 result into `docs/evidence/s05/` as
+  `android11.json`, `target.json`, `oem-a.json`, or `oem-b.json`, then run
+  `scripts/verify-s05-evidence.ps1`. A single iQOO 11S PASS is one row only and
+  is not aggregate GO.
 
 ## Active Gates
 
@@ -116,9 +132,10 @@
 - S04: DEVICE_PENDING; durable recovery, overwrite, and provenance hardening
   are independently reviewed and CI-green.
 - S05: ANDROID_HARNESS_COMPLETE / DEVICE_EVIDENCE_PENDING; S05.1/S05.2a remain
-  pure and CI-green, and S05.2b is isolated from production. No physical-device
-  fetch/scroll evidence exists, so final budgets are not frozen and I04 remains
-  blocked.
+  pure and CI-green, S05.2b is isolated from production, and S05.2c provides a
+  schema-2 device binding plus a reviewed evidence guard. No exported
+  physical-device result is recorded yet, so final budgets are not frozen and
+  I04 remains blocked.
 - J1/J2/J3 and production storage execution remain BLOCKED until required
   device decisions are recorded.
 
@@ -167,7 +184,8 @@
 
 - S01/S02/S04 physical-device results are PENDING; emulator and desktop
   results cannot satisfy the REQUIRED matrix.
-- S05 has an isolated Android harness but no measured physical-device result;
-  its current budget values remain provisional classifier inputs.
+- S05 has an isolated Android harness and an evidence guard, but no exported
+  physical-device result; its current budget values remain provisional
+  classifier inputs.
 - J1/J2/J3 and all production workspace/Manifest/cleanup execution are blocked
   by those device decisions.
