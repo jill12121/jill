@@ -22,6 +22,7 @@ android {
 }
 dependencies {
     implementation(project(":spikes:s01-saf"))
+    implementation(project(":spikes:s02-fixture-contract"))
     implementation(project(":spikes:s02-mediastore"))
     implementation(project(":spikes:s04-manifest"))
     implementation(platform(libs.androidx.compose.bom))

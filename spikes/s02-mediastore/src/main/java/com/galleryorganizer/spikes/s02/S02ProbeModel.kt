@@ -1,5 +1,6 @@
 package com.galleryorganizer.spikes.s02
 
+import com.galleryorganizer.spikes.s02.fixture.ExternalFixtureContract
 import java.security.MessageDigest
 
 enum class MediaPermissionState {
@@ -19,9 +20,24 @@ enum class CleanupAuthorizationState {
     REQUEST_FAILED,
 }
 
-enum class CleanupFixtureOwnership { APP_OWNED, EXTERNAL_HELPER_OWNED }
-
 enum class S02SingleDeviceOutcome { PASS, PARTIAL, PENDING, FAIL }
+
+data class ExternalFixtureEvidence(
+    val ownerPackageName: String,
+    val relativePath: String,
+    val mimeType: String,
+    val displayName: String,
+    val token: String,
+    val tokenMarkerMatches: Boolean,
+) {
+    val isValid: Boolean
+        get() = ExternalFixtureContract.isValidToken(token) &&
+            ownerPackageName == ExternalFixtureContract.HELPER_PACKAGE &&
+            relativePath == ExternalFixtureContract.RELATIVE_PATH &&
+            mimeType == ExternalFixtureContract.MIME_TYPE &&
+            displayName == ExternalFixtureContract.displayName(token) &&
+            tokenMarkerMatches
+}
 
 data class S02ProbeProvenance(
     val schemaVersion: Int,
@@ -57,8 +73,8 @@ data class S02ProbeProvenance(
             """"fingerprintSha256":"$fingerprintSha256"}"""
 
     companion object {
-        const val SCHEMA_VERSION = 1
-        const val PROBE_VERSION = "S02.3"
+        const val SCHEMA_VERSION = 2
+        const val PROBE_VERSION = "S02.4"
 
         fun fromRawFingerprint(
             runId: String,
@@ -128,8 +144,7 @@ data class S02ProbeResult(
     val pages: List<PageEvidence>,
     val cleanupState: CleanupAuthorizationState,
     val authorizationBatchSizes: List<Int>,
-    val cleanupFixtureOwnership: CleanupFixtureOwnership =
-        CleanupFixtureOwnership.APP_OWNED,
+    val cleanupFixtureEvidence: ExternalFixtureEvidence? = null,
     val provenance: S02ProbeProvenance,
     val exceptionClass: String? = null,
 ) {
@@ -146,6 +161,7 @@ data class S02ProbeResult(
                         authorizationBatchSizes.isEmpty()
                     ) ||
                 authorizationBatchSizes.any { it !in 1..CleanupAuthorizationChunker.MAX_BATCH_SIZE } ||
+                cleanupFixtureEvidence?.isValid == false ||
                 cleanupState == CleanupAuthorizationState.GRANTED_STILL_PRESENT ||
                 cleanupState == CleanupAuthorizationState.GRANTED_QUERY_FAILED ||
                 cleanupState == CleanupAuthorizationState.DENIED ||
@@ -156,7 +172,7 @@ data class S02ProbeResult(
                 cleanupState == CleanupAuthorizationState.PENDING ->
                 S02SingleDeviceOutcome.PENDING
 
-            cleanupFixtureOwnership == CleanupFixtureOwnership.APP_OWNED ->
+            cleanupFixtureEvidence == null ->
                 S02SingleDeviceOutcome.PENDING
 
             permissionState == MediaPermissionState.PARTIAL_USER_SELECTED ->
@@ -181,7 +197,17 @@ data class S02ProbeResult(
         append(""","cleanupState":"$cleanupState","authorizationBatchSizes":[""")
         append(authorizationBatchSizes.joinToString(","))
         append("]")
-        append(""","cleanupFixtureOwnership":"$cleanupFixtureOwnership"""")
+        append(""","cleanupFixtureEvidence":""")
+        append(
+            cleanupFixtureEvidence?.let {
+                """{"ownerPackageName":${it.ownerPackageName.jsonString()},""" +
+                    """"relativePath":${it.relativePath.jsonString()},""" +
+                    """"mimeType":${it.mimeType.jsonString()},""" +
+                    """"displayName":${it.displayName.jsonString()},""" +
+                    """"token":${it.token.jsonString()},""" +
+                    """"tokenMarkerMatches":${it.tokenMarkerMatches}}"""
+            } ?: "null",
+        )
         append(""","provenance":${provenance.toJson()}""")
         append(""","exceptionClass":${exceptionClass?.let { "\"$it\"" } ?: "null"}""")
         append(""","decisionS02SingleDevice":"$outcome"}""")

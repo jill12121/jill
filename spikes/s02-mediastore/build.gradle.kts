@@ -17,6 +17,7 @@ android {
     buildFeatures { compose = true }
 }
 dependencies {
+    implementation(project(":spikes:s02-fixture-contract"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.material3)

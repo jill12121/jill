@@ -29,10 +29,37 @@ function Assert-DoesNotMatch {
 }
 
 $settings = Get-ProjectFileContent "settings.gradle.kts"
-foreach ($module in @(":core:contract", ":domain", ":data", ":presentation")) {
+foreach ($module in @(
+    ":core:contract",
+    ":domain",
+    ":data",
+    ":presentation",
+    ":spikes:s02-fixture-contract",
+    ":spikes:s02-fixture-helper"
+)) {
     if ($settings -notmatch [regex]::Escape("include(`"$module`")")) {
         throw "Required architecture module is not included: $module"
     }
+}
+
+$appBuild = Get-ProjectFileContent "app/build.gradle.kts"
+if ($appBuild -match 'project\(":spikes:') {
+    throw "Production app must not depend on spike modules"
+}
+$probeSuiteBuild = Get-ProjectFileContent "spikes/probe-suite/build.gradle.kts"
+if ($probeSuiteBuild -match 'project\(":spikes:s02-fixture-helper"\)') {
+    throw "Probe suite must not depend on the external fixture helper APK"
+}
+$helperBuild = Get-ProjectFileContent "spikes/s02-fixture-helper/build.gradle.kts"
+if (
+    $helperBuild -notmatch [regex]::Escape("alias(libs.plugins.android.application)") -or
+    $helperBuild -notmatch 'applicationId\s*=\s*"com\.galleryorganizer\.spikes\.s02\.fixturehelper"'
+) {
+    throw "S02 fixture helper must remain an independently installed application"
+}
+$helperManifest = Get-ProjectFileContent "spikes/s02-fixture-helper/src/main/AndroidManifest.xml"
+if ($helperManifest -match 'sharedUserId') {
+    throw "S02 fixture helper must not share an Android UID"
 }
 
 $expectedDependencies = @{

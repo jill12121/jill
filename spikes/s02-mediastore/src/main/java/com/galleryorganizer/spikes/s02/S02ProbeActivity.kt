@@ -4,7 +4,6 @@ import android.Manifest
 import android.app.Activity
 import android.app.PendingIntent
 import android.content.ContentResolver
-import android.content.ContentValues
 import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -35,10 +34,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.galleryorganizer.spikes.s02.fixture.ExternalFixtureContract
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.Base64
 import java.util.UUID
 
 data class CleanupAuthorization(
@@ -105,7 +104,10 @@ class MediaStoreProbe(private val context: Context) {
         }
     }
 
-    suspend fun run(requestAttempted: Boolean): S02ProbeRun = withContext(Dispatchers.IO) {
+    suspend fun run(
+        requestAttempted: Boolean,
+        externalToken: String,
+    ): S02ProbeRun = withContext(Dispatchers.IO) {
         val permission = permissionState(requestAttempted)
         val provenance = provenance()
         if (
@@ -115,7 +117,6 @@ class MediaStoreProbe(private val context: Context) {
             return@withContext S02ProbeRun(emptyResult(permission, provenance))
         }
 
-        var sample: Uri? = null
         try {
             val pages = queryPages()
             val totalRows = pages.sumOf(PageEvidence::rowCount)
@@ -131,15 +132,15 @@ class MediaStoreProbe(private val context: Context) {
                 return@withContext S02ProbeRun(result)
             }
 
-            sample = createControlledSample()
-            val request = MediaStore.createDeleteRequest(resolver, listOf(sample))
+            val fixture = findExternalFixture(externalToken)
+            val request = MediaStore.createDeleteRequest(resolver, listOf(fixture.first))
             result = result.copy(
                 cleanupState = CleanupAuthorizationState.PENDING,
                 authorizationBatchSizes = listOf(1),
+                cleanupFixtureEvidence = fixture.second,
             )
-            S02ProbeRun(result, CleanupAuthorization(request, sample))
+            S02ProbeRun(result, CleanupAuthorization(request, fixture.first))
         } catch (caught: Exception) {
-            sample?.let(::deleteOwnedSample)
             S02ProbeRun(
                 emptyResult(permission, provenance).copy(
                     cleanupState = CleanupAuthorizationState.REQUEST_FAILED,
@@ -162,9 +163,6 @@ class MediaStoreProbe(private val context: Context) {
             presence == CleanupPresence.ABSENT ->
                 CleanupAuthorizationState.GRANTED_REMOVED
             else -> CleanupAuthorizationState.GRANTED_QUERY_FAILED
-        }
-        if (presence == CleanupPresence.PRESENT) {
-            deleteOwnedSample(authorization.sampleUri)
         }
         run.result.copy(cleanupState = state)
     }
@@ -253,31 +251,63 @@ class MediaStoreProbe(private val context: Context) {
         return pages
     }
 
-    private fun createControlledSample(): Uri {
-        val values = ContentValues().apply {
-            put(MediaStore.Images.Media.DISPLAY_NAME, ".s02-${UUID.randomUUID()}.png")
-            put(MediaStore.Images.Media.MIME_TYPE, "image/png")
-            put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/GalleryOrganizerProbe")
-            put(MediaStore.Images.Media.IS_PENDING, 1)
-        }
-        val uri = requireNotNull(
-            resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values),
+    private fun findExternalFixture(token: String): Pair<Uri, ExternalFixtureEvidence> {
+        require(ExternalFixtureContract.isValidToken(token)) { "INVALID_FIXTURE_TOKEN" }
+        val displayName = ExternalFixtureContract.displayName(token)
+        val projection = arrayOf(
+            MediaStore.Images.Media._ID,
+            MediaStore.Images.Media.OWNER_PACKAGE_NAME,
+            MediaStore.Images.Media.RELATIVE_PATH,
+            MediaStore.Images.Media.MIME_TYPE,
+            MediaStore.Images.Media.DISPLAY_NAME,
         )
-        try {
-            resolver.openOutputStream(uri, "w").use {
-                requireNotNull(it).write(PROBE_PNG)
+        val matches = mutableListOf<Pair<Uri, ExternalFixtureEvidence>>()
+        requireNotNull(
+            resolver.query(
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                projection,
+                "${MediaStore.Images.Media.DISPLAY_NAME} = ?",
+                arrayOf(displayName),
+                null,
+            ),
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                val uri = Uri.withAppendedPath(
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                    cursor.getLong(0).toString(),
+                )
+                var evidence = ExternalFixtureEvidence(
+                    ownerPackageName = cursor.getString(1).orEmpty(),
+                    relativePath = cursor.getString(2).orEmpty(),
+                    mimeType = cursor.getString(3).orEmpty(),
+                    displayName = cursor.getString(4).orEmpty(),
+                    token = token,
+                    tokenMarkerMatches = false,
+                )
+                if (evidence.copy(tokenMarkerMatches = true).isValid) {
+                    evidence = evidence.copy(tokenMarkerMatches = payloadMatches(uri, token))
+                }
+                matches += uri to evidence
             }
-            resolver.update(
-                uri,
-                ContentValues().apply { put(MediaStore.Images.Media.IS_PENDING, 0) },
-                null,
-                null,
-            )
-            return uri
-        } catch (caught: Exception) {
-            deleteOwnedSample(uri)
-            throw caught
         }
+        val fixture = matches.singleOrNull() ?: error("FIXTURE_NOT_UNIQUE")
+        require(fixture.second.isValid) { "FIXTURE_PROVENANCE_INVALID" }
+        return fixture
+    }
+
+    private fun payloadMatches(uri: Uri, token: String): Boolean {
+        val expected = ExternalFixtureContract.payload(token)
+        val actual = ByteArray(expected.size + 1)
+        val count = resolver.openInputStream(uri)?.use { stream ->
+            var offset = 0
+            while (offset < actual.size) {
+                val read = stream.read(actual, offset, actual.size - offset)
+                if (read < 0) break
+                offset += read
+            }
+            offset
+        } ?: return false
+        return count == expected.size && actual.copyOf(count).contentEquals(expected)
     }
 
     private fun presenceOf(uri: Uri): CleanupPresence = try {
@@ -293,10 +323,6 @@ class MediaStoreProbe(private val context: Context) {
         }
     } catch (_: Exception) {
         CleanupPresence.QUERY_FAILED
-    }
-
-    private fun deleteOwnedSample(uri: Uri) {
-        runCatching { resolver.delete(uri, null, null) }
     }
 
     @Suppress("DEPRECATION")
@@ -334,10 +360,6 @@ class MediaStoreProbe(private val context: Context) {
             ContentResolver.QUERY_ARG_SORT_DIRECTION,
             ContentResolver.QUERY_ARG_LIMIT,
         )
-        val PROBE_PNG: ByteArray = Base64.getDecoder().decode(
-            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk" +
-                "YAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
-        )
     }
 }
 
@@ -346,6 +368,7 @@ class S02ProbeActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val probe = MediaStoreProbe(applicationContext)
         val probeState = ViewModelProvider(this)[S02ProbeViewModel::class.java]
+        val externalToken = intent.getStringExtra(ExternalFixtureContract.TOKEN_EXTRA).orEmpty()
         setContent {
             var running by remember { mutableStateOf(false) }
             val scope = rememberCoroutineScope()
@@ -363,7 +386,7 @@ class S02ProbeActivity : ComponentActivity() {
             fun execute(requestAttempted: Boolean) {
                 scope.launch {
                     running = true
-                    val updated = probe.run(requestAttempted)
+                    val updated = probe.run(requestAttempted, externalToken)
                     probeState.updateRun(updated)
                     updated.cleanupAuthorization?.let {
                         cleanupLauncher.launch(
@@ -385,7 +408,14 @@ class S02ProbeActivity : ComponentActivity() {
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
                         Text("S02 / MediaStore", style = MaterialTheme.typography.headlineSmall)
-                        Text("Runtime permission, bounded keyset pages, and controlled cleanup.")
+                        Text("External-helper fixture, bounded keyset pages, and cleanup consent.")
+                        Text(
+                            if (ExternalFixtureContract.isValidToken(externalToken)) {
+                                "Fixture token: $externalToken"
+                            } else {
+                                "Open S02 from the external fixture helper."
+                            },
+                        )
                         Button(
                             onClick = {
                                 val permission = probe.permissionState(false)
@@ -398,7 +428,8 @@ class S02ProbeActivity : ComponentActivity() {
                                     permissionLauncher.launch(probe.requiredPermissions())
                                 }
                             },
-                            enabled = !running,
+                            enabled = !running &&
+                                ExternalFixtureContract.isValidToken(externalToken),
                             modifier = Modifier.fillMaxWidth(),
                         ) { Text(if (running) "Running..." else "Run S02 probe") }
                         Text(probeState.run?.result?.toJson() ?: "PENDING")

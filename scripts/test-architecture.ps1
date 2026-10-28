@@ -32,6 +32,10 @@ try {
         Get-ChildItem -LiteralPath (Join-Path $projectRoot "data") -Recurse -File
         Get-ChildItem -LiteralPath (Join-Path $projectRoot "presentation") -Recurse -File
         Get-ChildItem -LiteralPath (Join-Path $projectRoot "app/src/main/java") -Recurse -File
+        Get-Item -LiteralPath (Join-Path $projectRoot "app/build.gradle.kts")
+        Get-Item -LiteralPath (Join-Path $projectRoot "spikes/probe-suite/build.gradle.kts")
+        Get-Item -LiteralPath (Join-Path $projectRoot "spikes/s02-fixture-helper/build.gradle.kts")
+        Get-Item -LiteralPath (Join-Path $projectRoot "spikes/s02-fixture-helper/src/main/AndroidManifest.xml")
     ) | Where-Object { $_.FullName -notmatch '[\\/]+build[\\/]' }
     foreach ($file in $fixtureFiles) {
         $relativePath = $file.FullName.Substring($projectRoot.Length).TrimStart('\')
@@ -74,6 +78,22 @@ try {
     Add-Content -LiteralPath $appBindingsPath `
         -Value "`nval leakedFake: FakeSourceReader? = null"
     Assert-VerificationFails -ExpectedMessage "Production source must not depend on test fakes"
+    Copy-Item -Force -LiteralPath `
+        (Join-Path $projectRoot "app/src/main/java/com/galleryorganizer/app/di/AppBindingsModule.kt") `
+        -Destination $appBindingsPath
+
+    $appBuildPath = Join-Path $fixtureRoot "app/build.gradle.kts"
+    Add-Content -LiteralPath $appBuildPath `
+        -Value "`ndependencies { implementation(project(`":spikes:s02-fixture-helper`")) }"
+    Assert-VerificationFails -ExpectedMessage "Production app must not depend on spike modules"
+    Copy-Item -Force -LiteralPath (Join-Path $projectRoot "app/build.gradle.kts") `
+        -Destination $appBuildPath
+
+    $probeSuiteBuildPath = Join-Path $fixtureRoot "spikes/probe-suite/build.gradle.kts"
+    Add-Content -LiteralPath $probeSuiteBuildPath `
+        -Value "`ndependencies { implementation(project(`":spikes:s02-fixture-helper`")) }"
+    Assert-VerificationFails `
+        -ExpectedMessage "Probe suite must not depend on the external fixture helper APK"
 
     Write-Output "Architecture guard tests passed."
 }

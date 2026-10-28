@@ -18,11 +18,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.galleryorganizer.spikes.s01.S01ProbeActivity
 import com.galleryorganizer.spikes.s02.S02ProbeActivity
+import com.galleryorganizer.spikes.s02.fixture.ExternalFixtureContract
 import com.galleryorganizer.spikes.s04.S04ProbeActivity
 
 class ProbeSuiteActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val externalToken = intent.getStringExtra(ExternalFixtureContract.TOKEN_EXTRA)
+        if (
+            savedInstanceState == null &&
+            intent.action == ExternalFixtureContract.OPEN_ACTION &&
+            externalToken != null &&
+            ExternalFixtureContract.isValidToken(externalToken)
+        ) {
+            startActivity(
+                Intent(this, S02ProbeActivity::class.java)
+                    .putExtra(ExternalFixtureContract.TOKEN_EXTRA, externalToken),
+            )
+        }
         setContent {
             MaterialTheme {
                 Surface {

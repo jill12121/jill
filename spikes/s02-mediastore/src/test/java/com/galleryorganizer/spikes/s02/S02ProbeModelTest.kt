@@ -1,5 +1,6 @@
 package com.galleryorganizer.spikes.s02
 
+import com.galleryorganizer.spikes.s02.fixture.ExternalFixtureContract
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -47,6 +48,8 @@ class S02ProbeModelTest {
         )
 
         assertTrue(provenance.isValid)
+        assertEquals(2, provenance.schemaVersion)
+        assertEquals("S02.4", provenance.probeVersion)
         assertEquals(64, provenance.fingerprintSha256.length)
         assertFalse(provenance.toJson().contains("raw-fingerprint"))
         assertTrue(provenance.toJson().contains("run-123"))
@@ -96,9 +99,37 @@ class S02ProbeModelTest {
         assertEquals(
             S02SingleDeviceOutcome.PENDING,
             passingResult().copy(
-                cleanupFixtureOwnership = CleanupFixtureOwnership.APP_OWNED,
+                cleanupFixtureEvidence = null,
             ).outcome,
         )
+    }
+
+    @Test
+    fun `external fixture requires exact helper provenance and token marker`() {
+        val valid = externalEvidence()
+
+        assertTrue(valid.isValid)
+        assertFalse(valid.copy(ownerPackageName = "com.example.other").isValid)
+        assertFalse(valid.copy(relativePath = "Pictures/Other/").isValid)
+        assertFalse(valid.copy(mimeType = "text/html").isValid)
+        assertFalse(valid.copy(displayName = ".s02-external-other.png").isValid)
+        assertFalse(valid.copy(tokenMarkerMatches = false).isValid)
+        assertEquals(
+            S02SingleDeviceOutcome.FAIL,
+            passingResult().copy(
+                cleanupFixtureEvidence = valid.copy(tokenMarkerMatches = false),
+            ).outcome,
+        )
+    }
+
+    @Test
+    fun `fixture contract accepts only canonical random token`() {
+        val token = "123e4567-e89b-42d3-a456-426614174000"
+
+        assertTrue(ExternalFixtureContract.isValidToken(token))
+        assertEquals(".s02-external-$token.png", ExternalFixtureContract.displayName(token))
+        assertFalse(ExternalFixtureContract.isValidToken("../escape"))
+        assertFalse(ExternalFixtureContract.isValidToken(token.uppercase()))
     }
 
     @Test
@@ -193,8 +224,19 @@ class S02ProbeModelTest {
         ),
         cleanupState = CleanupAuthorizationState.GRANTED_REMOVED,
         authorizationBatchSizes = listOf(1),
-        cleanupFixtureOwnership = CleanupFixtureOwnership.EXTERNAL_HELPER_OWNED,
+        cleanupFixtureEvidence = externalEvidence(),
         provenance = provenance(),
+    )
+
+    private fun externalEvidence() = ExternalFixtureEvidence(
+        ownerPackageName = ExternalFixtureContract.HELPER_PACKAGE,
+        relativePath = ExternalFixtureContract.RELATIVE_PATH,
+        mimeType = ExternalFixtureContract.MIME_TYPE,
+        displayName = ExternalFixtureContract.displayName(
+            "123e4567-e89b-42d3-a456-426614174000",
+        ),
+        token = "123e4567-e89b-42d3-a456-426614174000",
+        tokenMarkerMatches = true,
     )
 
     private fun provenance() = S02ProbeProvenance.fromRawFingerprint(
