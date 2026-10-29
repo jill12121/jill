@@ -2,11 +2,12 @@ package com.galleryorganizer.presentation
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class LibraryUiStateTest {
     @Test
-    fun `initial library is an empty local workspace`() {
+    fun `initial library is a bounded memory preview with deferred storage`() {
         val state = LibraryUiState.initial()
 
         assertEquals("", state.searchQuery)
@@ -14,6 +15,8 @@ class LibraryUiStateTest {
         assertEquals(LibrarySort.NEWEST_FIRST, state.sort)
         assertEquals(LibraryLoadState.STORAGE_DEFERRED, state.loadState)
         assertTrue(state.selectedAlbumIds.isEmpty())
+        assertEquals(3, state.previewAlbums.size)
+        assertEquals(3, state.visibleAlbums.size)
     }
 
     @Test
@@ -35,6 +38,8 @@ class LibraryUiStateTest {
         assertEquals(LibraryFilter.NEEDS_REVIEW, sorted.filter)
         assertEquals(LibrarySort.TITLE, sorted.sort)
         assertEquals(LibraryLoadState.STORAGE_DEFERRED, sorted.loadState)
+        assertEquals(1, sorted.visibleAlbums.size)
+        assertEquals("Autumn references", sorted.visibleAlbums.single().title)
     }
 
     @Test
@@ -48,5 +53,24 @@ class LibraryUiStateTest {
 
         assertEquals(80, searched.searchQuery.length)
         assertEquals("", cleared.searchQuery)
+    }
+
+    @Test
+    fun `album selection accepts known preview ids and can be cleared`() {
+        val initial = LibraryUiState.initial()
+        val selected = LibraryReducer.reduce(
+            initial,
+            LibraryEvent.ToggleAlbumSelection(initial.previewAlbums.first().albumId),
+        )
+        val ignored = LibraryReducer.reduce(
+            selected,
+            LibraryEvent.ToggleAlbumSelection("unknown"),
+        )
+        val cleared = LibraryReducer.reduce(ignored, LibraryEvent.ClearSelection)
+
+        assertEquals(setOf(initial.previewAlbums.first().albumId), selected.selectedAlbumIds)
+        assertEquals(selected.selectedAlbumIds, ignored.selectedAlbumIds)
+        assertTrue(cleared.selectedAlbumIds.isEmpty())
+        assertFalse(cleared.visibleAlbums.isEmpty())
     }
 }

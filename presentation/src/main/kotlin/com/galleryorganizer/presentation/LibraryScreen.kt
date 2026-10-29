@@ -70,16 +70,32 @@ internal fun AlbumLibraryContent(
             }
         }
         LibrarySortMenu(libraryState.sort, onLibraryEvent)
-        Spacer(modifier = Modifier.height(24.dp))
-        HorizontalDivider()
+        Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "No albums",
-            modifier = Modifier.padding(top = 24.dp),
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold,
+            text = "Memory preview · ${libraryState.visibleAlbums.size} albums",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        libraryState.visibleAlbums.forEach { album ->
+            PreviewAlbumRow(
+                album = album,
+                selected = album.albumId in libraryState.selectedAlbumIds,
+                onClick = {
+                    onLibraryEvent(LibraryEvent.ToggleAlbumSelection(album.albumId))
+                },
+            )
+        }
+        if (libraryState.selectedAlbumIds.isNotEmpty()) {
+            TextButton(
+                onClick = { onLibraryEvent(LibraryEvent.ClearSelection) },
+                modifier = Modifier.padding(top = 4.dp),
+            ) {
+                Text("Clear selection")
+            }
+        }
+        HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
         Text(
-            text = "Album data will appear after storage validation and the first scan.",
+            text = "These examples are not scanned albums.",
             modifier = Modifier.padding(top = 6.dp),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -92,6 +108,50 @@ internal fun AlbumLibraryContent(
             Text("Review settings")
         }
     }
+}
+
+@Composable
+private fun PreviewAlbumRow(
+    album: PreviewAlbum,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = album.title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            FilterChip(
+                selected = selected,
+                onClick = onClick,
+                label = { Text(if (selected) "Selected" else "Select") },
+            )
+        }
+        Text(
+            text = album.dateLabel,
+            modifier = Modifier.padding(top = 2.dp),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (album.needsReview) {
+            Text(
+                text = "Needs review",
+                modifier = Modifier.padding(top = 4.dp),
+                style = MaterialTheme.typography.labelMedium,
+                color = WorkspaceAmber,
+            )
+        }
+    }
+    HorizontalDivider()
 }
 
 @Composable
