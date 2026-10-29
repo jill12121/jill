@@ -171,6 +171,18 @@
   scan media, persist decisions, create a Plan, or execute storage operations.
   Three Inbox reducer tests pass in debug and release variants; Remote Verify
   `40838346156` passed.
+- F05.1 existing-root adoption preview: commit `e96ed8f` adds explicit
+  not-requested, not-applicable, and device-gate-pending adoption states. The
+  archive and storage-status screens expose root-marker, album-manifest, and
+  workspace-conflict checks as not checked while validation is deferred.
+  Switching back to a new root clears any adoption claim. No directory is
+  opened, no `root.json` or manifest is read, and no SAF, URI, DAO, or file API
+  is present in presentation. All 18 presentation tests pass in debug and
+  release variants; the full 672-task Gradle gate, policy and architecture
+  guards, release dependency policy, and APK v2 verification pass locally.
+  The debug APK is 25,846,899 bytes with SHA-256
+  `1B2433EED6592E7564765BF12F6D756C53C6E902DBB0CC35539BAF727FF30FE1`.
+  Remote Verify `40842839922` passed.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision

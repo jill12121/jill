@@ -103,6 +103,15 @@ and OEM family B physical-device runs are DEFERRED_BY_USER, not GO.
   Plan. Three Inbox reducer tests pass in debug and release variants; Remote
   Verify `40838346156` passed. No media scan, persistence, Plan execution, or
   storage capability is enabled.
+- F05.1 existing-root adoption preview: commit `e96ed8f` adds explicit
+  not-requested, not-applicable, and device-gate-pending adoption states plus a
+  read-only checklist for root marker, album manifests, and workspace
+  conflicts. Switching to a new root removes the adoption claim. All 18
+  presentation tests pass per variant; the full 672-task local gate, policy
+  and architecture guards, release policy, and APK v2 verification pass.
+  Remote Verify `40842839922` passed. The preview does not open a directory or
+  read `root.json`; SAF, URI, DAO, and file APIs remain absent from
+  presentation.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action
