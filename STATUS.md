@@ -131,7 +131,8 @@
   SHA-256
   `684C1421F33A5769B92F118BF10C40449068C60637D87B3A922C489F398498F2`).
   Baseline implementation commits `e073468` and `468901b` passed Remote Verify
-  `40811346709`; Remote Verify for `7f2b922` is pending.
+  `40811346709`; interaction hardening and its state record passed Remote
+  Verify `40815766754`.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision

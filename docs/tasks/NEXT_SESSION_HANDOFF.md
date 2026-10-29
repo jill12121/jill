@@ -77,7 +77,7 @@ and OEM family B physical-device runs are DEFERRED_BY_USER, not GO.
   Finish opens the Library shell. No action executes a storage capability.
   Commit `7f2b922` passes the full 672-task Gradle gate, policy scripts,
   architecture negative tests, and APK v2 signature verification locally;
-  Remote Verify is pending.
+  state commit `177a483` passed Remote Verify `40815766754`.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action
