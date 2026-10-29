@@ -206,6 +206,9 @@ foreach ($file in $presentationFiles) {
     $content = Get-Content -Raw -LiteralPath $file.FullName
     Assert-DoesNotMatch -Content $content -Pattern '(?m)^\s*import\s+com\.galleryorganizer\.contract' `
         -Message "Presentation must not import port contracts directly: $($file.FullName)"
+    Assert-DoesNotMatch -Content $content `
+        -Pattern '(?m)^\s*import\s+(android\.content\.(ContentResolver|Intent)|android\.net\.Uri|android\.provider\.MediaStore|androidx\.activity\.result|androidx\.documentfile)' `
+        -Message "F05 presentation shell must not invoke Android storage capabilities: $($file.FullName)"
 }
 
 $useCases = Get-ProjectFileContent "domain/src/main/kotlin/com/galleryorganizer/domain/OrganizerUseCases.kt"

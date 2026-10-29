@@ -70,6 +70,13 @@ try {
     Copy-Item -Force -LiteralPath `
         (Join-Path $projectRoot "presentation/src/main/kotlin/com/galleryorganizer/presentation/AppScreen.kt") `
         -Destination $presentationPath
+    Add-Content -LiteralPath $presentationPath -Value "`nimport android.net.Uri"
+    Assert-VerificationFails `
+        -ExpectedMessage "F05 presentation shell must not invoke Android storage capabilities"
+
+    Copy-Item -Force -LiteralPath `
+        (Join-Path $projectRoot "presentation/src/main/kotlin/com/galleryorganizer/presentation/AppScreen.kt") `
+        -Destination $presentationPath
     $useCases = Get-Content -Raw -LiteralPath $domainPath
     $useCases = $useCases -replace 'interface Scanner \{', "interface Scanner {`n    val sourceReader: SourceReader"
     Set-Content -NoNewline -LiteralPath $domainPath -Value $useCases
