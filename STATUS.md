@@ -3,7 +3,7 @@
 ## Current Task
 
 - ID: F05.1
-- Sub-step: Navigable no-I/O workspace and in-memory settings shell
+- Sub-step: Navigable no-I/O workspace and in-memory decision/settings shells
 - State: COMPLETE; DEVICE_GATES_DEFERRED_BY_USER
 
 ## Completed
@@ -164,6 +164,13 @@
   bytes with SHA-256
   `BB27A72073D7CD667D56F2301213CEE2D7A61A0EE15A4355D914436BA344E860`.
   State commit `ba910fa` passed Remote Verify `40832222918`.
+- F05.1 Inbox decision preview: commit `42c9b3a` adds three bounded example
+  source items and memory-only Keep, Review, and Trash draft decisions. Unknown
+  source IDs are ignored, individual decisions and the full draft can be
+  cleared, and the deferred-storage state remains explicit. The preview cannot
+  scan media, persist decisions, create a Plan, or execute storage operations.
+  Three Inbox reducer tests pass in debug and release variants; Remote Verify
+  `40838346156` passed.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision

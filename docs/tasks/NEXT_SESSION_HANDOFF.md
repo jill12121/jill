@@ -97,6 +97,12 @@ and OEM family B physical-device runs are DEFERRED_BY_USER, not GO.
   persistence, scheduler, or notification sender is implemented. Full local
   gates and APK v2 verification pass; state commit `ba910fa` passed Remote
   Verify `40832222918`.
+- F05.1 Inbox decision preview: commit `42c9b3a` adds three bounded example
+  source items with memory-only Keep, Review, and Trash draft decisions.
+  Unknown source IDs are ignored and drafts can be cleared without creating a
+  Plan. Three Inbox reducer tests pass in debug and release variants; Remote
+  Verify `40838346156` passed. No media scan, persistence, Plan execution, or
+  storage capability is enabled.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action
