@@ -17,6 +17,8 @@ class LibraryUiStateTest {
         assertTrue(state.selectedAlbumIds.isEmpty())
         assertEquals(3, state.previewAlbums.size)
         assertEquals(3, state.visibleAlbums.size)
+        assertEquals(0, state.selectionCount)
+        assertTrue(state.selectedPreviewAlbums.isEmpty())
     }
 
     @Test
@@ -70,7 +72,13 @@ class LibraryUiStateTest {
 
         assertEquals(setOf(initial.previewAlbums.first().albumId), selected.selectedAlbumIds)
         assertEquals(selected.selectedAlbumIds, ignored.selectedAlbumIds)
+        assertEquals(1, selected.selectionCount)
+        assertEquals(
+            initial.previewAlbums.first().title,
+            selected.selectedPreviewAlbums.single().title,
+        )
         assertTrue(cleared.selectedAlbumIds.isEmpty())
+        assertEquals(0, cleared.selectionCount)
         assertFalse(cleared.visibleAlbums.isEmpty())
     }
 }

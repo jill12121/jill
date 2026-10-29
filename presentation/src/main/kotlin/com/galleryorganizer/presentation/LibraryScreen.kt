@@ -76,6 +76,12 @@ internal fun AlbumLibraryContent(
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        Text(
+            text = "Selected ${libraryState.selectionCount} of ${libraryState.previewAlbums.size}",
+            modifier = Modifier.padding(top = 4.dp),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         libraryState.visibleAlbums.forEach { album ->
             PreviewAlbumRow(
                 album = album,

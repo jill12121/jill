@@ -30,6 +30,12 @@ data class LibraryUiState(
     val loadState: LibraryLoadState,
     val previewAlbums: List<PreviewAlbum>,
 ) {
+    val selectedPreviewAlbums: List<PreviewAlbum>
+        get() = previewAlbums.filter { it.albumId in selectedAlbumIds }
+
+    val selectionCount: Int
+        get() = selectedPreviewAlbums.size
+
     val visibleAlbums: List<PreviewAlbum>
         get() {
             val query = searchQuery.trim().lowercase()
