@@ -17,6 +17,7 @@ enum class SetupDestination {
 enum class SetupMode { NEW, ADOPT }
 enum class RootSelection { NONE, NEW_REQUESTED, EXISTING_REQUESTED }
 enum class RootCapability { DEVICE_GATE_PENDING }
+enum class RootAdoptionState { NOT_REQUESTED, NOT_APPLICABLE, DEVICE_GATE_PENDING }
 enum class NotificationPermissionState { NOT_REQUESTED }
 enum class NotificationPreference(val label: String) {
     OFF("Off"),
@@ -51,6 +52,7 @@ data class SetupUiState(
     val notificationPermission: NotificationPermissionState,
     val rootSelection: RootSelection,
     val rootCapability: RootCapability,
+    val rootAdoptionState: RootAdoptionState,
     val notice: SetupNotice?,
 ) {
     val canFinish: Boolean = false
@@ -77,6 +79,7 @@ data class SetupUiState(
             notificationPermission = NotificationPermissionState.NOT_REQUESTED,
             rootSelection = RootSelection.NONE,
             rootCapability = RootCapability.DEVICE_GATE_PENDING,
+            rootAdoptionState = RootAdoptionState.NOT_REQUESTED,
             notice = null,
         )
     }
@@ -142,10 +145,12 @@ object SetupReducer {
         SetupEvent.ChooseNewRoot -> state.blockedRootAction(
             mode = SetupMode.NEW,
             selection = RootSelection.NEW_REQUESTED,
+            adoptionState = RootAdoptionState.NOT_APPLICABLE,
         )
         SetupEvent.ChooseExistingRoot -> state.blockedRootAction(
             mode = SetupMode.ADOPT,
             selection = RootSelection.EXISTING_REQUESTED,
+            adoptionState = RootAdoptionState.DEVICE_GATE_PENDING,
         )
         SetupEvent.ProbeRoot -> state.copy(notice = SetupNotice.DeviceGateDeferred)
         SetupEvent.Finish -> state.copy(
@@ -202,11 +207,13 @@ object SetupReducer {
     private fun SetupUiState.blockedRootAction(
         mode: SetupMode,
         selection: RootSelection,
+        adoptionState: RootAdoptionState,
     ): SetupUiState = copy(
         destination = SetupDestination.ARCHIVE_LOCATION,
         mode = mode,
         rootSelection = selection,
         rootCapability = RootCapability.DEVICE_GATE_PENDING,
+        rootAdoptionState = adoptionState,
         notice = SetupNotice.DeviceGateDeferred,
     )
 

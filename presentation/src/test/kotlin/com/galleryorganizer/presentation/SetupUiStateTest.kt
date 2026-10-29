@@ -14,6 +14,7 @@ class SetupUiStateTest {
         assertEquals(setOf("dcim", "pictures"), state.selectedScopeIds)
         assertFalse("organizer-root" in state.selectedScopeIds)
         assertEquals(RootCapability.DEVICE_GATE_PENDING, state.rootCapability)
+        assertEquals(RootAdoptionState.NOT_REQUESTED, state.rootAdoptionState)
         assertEquals(NotificationPreference.OFF, state.notificationPreference)
         assertEquals(NotificationPermissionState.NOT_REQUESTED, state.notificationPermission)
         assertFalse(state.canFinish)
@@ -40,8 +41,26 @@ class SetupUiStateTest {
         assertEquals(SetupMode.ADOPT, result.mode)
         assertEquals(RootSelection.EXISTING_REQUESTED, result.rootSelection)
         assertEquals(RootCapability.DEVICE_GATE_PENDING, result.rootCapability)
+        assertEquals(RootAdoptionState.DEVICE_GATE_PENDING, result.rootAdoptionState)
         assertIs<SetupNotice.DeviceGateDeferred>(result.notice)
         assertFalse(result.canFinish)
+    }
+
+    @Test
+    fun `new root selection cannot retain an existing root adoption claim`() {
+        val existing = SetupReducer.reduce(
+            SetupUiState.initial(),
+            SetupEvent.ChooseExistingRoot,
+        )
+        val newRoot = SetupReducer.reduce(existing, SetupEvent.ChooseNewRoot)
+        val probed = SetupReducer.reduce(newRoot, SetupEvent.ProbeRoot)
+
+        assertEquals(SetupMode.NEW, newRoot.mode)
+        assertEquals(RootSelection.NEW_REQUESTED, newRoot.rootSelection)
+        assertEquals(RootAdoptionState.NOT_APPLICABLE, newRoot.rootAdoptionState)
+        assertEquals(RootAdoptionState.NOT_APPLICABLE, probed.rootAdoptionState)
+        assertEquals(RootCapability.DEVICE_GATE_PENDING, probed.rootCapability)
+        assertIs<SetupNotice.DeviceGateDeferred>(probed.notice)
     }
 
     @Test

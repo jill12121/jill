@@ -297,6 +297,9 @@ private fun ArchiveLocationContent(
         selected = state.rootSelection == RootSelection.EXISTING_REQUESTED,
         onClick = { onEvent(SetupEvent.ChooseExistingRoot) },
     )
+    if (state.rootSelection == RootSelection.EXISTING_REQUESTED) {
+        AdoptionChecklist(state.rootAdoptionState)
+    }
     GateNotice(state.rootSelection)
 }
 
@@ -358,6 +361,7 @@ private fun StorageStatusContent(
     SettingLine("Archive mode", state.rootSelection.label()) {
         onEvent(SetupEvent.OpenArchiveLocation)
     }
+    StatusValueLine("Adoption checks", state.rootAdoptionState.label())
     GateNotice(state.rootSelection)
 }
 
@@ -544,6 +548,37 @@ private fun SettingLine(
 }
 
 @Composable
+private fun AdoptionChecklist(state: RootAdoptionState) {
+    Text(
+        text = "Adoption checks",
+        modifier = Modifier.padding(top = 18.dp, bottom = 4.dp),
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.SemiBold,
+    )
+    StatusValueLine("Root marker", state.checkLabel())
+    StatusValueLine("Album manifests", state.checkLabel())
+    StatusValueLine("Workspace conflicts", state.checkLabel())
+}
+
+@Composable
+private fun StatusValueLine(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+        Text(
+            value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+    HorizontalDivider()
+}
+
+@Composable
 private fun GateNotice(rootSelection: RootSelection) {
     val message = when (rootSelection) {
         RootSelection.NEW_REQUESTED ->
@@ -569,6 +604,18 @@ private fun RootSelection.label(): String = when (this) {
     RootSelection.NONE -> "Not selected"
     RootSelection.NEW_REQUESTED -> "New archive"
     RootSelection.EXISTING_REQUESTED -> "Existing archive"
+}
+
+private fun RootAdoptionState.label(): String = when (this) {
+    RootAdoptionState.NOT_REQUESTED -> "Not selected"
+    RootAdoptionState.NOT_APPLICABLE -> "Not applicable"
+    RootAdoptionState.DEVICE_GATE_PENDING -> "Deferred"
+}
+
+private fun RootAdoptionState.checkLabel(): String = when (this) {
+    RootAdoptionState.DEVICE_GATE_PENDING -> "Not checked"
+    RootAdoptionState.NOT_REQUESTED -> "Not selected"
+    RootAdoptionState.NOT_APPLICABLE -> "Not applicable"
 }
 
 private fun NotificationPreference.detail(): String = when (this) {
