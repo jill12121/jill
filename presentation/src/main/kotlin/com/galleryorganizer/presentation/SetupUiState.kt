@@ -12,10 +12,17 @@ enum class SetupDestination {
     INBOX,
     TRASH,
     RECOVERY,
+    NOTIFICATIONS,
 }
 enum class SetupMode { NEW, ADOPT }
 enum class RootSelection { NONE, NEW_REQUESTED, EXISTING_REQUESTED }
 enum class RootCapability { DEVICE_GATE_PENDING }
+enum class NotificationPermissionState { NOT_REQUESTED }
+enum class NotificationPreference(val label: String) {
+    OFF("Off"),
+    OPERATION_STATUS("Operation status"),
+    STATUS_AND_CLEANUP("Status and cleanup"),
+}
 enum class TrashRetention(val label: String) {
     SEVEN_DAYS("7 days"),
     THIRTY_DAYS("30 days"),
@@ -40,6 +47,8 @@ data class SetupUiState(
     val selectedScopeIds: Set<String>,
     val protectedDirectoryIds: Set<String>,
     val trashRetention: TrashRetention,
+    val notificationPreference: NotificationPreference,
+    val notificationPermission: NotificationPermissionState,
     val rootSelection: RootSelection,
     val rootCapability: RootCapability,
     val notice: SetupNotice?,
@@ -64,6 +73,8 @@ data class SetupUiState(
             selectedScopeIds = setOf("dcim", "pictures"),
             protectedDirectoryIds = setOf("archive"),
             trashRetention = TrashRetention.THIRTY_DAYS,
+            notificationPreference = NotificationPreference.OFF,
+            notificationPermission = NotificationPermissionState.NOT_REQUESTED,
             rootSelection = RootSelection.NONE,
             rootCapability = RootCapability.DEVICE_GATE_PENDING,
             notice = null,
@@ -75,6 +86,7 @@ sealed interface SetupEvent {
     data class ToggleScope(val scopeId: String) : SetupEvent
     data class ToggleProtectedDirectory(val directoryId: String) : SetupEvent
     data class SetTrashRetention(val retention: TrashRetention) : SetupEvent
+    data class SetNotificationPreference(val preference: NotificationPreference) : SetupEvent
     data object ChooseNewRoot : SetupEvent
     data object ChooseExistingRoot : SetupEvent
     data object ProbeRoot : SetupEvent
@@ -90,6 +102,7 @@ sealed interface SetupEvent {
     data object OpenInbox : SetupEvent
     data object OpenTrash : SetupEvent
     data object OpenRecovery : SetupEvent
+    data object OpenNotifications : SetupEvent
     data object BackToSettings : SetupEvent
 }
 
@@ -120,6 +133,10 @@ object SetupReducer {
         }
         is SetupEvent.SetTrashRetention -> state.copy(
             trashRetention = event.retention,
+            notice = null,
+        )
+        is SetupEvent.SetNotificationPreference -> state.copy(
+            notificationPreference = event.preference,
             notice = null,
         )
         SetupEvent.ChooseNewRoot -> state.blockedRootAction(
@@ -176,6 +193,8 @@ object SetupReducer {
                 workspaceEntered = true,
                 notice = null,
             )
+        SetupEvent.OpenNotifications ->
+            state.copy(destination = SetupDestination.NOTIFICATIONS, notice = null)
         SetupEvent.BackToSettings ->
             state.copy(destination = SetupDestination.SETTINGS, notice = null)
     }

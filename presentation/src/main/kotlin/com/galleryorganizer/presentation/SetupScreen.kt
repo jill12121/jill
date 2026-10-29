@@ -71,6 +71,7 @@ fun SetupScreen(
                     SetupDestination.INBOX -> InboxContent(state, onEvent)
                     SetupDestination.TRASH -> TrashContent(onEvent)
                     SetupDestination.RECOVERY -> RecoveryContent(onEvent)
+                    SetupDestination.NOTIFICATIONS -> NotificationsContent(state, onEvent)
                 }
             }
         }
@@ -146,6 +147,7 @@ private fun SetupDestination.isSettingsDestination(): Boolean = when (this) {
     SetupDestination.STORAGE_STATUS,
     SetupDestination.TRASH,
     SetupDestination.RECOVERY,
+    SetupDestination.NOTIFICATIONS,
     -> true
     SetupDestination.ONBOARDING,
     SetupDestination.LIBRARY,
@@ -241,6 +243,10 @@ private fun SettingsContent(
             "Recovery",
             "No pending work",
         ) { onEvent(SetupEvent.OpenRecovery) }
+        SettingLine(
+            "Notifications",
+            state.notificationPreference.label,
+        ) { onEvent(SetupEvent.OpenNotifications) }
     }
 }
 
@@ -369,6 +375,35 @@ private fun RecoveryContent(
     emptyDetail = "Journal and recovery execution remain disabled until device validation.",
     onBack = { onEvent(SetupEvent.BackToSettings) },
 )
+
+@Composable
+private fun NotificationsContent(
+    state: SetupUiState,
+    onEvent: (SetupEvent) -> Unit,
+) = DetailPage(
+    title = "Notifications",
+    detail = "Choose which future operation updates should be eligible for notifications.",
+    onBack = { onEvent(SetupEvent.BackToSettings) },
+) {
+    NotificationPreference.entries.forEach { preference ->
+        ChoiceRow(
+            label = preference.label,
+            detail = preference.detail(),
+            selected = state.notificationPreference == preference,
+            onClick = { onEvent(SetupEvent.SetNotificationPreference(preference)) },
+        )
+    }
+    Text(
+        text = "Android notification permission has not been requested.",
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 16.dp)
+            .background(StatusAmberSurface)
+            .padding(12.dp),
+        style = MaterialTheme.typography.bodyMedium,
+        color = StatusAmber,
+    )
+}
 
 @Composable
 private fun BlockedWorkspaceContent(
@@ -527,4 +562,11 @@ private fun RootSelection.label(): String = when (this) {
     RootSelection.NONE -> "Not selected"
     RootSelection.NEW_REQUESTED -> "New archive"
     RootSelection.EXISTING_REQUESTED -> "Existing archive"
+}
+
+private fun NotificationPreference.detail(): String = when (this) {
+    NotificationPreference.OFF -> "Do not show operation notifications."
+    NotificationPreference.OPERATION_STATUS -> "Allow completion and failure updates."
+    NotificationPreference.STATUS_AND_CLEANUP ->
+        "Also allow reminders for pending cleanup authorization."
 }

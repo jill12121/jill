@@ -14,6 +14,8 @@ class SetupUiStateTest {
         assertEquals(setOf("dcim", "pictures"), state.selectedScopeIds)
         assertFalse("organizer-root" in state.selectedScopeIds)
         assertEquals(RootCapability.DEVICE_GATE_PENDING, state.rootCapability)
+        assertEquals(NotificationPreference.OFF, state.notificationPreference)
+        assertEquals(NotificationPermissionState.NOT_REQUESTED, state.notificationPermission)
         assertFalse(state.canFinish)
     }
 
@@ -99,6 +101,10 @@ class SetupUiStateTest {
             SetupDestination.RECOVERY,
             SetupReducer.reduce(initial, SetupEvent.OpenRecovery).destination,
         )
+        assertEquals(
+            SetupDestination.NOTIFICATIONS,
+            SetupReducer.reduce(initial, SetupEvent.OpenNotifications).destination,
+        )
     }
 
     @Test
@@ -155,5 +161,23 @@ class SetupUiStateTest {
         assertTrue(recovery.workspaceEntered)
         assertEquals(RootCapability.DEVICE_GATE_PENDING, recovery.rootCapability)
         assertFalse(recovery.canFinish)
+    }
+
+    @Test
+    fun `notification preference is editable in memory without requesting permission`() {
+        val detail = SetupReducer.reduce(
+            SetupUiState.initial(),
+            SetupEvent.OpenNotifications,
+        )
+        val edited = SetupReducer.reduce(
+            detail,
+            SetupEvent.SetNotificationPreference(NotificationPreference.STATUS_AND_CLEANUP),
+        )
+        val settings = SetupReducer.reduce(edited, SetupEvent.BackToSettings)
+
+        assertEquals(SetupDestination.NOTIFICATIONS, detail.destination)
+        assertEquals(NotificationPreference.STATUS_AND_CLEANUP, settings.notificationPreference)
+        assertEquals(NotificationPermissionState.NOT_REQUESTED, settings.notificationPermission)
+        assertEquals(SetupDestination.SETTINGS, settings.destination)
     }
 }
