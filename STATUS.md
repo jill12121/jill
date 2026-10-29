@@ -106,6 +106,13 @@
   `36477B4F6FAC9845489EB94828A2474B79D54935583164B5D88F8294BE6ED126`). Remote
   Verify passed for the code and documentation commits; run identifiers were not
   captured because the GitHub API rate limit was exhausted.
+- S05.2c measured row: `docs/evidence/s05/target.json` records a vivo V2304A
+  (Android 16, API 36, patch 2026-08-01) run as PASS with 360 frame samples,
+  664 fetch samples, zero failures, frame P95 17 ms, fetch P95 3 ms, and
+  7,103,984 bytes peak used heap, inside every provisional budget limit.
+  `scripts/verify-s05-evidence.ps1` accepts the row and still reports
+  `PENDING (1/4 rows)`; Android 11, OEM family A, and OEM family B remain
+  unmeasured, so budgets are not frozen and this is not aggregate GO.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
@@ -127,8 +134,8 @@
   without wiring the harness into the release app.
 - Copy each exported S05 result into `docs/evidence/s05/` as
   `android11.json`, `target.json`, `oem-a.json`, or `oem-b.json`, then run
-  `scripts/verify-s05-evidence.ps1`. A single iQOO 11S PASS is one row only and
-  is not aggregate GO.
+  `scripts/verify-s05-evidence.ps1`. The `target` row is recorded; Android 11,
+  OEM family A, and OEM family B are still required before aggregate GO.
 
 ## Active Gates
 
@@ -140,11 +147,11 @@
   release isolation are independently reviewed and CI-green.
 - S04: DEVICE_PENDING; durable recovery, overwrite, and provenance hardening
   are independently reviewed and CI-green.
-- S05: ANDROID_HARNESS_COMPLETE / DEVICE_EVIDENCE_PENDING; S05.1/S05.2a remain
-  pure and CI-green, S05.2b is isolated from production, and S05.2c provides a
-  schema-2 device binding plus a reviewed evidence guard. No exported
-  physical-device result is recorded yet, so final budgets are not frozen and
-  I04 remains blocked.
+- S05: ANDROID_HARNESS_COMPLETE / DEVICE_EVIDENCE_PARTIAL; S05.1/S05.2a remain
+  pure and CI-green, S05.2b is isolated from production, and S05.2c binds each
+  result to one device with a reviewed guard. The `target` row is PASS; three
+  required rows are missing, so final budgets are not frozen and I04 remains
+  blocked.
 - J1/J2/J3 and production storage execution remain BLOCKED until required
   device decisions are recorded.
 
@@ -193,8 +200,7 @@
 
 - S01/S02/S04 physical-device results are PENDING; emulator and desktop
   results cannot satisfy the REQUIRED matrix.
-- S05 has an isolated Android harness and an evidence guard, but no exported
-  physical-device result; its current budget values remain provisional
-  classifier inputs.
+- S05 has one accepted `target` row and three unmeasured rows; the recorded
+  budget values remain provisional until the matrix completes.
 - J1/J2/J3 and all production workspace/Manifest/cleanup execution are blocked
   by those device decisions.

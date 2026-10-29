@@ -68,8 +68,9 @@ still required before any aggregate device decision.
 - S01/S02/S04: `DEVICE_PENDING`; independent review is complete.
 - Spike unit tests: S01 19, S02 9, S04 16, S05 core 10, S05 harness 7 per
   build variant; all green.
-- S05.1/S05.2a/S05.2b/S05.2c: `COMPLETE`; physical-device fetch/scroll
-  evidence is PENDING. I04 remains blocked.
+- S05.1/S05.2a/S05.2b/S05.2c: `COMPLETE`; the `target` device row is measured
+  and PASS (`docs/evidence/s05/target.json`), while Android 11, OEM family A,
+  and OEM family B are still PENDING. I04 remains blocked.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action
@@ -82,8 +83,9 @@ still required before any aggregate device decision.
    collect `s05-results/latest.json`, and review budgets/fallbacks without
    wiring it into production.
 5. Store each exported result as `docs/evidence/s05/{android11,target,oem-a,
-   oem-b}.json` and run `scripts/verify-s05-evidence.ps1`. Four distinct PASS
-   rows are required for aggregate GO; one iQOO 11S row is not sufficient.
+   oem-b}.json` and run `scripts/verify-s05-evidence.ps1`. Only `target.json`
+   exists so far (vivo V2304A, Android 16, PASS); three distinct PASS rows
+   remain required for aggregate GO.
 
 ## Hard Boundaries
 
