@@ -95,7 +95,8 @@ and OEM family B physical-device runs are DEFERRED_BY_USER, not GO.
   pass per variant. Android notification permission remains `NOT_REQUESTED`;
   no Manifest permission, permission request, system-settings intent,
   persistence, scheduler, or notification sender is implemented. Full local
-  gates and APK v2 verification pass.
+  gates and APK v2 verification pass; state commit `ba910fa` passed Remote
+  Verify `40832222918`.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action

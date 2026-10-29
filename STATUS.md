@@ -163,6 +163,7 @@
   policy, and APK v2 verification pass locally. The debug APK is 25,816,339
   bytes with SHA-256
   `BB27A72073D7CD667D56F2301213CEE2D7A61A0EE15A4355D914436BA344E860`.
+  State commit `ba910fa` passed Remote Verify `40832222918`.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
