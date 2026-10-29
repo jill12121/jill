@@ -225,6 +225,15 @@
   verification pass locally. The debug APK is 25,887,527 bytes with SHA-256
   `D17A05CAACDC9FF550CF9DD9E84CD39D90806746C0B1F02F0FC66642A1F30483`.
   Remote Verify `40855489794` passed.
+- F05.1 Library selection summary: commit `b09c1c7` adds derived selected
+  album count and known preview-album selection details to the memory-only
+  Library surface. Unknown IDs are excluded from the summary and no archive
+  action is exposed. All 23 presentation tests pass in debug and release
+  variants; the full 672-task Gradle gate, baseline/app/release policy,
+  architecture and S05 evidence guards, and APK v2 verification pass locally.
+  The debug APK is 25,888,427 bytes with SHA-256
+  `3ADC9BE2D59123AAD384C3A42527D1B832AF34B904FA3D657F13EE1E52DFB633`.
+  Remote Verify `40858235712` passed.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision

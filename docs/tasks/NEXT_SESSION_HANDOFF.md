@@ -148,6 +148,14 @@ and OEM family B physical-device runs are DEFERRED_BY_USER, not GO.
   `D17A05CAACDC9FF550CF9DD9E84CD39D90806746C0B1F02F0FC66642A1F30483`;
   Remote Verify `40855489794` passed. The summary remains memory-only and
   does not create a Plan, persist decisions, or access storage.
+- F05.1 Library selection summary: commit `b09c1c7` adds derived selected
+  album count and known preview-album details to the memory-only Library
+  surface. All 23 presentation tests pass per variant; the full 672-task
+  local gate, policy and architecture guards, S05 evidence guard, and APK v2
+  verification pass. The debug APK is 25,888,427 bytes with SHA-256
+  `3ADC9BE2D59123AAD384C3A42527D1B832AF34B904FA3D657F13EE1E52DFB633`;
+  Remote Verify `40858235712` passed. No archive action, Plan, persistence, or
+  storage behavior is enabled.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action
