@@ -58,6 +58,7 @@ fun SetupScreen(
             ) {
                 when (state.destination) {
                     SetupDestination.ONBOARDING -> OnboardingContent(state, onEvent)
+                    SetupDestination.SETUP_REVIEW -> SetupReviewContent(state, onEvent)
                     SetupDestination.SETTINGS -> SettingsContent(state, onEvent)
                     SetupDestination.SCAN_SCOPES -> ScanScopesContent(state, onEvent)
                     SetupDestination.ARCHIVE_LOCATION -> ArchiveLocationContent(state, onEvent)
@@ -118,7 +119,11 @@ private fun AppHeader(
                 onEvent(SetupEvent.OpenSettings)
             }
         } else {
-            NavButton("Setup", destination == SetupDestination.ONBOARDING) {
+            NavButton(
+                "Setup",
+                destination == SetupDestination.ONBOARDING ||
+                    destination == SetupDestination.SETUP_REVIEW,
+            ) {
                 onEvent(SetupEvent.OpenSetup)
             }
             NavButton("Library", destination == SetupDestination.LIBRARY) {
@@ -157,6 +162,7 @@ private fun SetupDestination.isSettingsDestination(): Boolean = when (this) {
     SetupDestination.NOTIFICATIONS,
     -> true
     SetupDestination.ONBOARDING,
+    SetupDestination.SETUP_REVIEW,
     SetupDestination.LIBRARY,
     SetupDestination.INBOX,
     -> false
@@ -203,12 +209,51 @@ private fun OnboardingContent(
         GateNotice(state.rootSelection)
         Spacer(modifier = Modifier.height(28.dp))
         Button(
-            onClick = { onEvent(SetupEvent.Finish) },
+            onClick = { onEvent(SetupEvent.OpenSetupReview) },
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text("Finish setup")
+            Text("Review setup")
         }
         Spacer(modifier = Modifier.height(16.dp))
+    }
+}
+
+@Composable
+private fun SetupReviewContent(
+    state: SetupUiState,
+    onEvent: (SetupEvent) -> Unit,
+) {
+    val selectedScopeLabels = state.scopeOptions
+        .filter { it.id in state.selectedScopeIds }
+        .joinToString { it.label }
+        .ifEmpty { "None" }
+
+    Column(modifier = Modifier.padding(top = 12.dp, bottom = 16.dp)) {
+        TextButton(onClick = { onEvent(SetupEvent.OpenSetup) }) {
+            Text("< Setup")
+        }
+        PageTitle(
+            title = "Review setup",
+            detail = "Confirm the in-memory configuration before entering the workspace preview.",
+        )
+        StatusValueLine("Scan scopes", selectedScopeLabels)
+        StatusValueLine("Archive mode", state.rootSelection.label())
+        StatusValueLine("Adoption checks", state.rootAdoptionState.label())
+        StatusValueLine(
+            "Protected directories",
+            "${state.protectedDirectoryIds.size} selected",
+        )
+        StatusValueLine("Trash retention", state.trashRetention.label)
+        StatusValueLine("Notifications", state.notificationPreference.label)
+        GateNotice(state.rootSelection)
+        Button(
+            onClick = { onEvent(SetupEvent.Finish) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 20.dp),
+        ) {
+            Text("Enter workspace preview")
+        }
     }
 }
 

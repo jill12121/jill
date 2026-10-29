@@ -74,6 +74,25 @@ class SetupUiStateTest {
     }
 
     @Test
+    fun `setup review preserves the draft without entering the workspace`() {
+        val scoped = SetupReducer.reduce(
+            SetupUiState.initial(),
+            SetupEvent.ToggleScope("downloads"),
+        )
+        val adopting = SetupReducer.reduce(scoped, SetupEvent.ChooseExistingRoot)
+        val reviewed = SetupReducer.reduce(adopting, SetupEvent.OpenSetupReview)
+
+        assertEquals(SetupDestination.SETUP_REVIEW, reviewed.destination)
+        assertFalse(reviewed.workspaceEntered)
+        assertEquals(scoped.selectedScopeIds, reviewed.selectedScopeIds)
+        assertEquals(RootSelection.EXISTING_REQUESTED, reviewed.rootSelection)
+        assertEquals(RootAdoptionState.DEVICE_GATE_PENDING, reviewed.rootAdoptionState)
+        assertEquals(RootCapability.DEVICE_GATE_PENDING, reviewed.rootCapability)
+        assertIs<SetupNotice.DeviceGateDeferred>(reviewed.notice)
+        assertFalse(reviewed.canFinish)
+    }
+
+    @Test
     fun `settings navigation preserves setup choices`() {
         val selected = SetupReducer.reduce(
             SetupUiState.initial(),

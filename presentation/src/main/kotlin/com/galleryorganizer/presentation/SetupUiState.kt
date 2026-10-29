@@ -2,6 +2,7 @@ package com.galleryorganizer.presentation
 
 enum class SetupDestination {
     ONBOARDING,
+    SETUP_REVIEW,
     SETTINGS,
     SCAN_SCOPES,
     ARCHIVE_LOCATION,
@@ -93,6 +94,7 @@ sealed interface SetupEvent {
     data object ChooseNewRoot : SetupEvent
     data object ChooseExistingRoot : SetupEvent
     data object ProbeRoot : SetupEvent
+    data object OpenSetupReview : SetupEvent
     data object Finish : SetupEvent
     data object OpenSetup : SetupEvent
     data object OpenSettings : SetupEvent
@@ -153,6 +155,11 @@ object SetupReducer {
             adoptionState = RootAdoptionState.DEVICE_GATE_PENDING,
         )
         SetupEvent.ProbeRoot -> state.copy(notice = SetupNotice.DeviceGateDeferred)
+        SetupEvent.OpenSetupReview -> state.copy(
+            destination = SetupDestination.SETUP_REVIEW,
+            workspaceEntered = false,
+            notice = SetupNotice.DeviceGateDeferred,
+        )
         SetupEvent.Finish -> state.copy(
             destination = SetupDestination.LIBRARY,
             workspaceEntered = true,
