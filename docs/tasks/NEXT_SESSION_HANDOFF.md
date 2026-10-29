@@ -71,10 +71,13 @@ and OEM family B physical-device runs are DEFERRED_BY_USER, not GO.
 - S05.1/S05.2a/S05.2b/S05.2c: `COMPLETE`; the `target` device row is measured
   and PASS (`docs/evidence/s05/target.json`), while Android 11, OEM family A,
   and OEM family B are DEFERRED_BY_USER. I04 remains blocked.
-- F05.1: no-I/O onboarding/settings shell is complete locally. Five reducer
-  tests pass per variant. Root and finish controls provide gate feedback but
-  execute no storage capability. The full Gradle/policy/architecture gates
-  pass. Commits `e073468` and `468901b` passed Remote Verify `40811346709`.
+- F05.1: navigable no-I/O onboarding/settings/library shell is complete
+  locally. Eight reducer tests pass per variant. Settings rows open dedicated
+  in-memory editors, archive choices open their configuration screen, and
+  Finish opens the Library shell. No action executes a storage capability.
+  Commit `7f2b922` passes the full 672-task Gradle gate, policy scripts,
+  architecture negative tests, and APK v2 signature verification locally;
+  Remote Verify is pending.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action

@@ -3,7 +3,7 @@
 ## Current Task
 
 - ID: F05.1
-- Sub-step: Onboarding and Settings no-I/O shell
+- Sub-step: Navigable onboarding, settings, and library no-I/O shell
 - State: COMPLETE; DEVICE_GATES_DEFERRED_BY_USER
 
 ## Completed
@@ -119,16 +119,19 @@
   J1/J2/J3, or any production storage adapter.
 - F05.1 no-I/O shell: added deterministic onboarding/settings state, safe
   default scan scopes, an opt-in organizer-root scope, and a flat Compose
-  working surface. Root and finish controls remain clickable and return
-  action-specific gate feedback, while selection, adoption, probing, and
-  completion remain unexecuted. Presentation has no SAF,
-  MediaStore, URI, activity-result, DAO, or file-I/O integration. Five reducer
-  tests pass in debug and release variants; the full 672-task Gradle gate,
-  policy scripts, and architecture negative tests pass. The debug APK passed
-  v2 signing verification (25,530,883 bytes, SHA-256
-  `4FC14BC71DAC38672F677E986B5D314E64C923FA535173F15D977C17382B8DA1`).
-  Implementation commit `e073468` and state commit `468901b` passed Remote
-  Verify `40811346709`.
+  working surface. Interaction hardening commit `7f2b922` adds dedicated scan
+  scope, archive location, protected directory, trash retention, and storage
+  status screens; settings changes remain in memory, archive choices navigate
+  to their configuration screen, and Finish opens a Library shell. Selection,
+  adoption, probing, persistence, and storage execution remain unimplemented.
+  Presentation has no SAF, MediaStore, URI, activity-result, DAO, or file-I/O
+  integration. Eight reducer tests pass in debug and release variants; the
+  full 672-task Gradle gate, policy scripts, and architecture negative tests
+  pass. The debug APK passed v2 signing verification (25,699,839 bytes,
+  SHA-256
+  `684C1421F33A5769B92F118BF10C40449068C60637D87B3A922C489F398498F2`).
+  Baseline implementation commits `e073468` and `468901b` passed Remote Verify
+  `40811346709`; Remote Verify for `7f2b922` is pending.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
