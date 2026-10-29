@@ -78,6 +78,12 @@ and OEM family B physical-device runs are DEFERRED_BY_USER, not GO.
   Commit `7f2b922` passes the full 672-task Gradle gate, policy scripts,
   architecture negative tests, and APK v2 signature verification locally;
   state commit `177a483` passed Remote Verify `40815766754`.
+- F05.1 workspace extension: commit `4a3201f` adds in-memory Library
+  search/filter/sort controls, a deferred-storage empty state, an Inbox status
+  surface, and post-setup Library/Inbox/Settings navigation. Nine setup tests
+  and three library tests pass per variant. No Paging, thumbnail, database,
+  scan, or storage capability is enabled. Full local gates and APK v2 signature
+  verification pass; Remote Verify is pending.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action

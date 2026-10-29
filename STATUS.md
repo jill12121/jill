@@ -3,7 +3,7 @@
 ## Current Task
 
 - ID: F05.1
-- Sub-step: Navigable onboarding, settings, and library no-I/O shell
+- Sub-step: Navigable onboarding, settings, library, and inbox no-I/O shell
 - State: COMPLETE; DEVICE_GATES_DEFERRED_BY_USER
 
 ## Completed
@@ -133,6 +133,17 @@
   Baseline implementation commits `e073468` and `468901b` passed Remote Verify
   `40811346709`; interaction hardening and its state record passed Remote
   Verify `40815766754`.
+- F05.1 no-I/O workspace extension: commit `4a3201f` adds a bounded in-memory
+  album search, library filters and sort selection, explicit deferred-storage
+  empty state, and an Inbox status surface. Finishing setup switches navigation
+  to Library/Inbox/Settings while preserving the pending device capability.
+  This is not I06c, I01, I04, Paging, thumbnail, database, scan, or storage
+  execution. Nine setup tests and three library tests pass in debug and release
+  variants; the full 672-task Gradle gate, policy scripts, architecture
+  negative tests, release dependency policy, and APK v2 signature verification
+  pass locally. The debug APK is 25,639,207 bytes with SHA-256
+  `298CCB78A0157D22C06DDBAC5EC6C118C1C5E3069F867E63CA2B4873AD878895`.
+  Remote Verify is pending.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
