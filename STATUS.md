@@ -103,7 +103,9 @@
   app-private storage through the clipboard. All 7 harness tests pass for debug
   and release variants and the `0.1.3` debug APK passed v2 signature
   verification (2,427,971 bytes, SHA-256
-  `36477B4F6FAC9845489EB94828A2474B79D54935583164B5D88F8294BE6ED126`).
+  `36477B4F6FAC9845489EB94828A2474B79D54935583164B5D88F8294BE6ED126`). Remote
+  Verify passed for the code and documentation commits; run identifiers were not
+  captured because the GitHub API rate limit was exhausted.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
