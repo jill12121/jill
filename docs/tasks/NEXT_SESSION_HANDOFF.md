@@ -89,7 +89,7 @@ and OEM family B physical-device runs are DEFERRED_BY_USER, not GO.
   These shells provide no restore, cleanup, deletion, authorization, Journal,
   or storage action and do not complete R01/R02. The full 672-task Gradle gate,
   policy and architecture guards, release policy, and APK v2 verification pass
-  locally.
+  locally; state commit `1d1f36a` passed Remote Verify `40829128941`.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action
