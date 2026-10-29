@@ -73,15 +73,15 @@ and OEM family B physical-device runs are DEFERRED_BY_USER, not GO.
   and OEM family B are DEFERRED_BY_USER. I04 remains blocked.
 - F05.1: no-I/O onboarding/settings shell is complete locally. Four reducer
   tests pass per variant, all root/storage actions remain disabled, and the
-  full Gradle/policy/architecture gates pass.
+  full Gradle/policy/architecture gates pass. Commits `e073468` and `468901b`
+  passed Remote Verify `40811346709`.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action
 
-1. Commit F05.1 and confirm Remote Verify.
-2. Continue only no-I/O UI/domain work that does not require a deferred device
+1. Continue only no-I/O UI/domain work that does not require a deferred device
    gate or claim full F05 completion.
-3. Before enabling any storage capability, resume the reviewed device matrix,
+2. Before enabling any storage capability, resume the reviewed device matrix,
    record the missing evidence, and obtain the required decisions.
 
 ## Hard Boundaries

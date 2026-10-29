@@ -126,6 +126,8 @@
   policy scripts, and architecture negative tests pass. The debug APK passed
   v2 signing verification (25,530,883 bytes, SHA-256
   `0E213E616F19E44ADACDEBFCF1D9169AB83624DAE8C8A6916B4D45C01DA69B46`).
+  Implementation commit `e073468` and state commit `468901b` passed Remote
+  Verify `40811346709`.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
@@ -140,7 +142,6 @@
 
 ## Next Exact Action
 
-- Commit F05.1 and confirm Remote Verify.
 - Continue F05 only as no-I/O UI/domain work that does not invoke storage
   capabilities or claim full F05 completion.
 - Resume the deferred device matrices before enabling root selection,
