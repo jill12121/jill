@@ -193,6 +193,18 @@
   The debug APK is 25,856,531 bytes with SHA-256
   `9586D14F239329475F1EC734C54EE8D29C36C87D254918C0E8D28221148DB9A1`.
   Remote Verify `40846088847` passed.
+- F05.1 import strategy settings: commit `24e4bd5` exposes the existing domain
+  `ImportStrategy` through a memory-only Settings page and setup review. The
+  safe default is `COPY_KEEP_SOURCE`; `MOVE_SOURCE` can be selected as a future
+  plan preference, while P0-hidden `INDEX_IN_PLACE` is not rendered and is
+  rejected by the reducer. No ORG or SourceCleanupPlan is created, no cleanup
+  authorization is requested, and no preference is persisted. All 21
+  presentation tests pass in debug and release variants; the full 672-task
+  Gradle gate, baseline/app/release policy, architecture and S05 evidence
+  guards, and APK v2 verification pass locally. The debug APK is 25,866,027
+  bytes with SHA-256
+  `B50FB346608AD38F35EB2D3CE7A04C5744CBD56FC31880907B0B289CDB6F187F`.
+  Remote Verify `40849285812` passed.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision

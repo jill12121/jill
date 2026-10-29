@@ -122,6 +122,15 @@ and OEM family B physical-device runs are DEFERRED_BY_USER, not GO.
   `9586D14F239329475F1EC734C54EE8D29C36C87D254918C0E8D28221148DB9A1`;
   Remote Verify `40846088847` passed. No persistence, SAF, MediaStore, URI,
   Journal, copy, cleanup, recovery, Paging, or thumbnail behavior is enabled.
+- F05.1 import strategy settings: commit `24e4bd5` adds a memory-only default
+  import strategy editor and includes the choice in setup review. It defaults
+  to `COPY_KEEP_SOURCE`, permits `MOVE_SOURCE`, and rejects the P0-hidden
+  `INDEX_IN_PLACE` value. All 21 presentation tests pass per variant; the full
+  672-task local gate, policy and architecture guards, S05 evidence guard, and
+  APK v2 verification pass. The debug APK is 25,866,027 bytes with SHA-256
+  `B50FB346608AD38F35EB2D3CE7A04C5744CBD56FC31880907B0B289CDB6F187F`;
+  Remote Verify `40849285812` passed. The setting does not create a Plan,
+  request cleanup authorization, persist state, or access storage.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action
