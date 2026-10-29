@@ -90,6 +90,12 @@ and OEM family B physical-device runs are DEFERRED_BY_USER, not GO.
   or storage action and do not complete R01/R02. The full 672-task Gradle gate,
   policy and architecture guards, release policy, and APK v2 verification pass
   locally; state commit `1d1f36a` passed Remote Verify `40829128941`.
+- F05.1 notification settings shell: commit `33bdceb` adds a three-level
+  in-memory notification preference and a dedicated editor. Eleven setup tests
+  pass per variant. Android notification permission remains `NOT_REQUESTED`;
+  no Manifest permission, permission request, system-settings intent,
+  persistence, scheduler, or notification sender is implemented. Full local
+  gates and APK v2 verification pass.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action
