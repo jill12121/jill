@@ -37,8 +37,10 @@ private val StatusAmberSurface = Color(0xFFFFE8B2)
 fun SetupScreen(
     state: SetupUiState,
     libraryState: LibraryUiState,
+    inboxState: InboxUiState,
     onEvent: (SetupEvent) -> Unit,
     onLibraryEvent: (LibraryEvent) -> Unit,
+    onInboxEvent: (InboxEvent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(modifier = modifier.fillMaxSize(), color = AppBackground) {
@@ -68,7 +70,12 @@ fun SetupScreen(
                         onLibraryEvent = onLibraryEvent,
                         onSetupEvent = onEvent,
                     )
-                    SetupDestination.INBOX -> InboxContent(state, onEvent)
+                    SetupDestination.INBOX -> InboxContent(
+                        setupState = state,
+                        inboxState = inboxState,
+                        onSetupEvent = onEvent,
+                        onInboxEvent = onInboxEvent,
+                    )
                     SetupDestination.TRASH -> TrashContent(onEvent)
                     SetupDestination.RECOVERY -> RecoveryContent(onEvent)
                     SetupDestination.NOTIFICATIONS -> NotificationsContent(state, onEvent)

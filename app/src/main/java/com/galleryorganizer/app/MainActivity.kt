@@ -8,6 +8,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.galleryorganizer.presentation.InboxReducer
+import com.galleryorganizer.presentation.InboxUiState
 import com.galleryorganizer.presentation.LibraryReducer
 import com.galleryorganizer.presentation.LibraryUiState
 import com.galleryorganizer.presentation.SetupReducer
@@ -21,12 +23,17 @@ class MainActivity : ComponentActivity() {
             MaterialTheme {
                 var state by remember { mutableStateOf(SetupUiState.initial()) }
                 var libraryState by remember { mutableStateOf(LibraryUiState.initial()) }
+                var inboxState by remember { mutableStateOf(InboxUiState.initial()) }
                 SetupScreen(
                     state = state,
                     libraryState = libraryState,
+                    inboxState = inboxState,
                     onEvent = { state = SetupReducer.reduce(state, it) },
                     onLibraryEvent = {
                         libraryState = LibraryReducer.reduce(libraryState, it)
+                    },
+                    onInboxEvent = {
+                        inboxState = InboxReducer.reduce(inboxState, it)
                     },
                 )
             }

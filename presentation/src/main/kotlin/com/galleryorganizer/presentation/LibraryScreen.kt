@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.galleryorganizer.domain.SourceDecisionValue
 
 private val WorkspaceAmber = Color(0xFF8A5A00)
 private val WorkspaceAmberSurface = Color(0xFFFFE8B2)
@@ -96,7 +97,9 @@ internal fun AlbumLibraryContent(
 @Composable
 internal fun InboxContent(
     setupState: SetupUiState,
+    inboxState: InboxUiState,
     onSetupEvent: (SetupEvent) -> Unit,
+    onInboxEvent: (InboxEvent) -> Unit,
 ) {
     Column(modifier = Modifier.padding(top = 24.dp, bottom = 16.dp)) {
         WorkspaceTitle(
@@ -107,6 +110,33 @@ internal fun InboxContent(
         WorkspaceStatusLine("Scan scopes", "${setupState.selectedScopeIds.size} selected")
         WorkspaceStatusLine("Pending batches", "0")
         WorkspaceGateNotice()
+        Text(
+            text = "Decision preview",
+            modifier = Modifier.padding(top = 24.dp),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            text = "Try source decisions with example items. This draft is memory-only and cannot create or run a plan.",
+            modifier = Modifier.padding(top = 6.dp, bottom = 8.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        inboxState.previewItems.forEach { item ->
+            InboxPreviewRow(
+                item = item,
+                selected = inboxState.decisionsBySourceId[item.sourceId],
+                onEvent = onInboxEvent,
+            )
+        }
+        if (inboxState.decisionsBySourceId.isNotEmpty()) {
+            TextButton(
+                onClick = { onInboxEvent(InboxEvent.ClearDraft) },
+                modifier = Modifier.padding(top = 4.dp),
+            ) {
+                Text("Clear preview decisions")
+            }
+        }
         OutlinedButton(
             onClick = { onSetupEvent(SetupEvent.OpenScanScopes) },
             modifier = Modifier.padding(top = 16.dp),
@@ -114,6 +144,43 @@ internal fun InboxContent(
             Text("Review scan scopes")
         }
     }
+}
+
+@Composable
+private fun InboxPreviewRow(
+    item: InboxPreviewItem,
+    selected: SourceDecisionValue?,
+    onEvent: (InboxEvent) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp),
+    ) {
+        Text(item.label, style = MaterialTheme.typography.titleMedium)
+        Text(
+            text = item.detail,
+            modifier = Modifier.padding(top = 2.dp, bottom = 8.dp),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SourceDecisionValue.entries.forEach { decision ->
+                FilterChip(
+                    selected = selected == decision,
+                    onClick = {
+                        if (selected == decision) {
+                            onEvent(InboxEvent.ClearDecision(item.sourceId))
+                        } else {
+                            onEvent(InboxEvent.SetDecision(item.sourceId, decision))
+                        }
+                    },
+                    label = { Text(decision.label()) },
+                )
+            }
+        }
+    }
+    HorizontalDivider()
 }
 
 @Composable
@@ -141,6 +208,12 @@ private fun LibrarySortMenu(
             }
         }
     }
+}
+
+private fun SourceDecisionValue.label(): String = when (this) {
+    SourceDecisionValue.KEEP -> "Keep"
+    SourceDecisionValue.REVIEW -> "Review"
+    SourceDecisionValue.TRASH -> "Trash"
 }
 
 @Composable
