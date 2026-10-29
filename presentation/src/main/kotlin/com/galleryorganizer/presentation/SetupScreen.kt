@@ -69,6 +69,8 @@ fun SetupScreen(
                         onSetupEvent = onEvent,
                     )
                     SetupDestination.INBOX -> InboxContent(state, onEvent)
+                    SetupDestination.TRASH -> TrashContent(onEvent)
+                    SetupDestination.RECOVERY -> RecoveryContent(onEvent)
                 }
             }
         }
@@ -142,6 +144,8 @@ private fun SetupDestination.isSettingsDestination(): Boolean = when (this) {
     SetupDestination.PROTECTED_DIRECTORIES,
     SetupDestination.TRASH_RETENTION,
     SetupDestination.STORAGE_STATUS,
+    SetupDestination.TRASH,
+    SetupDestination.RECOVERY,
     -> true
     SetupDestination.ONBOARDING,
     SetupDestination.LIBRARY,
@@ -229,6 +233,14 @@ private fun SettingsContent(
             "Storage status",
             "Checks deferred",
         ) { onEvent(SetupEvent.OpenStorageStatus) }
+        SettingLine(
+            "Trash",
+            "Empty",
+        ) { onEvent(SetupEvent.OpenTrash) }
+        SettingLine(
+            "Recovery",
+            "No pending work",
+        ) { onEvent(SetupEvent.OpenRecovery) }
     }
 }
 
@@ -334,6 +346,53 @@ private fun StorageStatusContent(
         onEvent(SetupEvent.OpenArchiveLocation)
     }
     GateNotice(state.rootSelection)
+}
+
+@Composable
+private fun TrashContent(
+    onEvent: (SetupEvent) -> Unit,
+) = BlockedWorkspaceContent(
+    title = "Trash",
+    detail = "Items moved by future organization plans will appear here.",
+    emptyTitle = "Trash is empty",
+    emptyDetail = "Trash moves and permanent deletion remain disabled until device validation.",
+    onBack = { onEvent(SetupEvent.BackToSettings) },
+)
+
+@Composable
+private fun RecoveryContent(
+    onEvent: (SetupEvent) -> Unit,
+) = BlockedWorkspaceContent(
+    title = "Recovery",
+    detail = "Interrupted operations and pending cleanup authorization will appear here.",
+    emptyTitle = "No recovery work",
+    emptyDetail = "Journal and recovery execution remain disabled until device validation.",
+    onBack = { onEvent(SetupEvent.BackToSettings) },
+)
+
+@Composable
+private fun BlockedWorkspaceContent(
+    title: String,
+    detail: String,
+    emptyTitle: String,
+    emptyDetail: String,
+    onBack: () -> Unit,
+) = DetailPage(
+    title = title,
+    detail = detail,
+    onBack = onBack,
+) {
+    Text(
+        text = emptyTitle,
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.SemiBold,
+    )
+    Text(
+        text = emptyDetail,
+        modifier = Modifier.padding(top = 6.dp),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 @Composable

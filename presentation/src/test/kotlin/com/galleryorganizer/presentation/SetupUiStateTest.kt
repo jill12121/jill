@@ -91,6 +91,14 @@ class SetupUiStateTest {
             SetupDestination.STORAGE_STATUS,
             SetupReducer.reduce(initial, SetupEvent.OpenStorageStatus).destination,
         )
+        assertEquals(
+            SetupDestination.TRASH,
+            SetupReducer.reduce(initial, SetupEvent.OpenTrash).destination,
+        )
+        assertEquals(
+            SetupDestination.RECOVERY,
+            SetupReducer.reduce(initial, SetupEvent.OpenRecovery).destination,
+        )
     }
 
     @Test
@@ -133,5 +141,19 @@ class SetupUiStateTest {
         assertTrue(inbox.workspaceEntered)
         assertEquals(SetupDestination.LIBRARY, library.destination)
         assertEquals(RootCapability.DEVICE_GATE_PENDING, library.rootCapability)
+    }
+
+    @Test
+    fun `trash and recovery shells preserve workspace state without enabling capabilities`() {
+        val finished = SetupReducer.reduce(SetupUiState.initial(), SetupEvent.Finish)
+        val trash = SetupReducer.reduce(finished, SetupEvent.OpenTrash)
+        val recovery = SetupReducer.reduce(trash, SetupEvent.OpenRecovery)
+
+        assertEquals(SetupDestination.TRASH, trash.destination)
+        assertTrue(trash.workspaceEntered)
+        assertEquals(SetupDestination.RECOVERY, recovery.destination)
+        assertTrue(recovery.workspaceEntered)
+        assertEquals(RootCapability.DEVICE_GATE_PENDING, recovery.rootCapability)
+        assertFalse(recovery.canFinish)
     }
 }

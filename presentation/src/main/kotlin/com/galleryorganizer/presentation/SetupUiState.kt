@@ -10,6 +10,8 @@ enum class SetupDestination {
     STORAGE_STATUS,
     LIBRARY,
     INBOX,
+    TRASH,
+    RECOVERY,
 }
 enum class SetupMode { NEW, ADOPT }
 enum class RootSelection { NONE, NEW_REQUESTED, EXISTING_REQUESTED }
@@ -86,6 +88,8 @@ sealed interface SetupEvent {
     data object OpenStorageStatus : SetupEvent
     data object OpenLibrary : SetupEvent
     data object OpenInbox : SetupEvent
+    data object OpenTrash : SetupEvent
+    data object OpenRecovery : SetupEvent
     data object BackToSettings : SetupEvent
 }
 
@@ -157,6 +161,18 @@ object SetupReducer {
         SetupEvent.OpenInbox ->
             state.copy(
                 destination = SetupDestination.INBOX,
+                workspaceEntered = true,
+                notice = null,
+            )
+        SetupEvent.OpenTrash ->
+            state.copy(
+                destination = SetupDestination.TRASH,
+                workspaceEntered = true,
+                notice = null,
+            )
+        SetupEvent.OpenRecovery ->
+            state.copy(
+                destination = SetupDestination.RECOVERY,
                 workspaceEntered = true,
                 notice = null,
             )
