@@ -205,6 +205,17 @@
   bytes with SHA-256
   `B50FB346608AD38F35EB2D3CE7A04C5744CBD56FC31880907B0B289CDB6F187F`.
   Remote Verify `40849285812` passed.
+- F05.1 Library memory preview: commit `c559a28` adds three bounded example
+  albums, derived search/filter/sort results, and memory-only album selection.
+  The Library labels these rows as examples rather than scanned data; unknown
+  album IDs are ignored and selection can be cleared. No scanner, database,
+  Paging, thumbnail, Plan, or storage capability is connected. All 22
+  presentation tests pass in debug and release variants; the full 672-task
+  Gradle gate, baseline/app/release policy, architecture and S05 evidence
+  guards, and APK v2 verification pass locally. The debug APK is 25,885,995
+  bytes with SHA-256
+  `32F18ADA396046CA32D3E65E14C966DE4D3DFA97C3FE9654F11CAC73B6200AA6`.
+  Remote Verify `40852850011` passed.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision

@@ -131,6 +131,15 @@ and OEM family B physical-device runs are DEFERRED_BY_USER, not GO.
   `B50FB346608AD38F35EB2D3CE7A04C5744CBD56FC31880907B0B289CDB6F187F`;
   Remote Verify `40849285812` passed. The setting does not create a Plan,
   request cleanup authorization, persist state, or access storage.
+- F05.1 Library memory preview: commit `c559a28` adds three bounded example
+  albums, derived search/filter/sort behavior, and memory-only selection with
+  clear support. All 22 presentation tests pass per variant; the full 672-task
+  local gate, policy and architecture guards, S05 evidence guard, and APK v2
+  verification pass. The debug APK is 25,885,995 bytes with SHA-256
+  `32F18ADA396046CA32D3E65E14C966DE4D3DFA97C3FE9654F11CAC73B6200AA6`;
+  Remote Verify `40852850011` passed. The examples are explicitly not scan
+  results; no scanner, Room, Paging, thumbnail, Plan, or storage behavior is
+  enabled.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action
