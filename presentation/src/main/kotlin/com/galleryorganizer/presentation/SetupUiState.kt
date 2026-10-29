@@ -9,6 +9,7 @@ enum class SetupDestination {
     TRASH_RETENTION,
     STORAGE_STATUS,
     LIBRARY,
+    INBOX,
 }
 enum class SetupMode { NEW, ADOPT }
 enum class RootSelection { NONE, NEW_REQUESTED, EXISTING_REQUESTED }
@@ -31,6 +32,7 @@ sealed interface SetupNotice {
 
 data class SetupUiState(
     val destination: SetupDestination,
+    val workspaceEntered: Boolean,
     val mode: SetupMode,
     val scopeOptions: List<ScanScopeOption>,
     val selectedScopeIds: Set<String>,
@@ -45,6 +47,7 @@ data class SetupUiState(
     companion object {
         fun initial(): SetupUiState = SetupUiState(
             destination = SetupDestination.ONBOARDING,
+            workspaceEntered = false,
             mode = SetupMode.NEW,
             scopeOptions = listOf(
                 ScanScopeOption("dcim", "Camera", "Photos captured on this device"),
@@ -82,6 +85,7 @@ sealed interface SetupEvent {
     data object OpenTrashRetention : SetupEvent
     data object OpenStorageStatus : SetupEvent
     data object OpenLibrary : SetupEvent
+    data object OpenInbox : SetupEvent
     data object BackToSettings : SetupEvent
 }
 
@@ -125,9 +129,14 @@ object SetupReducer {
         SetupEvent.ProbeRoot -> state.copy(notice = SetupNotice.DeviceGateDeferred)
         SetupEvent.Finish -> state.copy(
             destination = SetupDestination.LIBRARY,
+            workspaceEntered = true,
             notice = SetupNotice.DeviceGateDeferred,
         )
-        SetupEvent.OpenSetup -> state.copy(destination = SetupDestination.ONBOARDING, notice = null)
+        SetupEvent.OpenSetup -> state.copy(
+            destination = SetupDestination.ONBOARDING,
+            workspaceEntered = false,
+            notice = null,
+        )
         SetupEvent.OpenSettings -> state.copy(destination = SetupDestination.SETTINGS, notice = null)
         SetupEvent.OpenScanScopes ->
             state.copy(destination = SetupDestination.SCAN_SCOPES, notice = null)
@@ -140,7 +149,17 @@ object SetupReducer {
         SetupEvent.OpenStorageStatus ->
             state.copy(destination = SetupDestination.STORAGE_STATUS, notice = null)
         SetupEvent.OpenLibrary ->
-            state.copy(destination = SetupDestination.LIBRARY, notice = null)
+            state.copy(
+                destination = SetupDestination.LIBRARY,
+                workspaceEntered = true,
+                notice = null,
+            )
+        SetupEvent.OpenInbox ->
+            state.copy(
+                destination = SetupDestination.INBOX,
+                workspaceEntered = true,
+                notice = null,
+            )
         SetupEvent.BackToSettings ->
             state.copy(destination = SetupDestination.SETTINGS, notice = null)
     }

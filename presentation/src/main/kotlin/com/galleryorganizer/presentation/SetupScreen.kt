@@ -36,7 +36,9 @@ private val StatusAmberSurface = Color(0xFFFFE8B2)
 @Composable
 fun SetupScreen(
     state: SetupUiState,
+    libraryState: LibraryUiState,
     onEvent: (SetupEvent) -> Unit,
+    onLibraryEvent: (LibraryEvent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(modifier = modifier.fillMaxSize(), color = AppBackground) {
@@ -45,7 +47,7 @@ fun SetupScreen(
                 .fillMaxSize()
                 .padding(horizontal = 20.dp, vertical = 16.dp),
         ) {
-            AppHeader(state.destination, onEvent)
+            AppHeader(state.destination, state.workspaceEntered, onEvent)
             HorizontalDivider(modifier = Modifier.padding(top = 12.dp))
             Column(
                 modifier = Modifier
@@ -61,7 +63,12 @@ fun SetupScreen(
                         ProtectedDirectoriesContent(state, onEvent)
                     SetupDestination.TRASH_RETENTION -> TrashRetentionContent(state, onEvent)
                     SetupDestination.STORAGE_STATUS -> StorageStatusContent(state, onEvent)
-                    SetupDestination.LIBRARY -> LibraryContent(state, onEvent)
+                    SetupDestination.LIBRARY -> AlbumLibraryContent(
+                        libraryState = libraryState,
+                        onLibraryEvent = onLibraryEvent,
+                        onSetupEvent = onEvent,
+                    )
+                    SetupDestination.INBOX -> InboxContent(state, onEvent)
                 }
             }
         }
@@ -71,6 +78,7 @@ fun SetupScreen(
 @Composable
 private fun AppHeader(
     destination: SetupDestination,
+    workspaceEntered: Boolean,
     onEvent: (SetupEvent) -> Unit,
 ) {
     Text(
@@ -89,15 +97,41 @@ private fun AppHeader(
             .padding(top = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        TextButton(onClick = { onEvent(SetupEvent.OpenSetup) }) {
-            Text(if (destination == SetupDestination.ONBOARDING) "Setup *" else "Setup")
+        if (workspaceEntered) {
+            NavButton("Library", destination == SetupDestination.LIBRARY) {
+                onEvent(SetupEvent.OpenLibrary)
+            }
+            NavButton("Inbox", destination == SetupDestination.INBOX) {
+                onEvent(SetupEvent.OpenInbox)
+            }
+            NavButton("Settings", destination.isSettingsDestination()) {
+                onEvent(SetupEvent.OpenSettings)
+            }
+        } else {
+            NavButton("Setup", destination == SetupDestination.ONBOARDING) {
+                onEvent(SetupEvent.OpenSetup)
+            }
+            NavButton("Library", destination == SetupDestination.LIBRARY) {
+                onEvent(SetupEvent.OpenLibrary)
+            }
+            NavButton("Settings", destination.isSettingsDestination()) {
+                onEvent(SetupEvent.OpenSettings)
+            }
         }
-        TextButton(onClick = { onEvent(SetupEvent.OpenSettings) }) {
-            Text(if (destination.isSettingsDestination()) "Settings *" else "Settings")
-        }
-        TextButton(onClick = { onEvent(SetupEvent.OpenLibrary) }) {
-            Text(if (destination == SetupDestination.LIBRARY) "Library *" else "Library")
-        }
+    }
+}
+
+@Composable
+private fun NavButton(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    TextButton(onClick = onClick) {
+        Text(
+            text = label,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+        )
     }
 }
 
@@ -111,6 +145,7 @@ private fun SetupDestination.isSettingsDestination(): Boolean = when (this) {
     -> true
     SetupDestination.ONBOARDING,
     SetupDestination.LIBRARY,
+    SetupDestination.INBOX,
     -> false
 }
 
@@ -299,30 +334,6 @@ private fun StorageStatusContent(
         onEvent(SetupEvent.OpenArchiveLocation)
     }
     GateNotice(state.rootSelection)
-}
-
-@Composable
-private fun LibraryContent(
-    state: SetupUiState,
-    onEvent: (SetupEvent) -> Unit,
-) {
-    Column(modifier = Modifier.padding(top = 24.dp)) {
-        PageTitle(
-            title = "Library",
-            detail = "Your workspace is ready for configuration review.",
-        )
-        SettingLine("Scan scopes", "${state.selectedScopeIds.size} selected") {
-            onEvent(SetupEvent.OpenScanScopes)
-        }
-        SettingLine("Archive location", state.rootSelection.label()) {
-            onEvent(SetupEvent.OpenArchiveLocation)
-        }
-        GateNotice(state.rootSelection)
-        Spacer(modifier = Modifier.height(16.dp))
-        OutlinedButton(onClick = { onEvent(SetupEvent.OpenSettings) }) {
-            Text("Review settings")
-        }
-    }
 }
 
 @Composable

@@ -47,6 +47,7 @@ class SetupUiStateTest {
         val result = SetupReducer.reduce(SetupUiState.initial(), SetupEvent.Finish)
 
         assertEquals(SetupDestination.LIBRARY, result.destination)
+        assertTrue(result.workspaceEntered)
         assertIs<SetupNotice.DeviceGateDeferred>(result.notice)
         assertFalse(result.canFinish)
     }
@@ -120,5 +121,17 @@ class SetupUiStateTest {
 
         assertEquals(SetupDestination.SETTINGS, settings.destination)
         assertEquals(TrashRetention.SEVEN_DAYS, settings.trashRetention)
+    }
+
+    @Test
+    fun `workspace navigation opens inbox and returns to library`() {
+        val finished = SetupReducer.reduce(SetupUiState.initial(), SetupEvent.Finish)
+        val inbox = SetupReducer.reduce(finished, SetupEvent.OpenInbox)
+        val library = SetupReducer.reduce(inbox, SetupEvent.OpenLibrary)
+
+        assertEquals(SetupDestination.INBOX, inbox.destination)
+        assertTrue(inbox.workspaceEntered)
+        assertEquals(SetupDestination.LIBRARY, library.destination)
+        assertEquals(RootCapability.DEVICE_GATE_PENDING, library.rootCapability)
     }
 }
