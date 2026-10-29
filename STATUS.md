@@ -119,13 +119,14 @@
   J1/J2/J3, or any production storage adapter.
 - F05.1 no-I/O shell: added deterministic onboarding/settings state, safe
   default scan scopes, an opt-in organizer-root scope, and a flat Compose
-  working surface. Root selection, adoption, probing, and completion stay
-  disabled behind a visible device-gate notice. Presentation has no SAF,
-  MediaStore, URI, activity-result, DAO, or file-I/O integration. Four reducer
+  working surface. Root and finish controls remain clickable and return
+  action-specific gate feedback, while selection, adoption, probing, and
+  completion remain unexecuted. Presentation has no SAF,
+  MediaStore, URI, activity-result, DAO, or file-I/O integration. Five reducer
   tests pass in debug and release variants; the full 672-task Gradle gate,
   policy scripts, and architecture negative tests pass. The debug APK passed
   v2 signing verification (25,530,883 bytes, SHA-256
-  `0E213E616F19E44ADACDEBFCF1D9169AB83624DAE8C8A6916B4D45C01DA69B46`).
+  `4FC14BC71DAC38672F677E986B5D314E64C923FA535173F15D977C17382B8DA1`).
   Implementation commit `e073468` and state commit `468901b` passed Remote
   Verify `40811346709`.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify

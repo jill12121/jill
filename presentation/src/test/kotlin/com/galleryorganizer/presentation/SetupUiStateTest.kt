@@ -42,6 +42,14 @@ class SetupUiStateTest {
     }
 
     @Test
+    fun `finish attempt reports the deferred gate instead of completing setup`() {
+        val result = SetupReducer.reduce(SetupUiState.initial(), SetupEvent.Finish)
+
+        assertIs<SetupNotice.DeviceGateDeferred>(result.notice)
+        assertFalse(result.canFinish)
+    }
+
+    @Test
     fun `settings navigation preserves setup choices`() {
         val selected = SetupReducer.reduce(
             SetupUiState.initial(),

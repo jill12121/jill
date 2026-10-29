@@ -119,30 +119,26 @@ private fun OnboardingContent(
             fontWeight = FontWeight.SemiBold,
         )
         Text(
-            text = "Directory selection remains disabled until storage capability checks resume.",
+            text = "Choose a setup path. Storage access will stay paused until device checks resume.",
             modifier = Modifier.padding(top = 4.dp, bottom = 12.dp),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            OutlinedButton(
-                onClick = { onEvent(SetupEvent.ChooseNewRoot) },
-                enabled = false,
-            ) {
+            OutlinedButton(onClick = { onEvent(SetupEvent.ChooseNewRoot) }) {
                 Text("Choose new")
             }
-            OutlinedButton(
-                onClick = { onEvent(SetupEvent.ChooseExistingRoot) },
-                enabled = false,
-            ) {
+            OutlinedButton(onClick = { onEvent(SetupEvent.ChooseExistingRoot) }) {
                 Text("Use existing")
             }
         }
-        GateNotice(visible = true)
+        GateNotice(
+            notice = state.notice,
+            rootSelection = state.rootSelection,
+        )
         Spacer(modifier = Modifier.weight(1f))
         Button(
             onClick = { onEvent(SetupEvent.Finish) },
-            enabled = state.canFinish,
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text("Finish setup")
@@ -191,7 +187,10 @@ private fun SettingsContent(
         SettingLine("Organizer root", "Not configured")
         SettingLine("Storage capability", "Device checks deferred")
         SettingLine("Trash retention", "Not configured")
-        GateNotice(visible = true)
+        GateNotice(
+            notice = SetupNotice.DeviceGateDeferred,
+            rootSelection = RootSelection.NONE,
+        )
         Spacer(modifier = Modifier.height(12.dp))
         OutlinedButton(onClick = { onEvent(SetupEvent.OpenSetup) }) {
             Text("Edit setup")
@@ -218,10 +217,20 @@ private fun SettingLine(label: String, value: String) {
 }
 
 @Composable
-private fun GateNotice(visible: Boolean) {
-    if (!visible) return
+private fun GateNotice(
+    notice: SetupNotice?,
+    rootSelection: RootSelection,
+) {
+    val message = when {
+        notice == null -> "Device validation deferred. Storage actions remain paused."
+        rootSelection == RootSelection.NEW_REQUESTED ->
+            "New archive location selected. The system picker will be enabled after device validation."
+        rootSelection == RootSelection.EXISTING_REQUESTED ->
+            "Existing archive selected. Adoption checks will be enabled after device validation."
+        else -> "Setup cannot finish until an archive location can be validated."
+    }
     Text(
-        text = "Device validation deferred. Storage actions remain disabled.",
+        text = message,
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 16.dp)
