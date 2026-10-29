@@ -112,6 +112,16 @@ and OEM family B physical-device runs are DEFERRED_BY_USER, not GO.
   Remote Verify `40842839922` passed. The preview does not open a directory or
   read `root.json`; SAF, URI, DAO, and file APIs remain absent from
   presentation.
+- F05.1 setup review: commit `3045249` adds a separate in-memory confirmation
+  step that summarizes the setup draft before entering the workspace preview.
+  Review preserves scope, root, adoption, protected-directory, retention, and
+  notification choices while capability state remains pending. All 19
+  presentation tests pass per variant; the full 672-task local gate, policy
+  and architecture guards, S05 evidence guard, and APK v2 verification pass.
+  The debug APK is 25,856,531 bytes with SHA-256
+  `9586D14F239329475F1EC734C54EE8D29C36C87D254918C0E8D28221148DB9A1`;
+  Remote Verify `40846088847` passed. No persistence, SAF, MediaStore, URI,
+  Journal, copy, cleanup, recovery, Paging, or thumbnail behavior is enabled.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action

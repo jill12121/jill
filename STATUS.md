@@ -183,6 +183,16 @@
   The debug APK is 25,846,899 bytes with SHA-256
   `1B2433EED6592E7564765BF12F6D756C53C6E902DBB0CC35539BAF727FF30FE1`.
   Remote Verify `40842839922` passed.
+- F05.1 setup review: commit `3045249` adds a separate in-memory review step
+  between onboarding and the workspace preview. It summarizes scan scopes,
+  archive mode, deferred adoption checks, protected-directory count, trash
+  retention, and notification preference without entering the workspace or
+  enabling a device capability. All 19 presentation tests pass in debug and
+  release variants; the full 672-task Gradle gate, baseline/app/release policy,
+  architecture and S05 evidence guards, and APK v2 verification pass locally.
+  The debug APK is 25,856,531 bytes with SHA-256
+  `9586D14F239329475F1EC734C54EE8D29C36C87D254918C0E8D28221148DB9A1`.
+  Remote Verify `40846088847` passed.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
