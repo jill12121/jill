@@ -97,6 +97,13 @@
   rules under negative test and runs in Remote Verify. All 6 harness tests pass
   for debug and release variants; the `0.1.2` debug APK passed v2 signature
   verification.
+- S05.2c export affordance: version `0.1.3` is committed as `0f8089e`. The
+  verification host has no `adb`, so the harness now offers a permission-free
+  `Copy result JSON` action that copies the compact schema-2 result out of
+  app-private storage through the clipboard. All 7 harness tests pass for debug
+  and release variants and the `0.1.3` debug APK passed v2 signature
+  verification (2,427,971 bytes, SHA-256
+  `36477B4F6FAC9845489EB94828A2474B79D54935583164B5D88F8294BE6ED126`).
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision

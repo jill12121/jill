@@ -49,6 +49,9 @@ Do not infer device GO from CI or desktop tests.
   hash (no raw `Build.FINGERPRINT`); `scripts/verify-s05-evidence.ps1` and its
   negative guard `scripts/test-s05-evidence.ps1` review the exported matrix.
   Remote Verify `40667099458` passed.
+- S05.2c export `0f8089e`: version `0.1.3` adds a permission-free
+  `Copy result JSON` action so results can leave an app-private directory
+  without `adb`; 7 harness tests pass per variant.
 - F06 manifest pipeline `4fb0649` -> `2c99d22` -> `bb070e2` -> `5a3abff` ->
   `881f023`: strict JSON parser, manifest codec, golden fixtures, filesystem
   verifier, and manifest factory plus progressive pure-domain E2E; latest
@@ -63,7 +66,7 @@ still required before any aggregate device decision.
 - F06: `COMPLETE` within its pure-domain scope; golden manifest fixtures and
   the progressive pure-domain E2E are delivered (35 domain tests green).
 - S01/S02/S04: `DEVICE_PENDING`; independent review is complete.
-- Spike unit tests: S01 19, S02 9, S04 16, S05 core 10, S05 harness 6 per
+- Spike unit tests: S01 19, S02 9, S04 16, S05 core 10, S05 harness 7 per
   build variant; all green.
 - S05.1/S05.2a/S05.2b/S05.2c: `COMPLETE`; physical-device fetch/scroll
   evidence is PENDING. I04 remains blocked.
