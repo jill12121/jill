@@ -84,6 +84,12 @@ and OEM family B physical-device runs are DEFERRED_BY_USER, not GO.
   and three library tests pass per variant. No Paging, thumbnail, database,
   scan, or storage capability is enabled. Full local gates and APK v2 signature
   verification pass; state commit `d51142e` passed Remote Verify `40823326474`.
+- F05.1 blocked-workspace extension: commit `72fdf8c` adds Settings navigation
+  to explicit Trash and Recovery empty states. Ten setup tests pass per variant.
+  These shells provide no restore, cleanup, deletion, authorization, Journal,
+  or storage action and do not complete R01/R02. The full 672-task Gradle gate,
+  policy and architecture guards, release policy, and APK v2 verification pass
+  locally.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action

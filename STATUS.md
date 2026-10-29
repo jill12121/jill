@@ -3,7 +3,7 @@
 ## Current Task
 
 - ID: F05.1
-- Sub-step: Navigable onboarding, settings, library, and inbox no-I/O shell
+- Sub-step: Navigable onboarding, settings, library, inbox, trash, and recovery no-I/O shell
 - State: COMPLETE; DEVICE_GATES_DEFERRED_BY_USER
 
 ## Completed
@@ -144,6 +144,14 @@
   pass locally. The debug APK is 25,639,207 bytes with SHA-256
   `298CCB78A0157D22C06DDBAC5EC6C118C1C5E3069F867E63CA2B4873AD878895`.
   State commit `d51142e` passed Remote Verify `40823326474`.
+- F05.1 blocked-workspace extension: commit `72fdf8c` adds Settings entries and
+  navigable empty-state shells for Trash and Recovery. Both preserve workspace
+  state while exposing no restore, cleanup, deletion, authorization, Journal,
+  or storage action. This is not R01 or R02. Ten setup tests pass in debug and
+  release variants; the full 672-task Gradle gate, baseline/app/release policy,
+  architecture and S05 evidence guards, and APK v2 signature verification pass
+  locally. The debug APK is 25,576,539 bytes with SHA-256
+  `5E92DC6469F3F46FABF3767C11CCA082D286401AB2F58239FAD3229E04F99E3B`.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
