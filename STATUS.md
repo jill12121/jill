@@ -2,9 +2,9 @@
 
 ## Current Task
 
-- ID: S01/S02/S04 and S05
-- Sub-step: REQUIRED physical-device matrix; S05.2c evidence review
-- State: DEVICE_PENDING; S05.2c EVIDENCE_TOOLING_COMPLETE
+- ID: F05.1
+- Sub-step: Onboarding and Settings no-I/O shell
+- State: COMPLETE; DEVICE_GATES_DEFERRED_BY_USER
 
 ## Completed
 
@@ -113,6 +113,19 @@
   `scripts/verify-s05-evidence.ps1` accepts the row and still reports
   `PENDING (1/4 rows)`; Android 11, OEM family A, and OEM family B remain
   unmeasured, so budgets are not frozen and this is not aggregate GO.
+- Device matrix deferral: Android 11, OEM family A, and OEM family B physical
+  runs were explicitly deferred by the user. This is `DEFERRED_BY_USER`, not
+  PASS or GO, and does not authorize F05 storage capabilities, I01/I02/I04,
+  J1/J2/J3, or any production storage adapter.
+- F05.1 no-I/O shell: added deterministic onboarding/settings state, safe
+  default scan scopes, an opt-in organizer-root scope, and a flat Compose
+  working surface. Root selection, adoption, probing, and completion stay
+  disabled behind a visible device-gate notice. Presentation has no SAF,
+  MediaStore, URI, activity-result, DAO, or file-I/O integration. Four reducer
+  tests pass in debug and release variants; the full 672-task Gradle gate,
+  policy scripts, and architecture negative tests pass. The debug APK passed
+  v2 signing verification (25,530,883 bytes, SHA-256
+  `0E213E616F19E44ADACDEBFCF1D9169AB83624DAE8C8A6916B4D45C01DA69B46`).
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
@@ -127,26 +140,22 @@
 
 ## Next Exact Action
 
-- Assign and schedule the REQUIRED physical-device matrix, then execute the
-  reviewed S01.4/S02.4/S04.3 runbooks on every required device.
-- Install and execute the S05.2b harness on the required physical-device
-  matrix, collect `s05-results/latest.json`, and review budgets/fallbacks
-  without wiring the harness into the release app.
-- Copy each exported S05 result into `docs/evidence/s05/` as
-  `android11.json`, `target.json`, `oem-a.json`, or `oem-b.json`, then run
-  `scripts/verify-s05-evidence.ps1`. The `target` row is recorded; Android 11,
-  OEM family A, and OEM family B are still required before aggregate GO.
+- Commit F05.1 and confirm Remote Verify.
+- Continue F05 only as no-I/O UI/domain work that does not invoke storage
+  capabilities or claim full F05 completion.
+- Resume the deferred device matrices before enabling root selection,
+  adoption, MediaStore scanning, workspace initialization, thumbnails/Paging,
+  Journal, copy, cleanup, or recovery execution.
 
 ## Active Gates
 
 - F06: COMPLETE; golden manifest fixtures and the progressive pure-domain E2E
   are delivered. Storage executors stay outside F06 and remain gated.
-- S01: DEVICE_PENDING; independent review is complete and CI-green. Required
-  device rows remain PENDING.
-- S02: DEVICE_PENDING; external-helper ownership, strict provenance, and
-  release isolation are independently reviewed and CI-green.
-- S04: DEVICE_PENDING; durable recovery, overwrite, and provenance hardening
-  are independently reviewed and CI-green.
+- S01: DEVICE_DEFERRED_BY_USER; independent review is complete and CI-green.
+- S02: DEVICE_DEFERRED_BY_USER; external-helper ownership, strict provenance,
+  and release isolation are independently reviewed and CI-green.
+- S04: DEVICE_DEFERRED_BY_USER; durable recovery, overwrite, and provenance
+  hardening are independently reviewed and CI-green.
 - S05: ANDROID_HARNESS_COMPLETE / DEVICE_EVIDENCE_PARTIAL; S05.1/S05.2a remain
   pure and CI-green, S05.2b is isolated from production, and S05.2c binds each
   result to one device with a reviewed guard. The `target` row is PASS; three
@@ -157,10 +166,10 @@
 
 ## Device Matrix Ownership
 
-- Owner: UNASSIGNED
-- Planned date: UNSCHEDULED
-- Device list: Android 11 REQUIRED; current target REQUIRED; OEM family A
-  REQUIRED; OEM family B REQUIRED.
+- Owner: USER
+- Planned date: DEFERRED
+- Device list: current-target S05 row PASS; Android 11, OEM family A, and OEM
+  family B DEFERRED_BY_USER. Required status is retained for release gating.
 
 ## Decisions
 
@@ -198,9 +207,9 @@
 
 ## Known Issues
 
-- S01/S02/S04 physical-device results are PENDING; emulator and desktop
-  results cannot satisfy the REQUIRED matrix.
-- S05 has one accepted `target` row and three unmeasured rows; the recorded
+- S01/S02/S04 physical-device results are DEFERRED_BY_USER; emulator and
+  desktop results cannot satisfy the REQUIRED matrix.
+- S05 has one accepted `target` row and three deferred rows; the recorded
   budget values remain provisional until the matrix completes.
 - J1/J2/J3 and all production workspace/Manifest/cleanup execution are blocked
   by those device decisions.

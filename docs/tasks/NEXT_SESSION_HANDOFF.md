@@ -57,35 +57,32 @@ Do not infer device GO from CI or desktop tests.
   verifier, and manifest factory plus progressive pure-domain E2E; latest
   check `122047757478` succeeded. F06 is COMPLETE.
 
-S01.4/S02.4/S04.3 independent review is complete. Physical-device evidence is
-still required before any aggregate device decision.
+S01.4/S02.4/S04.3 independent review is complete. Android 11, OEM family A,
+and OEM family B physical-device runs are DEFERRED_BY_USER, not GO.
 
 ## Current State
 
 - F01-F04: complete safety and test foundation.
 - F06: `COMPLETE` within its pure-domain scope; golden manifest fixtures and
   the progressive pure-domain E2E are delivered (35 domain tests green).
-- S01/S02/S04: `DEVICE_PENDING`; independent review is complete.
+- S01/S02/S04: `DEVICE_DEFERRED_BY_USER`; independent review is complete.
 - Spike unit tests: S01 19, S02 9, S04 16, S05 core 10, S05 harness 7 per
   build variant; all green.
 - S05.1/S05.2a/S05.2b/S05.2c: `COMPLETE`; the `target` device row is measured
   and PASS (`docs/evidence/s05/target.json`), while Android 11, OEM family A,
-  and OEM family B are still PENDING. I04 remains blocked.
+  and OEM family B are DEFERRED_BY_USER. I04 remains blocked.
+- F05.1: no-I/O onboarding/settings shell is complete locally. Four reducer
+  tests pass per variant, all root/storage actions remain disabled, and the
+  full Gradle/policy/architecture gates pass.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action
 
-1. Assign owner, date, and concrete devices for Android 11, current target,
-   OEM family A, and OEM family B.
-2. Execute the reviewed physical-device matrix.
-3. Record per-device JSON and GO/LIMITED_GO/NO_GO inputs.
-4. Install and execute the isolated S05.2b harness on the device matrix,
-   collect `s05-results/latest.json`, and review budgets/fallbacks without
-   wiring it into production.
-5. Store each exported result as `docs/evidence/s05/{android11,target,oem-a,
-   oem-b}.json` and run `scripts/verify-s05-evidence.ps1`. Only `target.json`
-   exists so far (vivo V2304A, Android 16, PASS); three distinct PASS rows
-   remain required for aggregate GO.
+1. Commit F05.1 and confirm Remote Verify.
+2. Continue only no-I/O UI/domain work that does not require a deferred device
+   gate or claim full F05 completion.
+3. Before enabling any storage capability, resume the reviewed device matrix,
+   record the missing evidence, and obtain the required decisions.
 
 ## Hard Boundaries
 
