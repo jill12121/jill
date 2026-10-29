@@ -140,6 +140,14 @@ and OEM family B physical-device runs are DEFERRED_BY_USER, not GO.
   Remote Verify `40852850011` passed. The examples are explicitly not scan
   results; no scanner, Room, Paging, thumbnail, Plan, or storage behavior is
   enabled.
+- F05.1 Inbox decision summary: commit `982968d` adds derived Keep, Review,
+  Trash, and undecided counts for known preview sources. All 23 presentation
+  tests pass per variant; the full 672-task local gate, policy and architecture
+  guards, S05 evidence guard, and APK v2 verification pass. The debug APK is
+  25,887,527 bytes with SHA-256
+  `D17A05CAACDC9FF550CF9DD9E84CD39D90806746C0B1F02F0FC66642A1F30483`;
+  Remote Verify `40855489794` passed. The summary remains memory-only and
+  does not create a Plan, persist decisions, or access storage.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action

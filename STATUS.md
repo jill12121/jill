@@ -216,6 +216,15 @@
   bytes with SHA-256
   `32F18ADA396046CA32D3E65E14C966DE4D3DFA97C3FE9654F11CAC73B6200AA6`.
   Remote Verify `40852850011` passed.
+- F05.1 Inbox decision summary: commit `982968d` adds derived Keep,
+  Review, Trash, and undecided counts for the bounded source-decision preview.
+  Counts only include known preview sources; the summary is memory-only and
+  cannot create a Plan or execute storage. All 23 presentation tests pass in
+  debug and release variants; the full 672-task Gradle gate, baseline/app/
+  release policy, architecture and S05 evidence guards, and APK v2
+  verification pass locally. The debug APK is 25,887,527 bytes with SHA-256
+  `D17A05CAACDC9FF550CF9DD9E84CD39D90806746C0B1F02F0FC66642A1F30483`.
+  Remote Verify `40855489794` passed.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
