@@ -11,11 +11,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -44,9 +47,22 @@ fun SetupScreen(
         ) {
             AppHeader(state.destination, onEvent)
             HorizontalDivider(modifier = Modifier.padding(top = 12.dp))
-            when (state.destination) {
-                SetupDestination.ONBOARDING -> OnboardingContent(state, onEvent)
-                SetupDestination.SETTINGS -> SettingsContent(state, onEvent)
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                when (state.destination) {
+                    SetupDestination.ONBOARDING -> OnboardingContent(state, onEvent)
+                    SetupDestination.SETTINGS -> SettingsContent(state, onEvent)
+                    SetupDestination.SCAN_SCOPES -> ScanScopesContent(state, onEvent)
+                    SetupDestination.ARCHIVE_LOCATION -> ArchiveLocationContent(state, onEvent)
+                    SetupDestination.PROTECTED_DIRECTORIES ->
+                        ProtectedDirectoriesContent(state, onEvent)
+                    SetupDestination.TRASH_RETENTION -> TrashRetentionContent(state, onEvent)
+                    SetupDestination.STORAGE_STATUS -> StorageStatusContent(state, onEvent)
+                    SetupDestination.LIBRARY -> LibraryContent(state, onEvent)
+                }
             }
         }
     }
@@ -57,35 +73,45 @@ private fun AppHeader(
     destination: SetupDestination,
     onEvent: (SetupEvent) -> Unit,
 ) {
+    Text(
+        text = "Gallery Organizer",
+        style = MaterialTheme.typography.titleLarge,
+        fontWeight = FontWeight.SemiBold,
+    )
+    Text(
+        text = "Local-only photo organization",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "Gallery Organizer",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                text = "Local-only photo organization",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        TextButton(onClick = { onEvent(SetupEvent.OpenSetup) }) {
+            Text(if (destination == SetupDestination.ONBOARDING) "Setup *" else "Setup")
         }
-        TextButton(
-            onClick = { onEvent(SetupEvent.OpenSetup) },
-            enabled = destination != SetupDestination.ONBOARDING,
-        ) {
-            Text("Setup")
+        TextButton(onClick = { onEvent(SetupEvent.OpenSettings) }) {
+            Text(if (destination.isSettingsDestination()) "Settings *" else "Settings")
         }
-        TextButton(
-            onClick = { onEvent(SetupEvent.OpenSettings) },
-            enabled = destination != SetupDestination.SETTINGS,
-        ) {
-            Text("Settings")
+        TextButton(onClick = { onEvent(SetupEvent.OpenLibrary) }) {
+            Text(if (destination == SetupDestination.LIBRARY) "Library *" else "Library")
         }
     }
+}
+
+private fun SetupDestination.isSettingsDestination(): Boolean = when (this) {
+    SetupDestination.SETTINGS,
+    SetupDestination.SCAN_SCOPES,
+    SetupDestination.ARCHIVE_LOCATION,
+    SetupDestination.PROTECTED_DIRECTORIES,
+    SetupDestination.TRASH_RETENTION,
+    SetupDestination.STORAGE_STATUS,
+    -> true
+    SetupDestination.ONBOARDING,
+    SetupDestination.LIBRARY,
+    -> false
 }
 
 @Composable
@@ -94,21 +120,15 @@ private fun OnboardingContent(
     onEvent: (SetupEvent) -> Unit,
 ) {
     Column(modifier = Modifier.padding(top = 24.dp)) {
-        Text(
-            text = "Choose what to scan",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.SemiBold,
-        )
-        Text(
-            text = "Selections stay on this device. The organizer root is never scanned automatically.",
-            modifier = Modifier.padding(top = 6.dp, bottom = 16.dp),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        PageTitle(
+            title = "Choose what to scan",
+            detail = "Selections stay on this device. The organizer root is never scanned automatically.",
         )
         state.scopeOptions.forEach { option ->
-            ScopeRow(
-                option = option,
-                selected = option.id in state.selectedScopeIds,
+            ToggleRow(
+                label = option.label,
+                detail = option.detail,
+                checked = option.id in state.selectedScopeIds,
                 onClick = { onEvent(SetupEvent.ToggleScope(option.id)) },
             )
         }
@@ -119,7 +139,7 @@ private fun OnboardingContent(
             fontWeight = FontWeight.SemiBold,
         )
         Text(
-            text = "Choose a setup path. Storage access will stay paused until device checks resume.",
+            text = "Configure the intended archive path. Device access remains paused.",
             modifier = Modifier.padding(top = 4.dp, bottom = 12.dp),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -132,23 +152,239 @@ private fun OnboardingContent(
                 Text("Use existing")
             }
         }
-        GateNotice(
-            notice = state.notice,
-            rootSelection = state.rootSelection,
-        )
-        Spacer(modifier = Modifier.weight(1f))
+        GateNotice(state.rootSelection)
+        Spacer(modifier = Modifier.height(28.dp))
         Button(
             onClick = { onEvent(SetupEvent.Finish) },
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text("Finish setup")
         }
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }
 
 @Composable
-private fun ScopeRow(
-    option: ScanScopeOption,
+private fun SettingsContent(
+    state: SetupUiState,
+    onEvent: (SetupEvent) -> Unit,
+) {
+    Column(modifier = Modifier.padding(top = 24.dp)) {
+        PageTitle(
+            title = "Settings",
+            detail = "Changes are kept in memory while storage validation is deferred.",
+        )
+        SettingLine(
+            "Scan scopes",
+            "${state.selectedScopeIds.size} selected",
+        ) { onEvent(SetupEvent.OpenScanScopes) }
+        SettingLine(
+            "Archive location",
+            state.rootSelection.label(),
+        ) { onEvent(SetupEvent.OpenArchiveLocation) }
+        SettingLine(
+            "Protected directories",
+            "${state.protectedDirectoryIds.size} selected",
+        ) { onEvent(SetupEvent.OpenProtectedDirectories) }
+        SettingLine(
+            "Trash retention",
+            state.trashRetention.label,
+        ) { onEvent(SetupEvent.OpenTrashRetention) }
+        SettingLine(
+            "Storage status",
+            "Checks deferred",
+        ) { onEvent(SetupEvent.OpenStorageStatus) }
+    }
+}
+
+@Composable
+private fun ScanScopesContent(
+    state: SetupUiState,
+    onEvent: (SetupEvent) -> Unit,
+) = DetailPage(
+    title = "Scan scopes",
+    detail = "Select directories to include in future scans.",
+    onBack = { onEvent(SetupEvent.BackToSettings) },
+) {
+    state.scopeOptions.forEach { option ->
+        ToggleRow(
+            label = option.label,
+            detail = option.detail,
+            checked = option.id in state.selectedScopeIds,
+            onClick = { onEvent(SetupEvent.ToggleScope(option.id)) },
+        )
+    }
+}
+
+@Composable
+private fun ArchiveLocationContent(
+    state: SetupUiState,
+    onEvent: (SetupEvent) -> Unit,
+) = DetailPage(
+    title = "Archive location",
+    detail = "Choose the intended setup mode. No folder is opened or written yet.",
+    onBack = { onEvent(SetupEvent.BackToSettings) },
+) {
+    ChoiceRow(
+        label = "Create a new archive",
+        detail = "Use a new organizer-owned folder after validation.",
+        selected = state.rootSelection == RootSelection.NEW_REQUESTED,
+        onClick = { onEvent(SetupEvent.ChooseNewRoot) },
+    )
+    ChoiceRow(
+        label = "Adopt an existing archive",
+        detail = "Validate an existing organizer folder before use.",
+        selected = state.rootSelection == RootSelection.EXISTING_REQUESTED,
+        onClick = { onEvent(SetupEvent.ChooseExistingRoot) },
+    )
+    GateNotice(state.rootSelection)
+}
+
+@Composable
+private fun ProtectedDirectoriesContent(
+    state: SetupUiState,
+    onEvent: (SetupEvent) -> Unit,
+) = DetailPage(
+    title = "Protected directories",
+    detail = "Selected directories will be excluded from future organization plans.",
+    onBack = { onEvent(SetupEvent.BackToSettings) },
+) {
+    ToggleRow(
+        "Archive root",
+        "Protect the planned organizer archive.",
+        "archive" in state.protectedDirectoryIds,
+    ) { onEvent(SetupEvent.ToggleProtectedDirectory("archive")) }
+    ToggleRow(
+        "Screenshots",
+        "Keep screenshots outside automatic organization.",
+        "screenshots" in state.protectedDirectoryIds,
+    ) { onEvent(SetupEvent.ToggleProtectedDirectory("screenshots")) }
+    ToggleRow(
+        "Downloads",
+        "Keep downloaded images outside automatic organization.",
+        "downloads" in state.protectedDirectoryIds,
+    ) { onEvent(SetupEvent.ToggleProtectedDirectory("downloads")) }
+}
+
+@Composable
+private fun TrashRetentionContent(
+    state: SetupUiState,
+    onEvent: (SetupEvent) -> Unit,
+) = DetailPage(
+    title = "Trash retention",
+    detail = "Choose how long future archived trash metadata should be retained.",
+    onBack = { onEvent(SetupEvent.BackToSettings) },
+) {
+    TrashRetention.entries.forEach { retention ->
+        ChoiceRow(
+            label = retention.label,
+            detail = "Keep recovery metadata for ${retention.label}.",
+            selected = state.trashRetention == retention,
+            onClick = { onEvent(SetupEvent.SetTrashRetention(retention)) },
+        )
+    }
+}
+
+@Composable
+private fun StorageStatusContent(
+    state: SetupUiState,
+    onEvent: (SetupEvent) -> Unit,
+) = DetailPage(
+    title = "Storage status",
+    detail = "Physical-device validation was deferred. Production storage remains disabled.",
+    onBack = { onEvent(SetupEvent.BackToSettings) },
+) {
+    SettingLine("Capability", "Pending") { onEvent(SetupEvent.ProbeRoot) }
+    SettingLine("Archive mode", state.rootSelection.label()) {
+        onEvent(SetupEvent.OpenArchiveLocation)
+    }
+    GateNotice(state.rootSelection)
+}
+
+@Composable
+private fun LibraryContent(
+    state: SetupUiState,
+    onEvent: (SetupEvent) -> Unit,
+) {
+    Column(modifier = Modifier.padding(top = 24.dp)) {
+        PageTitle(
+            title = "Library",
+            detail = "Your workspace is ready for configuration review.",
+        )
+        SettingLine("Scan scopes", "${state.selectedScopeIds.size} selected") {
+            onEvent(SetupEvent.OpenScanScopes)
+        }
+        SettingLine("Archive location", state.rootSelection.label()) {
+            onEvent(SetupEvent.OpenArchiveLocation)
+        }
+        GateNotice(state.rootSelection)
+        Spacer(modifier = Modifier.height(16.dp))
+        OutlinedButton(onClick = { onEvent(SetupEvent.OpenSettings) }) {
+            Text("Review settings")
+        }
+    }
+}
+
+@Composable
+private fun DetailPage(
+    title: String,
+    detail: String,
+    onBack: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    Column(modifier = Modifier.padding(top = 12.dp, bottom = 16.dp)) {
+        TextButton(onClick = onBack) { Text("< Settings") }
+        PageTitle(title, detail)
+        content()
+    }
+}
+
+@Composable
+private fun PageTitle(title: String, detail: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.headlineSmall,
+        fontWeight = FontWeight.SemiBold,
+    )
+    Text(
+        text = detail,
+        modifier = Modifier.padding(top = 6.dp, bottom = 16.dp),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+@Composable
+private fun ToggleRow(
+    label: String,
+    detail: String,
+    checked: Boolean,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(checked = checked, onCheckedChange = null)
+        Spacer(modifier = Modifier.width(10.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(label, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                detail,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ChoiceRow(
+    label: String,
+    detail: String,
     selected: Boolean,
     onClick: () -> Unit,
 ) {
@@ -159,12 +395,12 @@ private fun ScopeRow(
             .padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Checkbox(checked = selected, onCheckedChange = null)
+        RadioButton(selected = selected, onClick = null)
         Spacer(modifier = Modifier.width(10.dp))
-        Column {
-            Text(option.label, style = MaterialTheme.typography.bodyLarge)
+        Column(modifier = Modifier.weight(1f)) {
+            Text(label, style = MaterialTheme.typography.bodyLarge)
             Text(
-                option.detail,
+                detail,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -173,42 +409,21 @@ private fun ScopeRow(
 }
 
 @Composable
-private fun SettingsContent(
-    state: SetupUiState,
-    onEvent: (SetupEvent) -> Unit,
+private fun SettingLine(
+    label: String,
+    value: String,
+    onClick: () -> Unit,
 ) {
-    Column(modifier = Modifier.padding(top = 24.dp)) {
-        Text(
-            text = "Settings",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.SemiBold,
-        )
-        SettingLine("Scan scopes", "${state.selectedScopeIds.size} selected")
-        SettingLine("Organizer root", "Not configured")
-        SettingLine("Storage capability", "Device checks deferred")
-        SettingLine("Trash retention", "Not configured")
-        GateNotice(
-            notice = SetupNotice.DeviceGateDeferred,
-            rootSelection = RootSelection.NONE,
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        OutlinedButton(onClick = { onEvent(SetupEvent.OpenSetup) }) {
-            Text("Edit setup")
-        }
-    }
-}
-
-@Composable
-private fun SettingLine(label: String, value: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable(onClick = onClick)
             .padding(vertical = 15.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
         Text(
-            value,
+            "$value  >",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -217,17 +432,14 @@ private fun SettingLine(label: String, value: String) {
 }
 
 @Composable
-private fun GateNotice(
-    notice: SetupNotice?,
-    rootSelection: RootSelection,
-) {
-    val message = when {
-        notice == null -> "Device validation deferred. Storage actions remain paused."
-        rootSelection == RootSelection.NEW_REQUESTED ->
-            "New archive location selected. The system picker will be enabled after device validation."
-        rootSelection == RootSelection.EXISTING_REQUESTED ->
-            "Existing archive selected. Adoption checks will be enabled after device validation."
-        else -> "Setup cannot finish until an archive location can be validated."
+private fun GateNotice(rootSelection: RootSelection) {
+    val message = when (rootSelection) {
+        RootSelection.NEW_REQUESTED ->
+            "New archive mode saved in memory. Folder access awaits device validation."
+        RootSelection.EXISTING_REQUESTED ->
+            "Existing archive mode saved in memory. Adoption checks remain paused."
+        RootSelection.NONE ->
+            "Device validation is deferred. Storage actions remain paused."
     }
     Text(
         text = message,
@@ -239,4 +451,10 @@ private fun GateNotice(
         style = MaterialTheme.typography.bodyMedium,
         color = StatusAmber,
     )
+}
+
+private fun RootSelection.label(): String = when (this) {
+    RootSelection.NONE -> "Not selected"
+    RootSelection.NEW_REQUESTED -> "New archive"
+    RootSelection.EXISTING_REQUESTED -> "Existing archive"
 }
