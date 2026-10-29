@@ -83,7 +83,7 @@ and OEM family B physical-device runs are DEFERRED_BY_USER, not GO.
   surface, and post-setup Library/Inbox/Settings navigation. Nine setup tests
   and three library tests pass per variant. No Paging, thumbnail, database,
   scan, or storage capability is enabled. Full local gates and APK v2 signature
-  verification pass; Remote Verify is pending.
+  verification pass; state commit `d51142e` passed Remote Verify `40823326474`.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action
