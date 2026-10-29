@@ -1,5 +1,6 @@
 package com.galleryorganizer.spikes.s05.harness
 
+import android.content.ClipboardManager
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.galleryorganizer.spikes.s05.ThumbnailBenchmarkRecorder
@@ -138,5 +139,15 @@ class ThumbnailHarnessCoreTest {
             securityPatch = "2024-06-01",
             fingerprintSha256 = "raw-fingerprint",
         )
+    }
+
+    @Test
+    fun `result clipboard carries the exported json without storage access`() {
+        val json = """{"schema":2,"decision":"PASS"}"""
+
+        assertTrue(ResultClipboard(context).copy(json))
+
+        val manager = context.getSystemService(ClipboardManager::class.java)
+        assertEquals(json, manager?.primaryClip?.getItemAt(0)?.text?.toString())
     }
 }

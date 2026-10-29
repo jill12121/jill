@@ -1,5 +1,7 @@
 package com.galleryorganizer.spikes.s05.harness
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -120,6 +122,19 @@ data class BenchmarkEvidence(
         .put("oomObserved", oomObserved)
         .put("decision", decision)
         .put("violations", violations.joinToString(","))
+}
+
+class ResultClipboard(private val context: Context) {
+    fun copy(json: String): Boolean {
+        val manager = context.getSystemService(ClipboardManager::class.java) ?: return false
+        return runCatching {
+            manager.setPrimaryClip(ClipData.newPlainText(CLIP_LABEL, json))
+        }.isSuccess
+    }
+
+    private companion object {
+        const val CLIP_LABEL = "s05-benchmark-result"
+    }
 }
 
 class AppPrivateFixtureStore(context: Context) {

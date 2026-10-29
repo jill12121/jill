@@ -25,6 +25,8 @@ class ThumbnailHarnessActivity : Activity() {
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var status: TextView
     private lateinit var grid: GridView
+    private lateinit var copy: Button
+    private var lastResultJson: String? = null
     private var running = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -39,8 +41,21 @@ class ThumbnailHarnessActivity : Activity() {
             text = "Run benchmark"
             setOnClickListener {
                 isEnabled = false
+                copy.isEnabled = false
                 status.text = "Preparing controlled fixtures..."
                 startRun()
+            }
+        }
+        copy = Button(this).apply {
+            text = "Copy result JSON"
+            isEnabled = false
+            setOnClickListener {
+                val json = lastResultJson ?: return@setOnClickListener
+                status.text = if (ResultClipboard(this@ThumbnailHarnessActivity).copy(json)) {
+                    "Result JSON copied to clipboard"
+                } else {
+                    "Clipboard unavailable"
+                }
             }
         }
         setContentView(
@@ -48,6 +63,7 @@ class ThumbnailHarnessActivity : Activity() {
                 orientation = LinearLayout.VERTICAL
                 setPadding(16, 16, 16, 16)
                 addView(start)
+                addView(copy)
                 addView(status)
                 addView(grid, LinearLayout.LayoutParams(-1, 0, 1f))
             },
@@ -122,6 +138,8 @@ class ThumbnailHarnessActivity : Activity() {
             check(output.parentFile?.mkdirs() == true || output.parentFile?.isDirectory == true)
             output.writeText(json.toString(2))
         }.exceptionOrNull()
+        lastResultJson = json.toString()
+        copy.isEnabled = true
         status.text = "${result.decision}: ${metrics.frameSampleCount} frames, " +
             "${metrics.fetchSampleCount} fetches\n" +
             "${json.optString("deviceManufacturer")} ${json.optString("deviceModel")} " +
