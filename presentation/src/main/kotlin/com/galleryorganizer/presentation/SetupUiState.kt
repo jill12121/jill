@@ -1,5 +1,7 @@
 package com.galleryorganizer.presentation
 
+import com.galleryorganizer.domain.ImportStrategy
+
 enum class SetupDestination {
     ONBOARDING,
     SETUP_REVIEW,
@@ -14,6 +16,7 @@ enum class SetupDestination {
     TRASH,
     RECOVERY,
     NOTIFICATIONS,
+    IMPORT_STRATEGY,
 }
 enum class SetupMode { NEW, ADOPT }
 enum class RootSelection { NONE, NEW_REQUESTED, EXISTING_REQUESTED }
@@ -49,6 +52,7 @@ data class SetupUiState(
     val selectedScopeIds: Set<String>,
     val protectedDirectoryIds: Set<String>,
     val trashRetention: TrashRetention,
+    val importStrategy: ImportStrategy,
     val notificationPreference: NotificationPreference,
     val notificationPermission: NotificationPermissionState,
     val rootSelection: RootSelection,
@@ -76,6 +80,7 @@ data class SetupUiState(
             selectedScopeIds = setOf("dcim", "pictures"),
             protectedDirectoryIds = setOf("archive"),
             trashRetention = TrashRetention.THIRTY_DAYS,
+            importStrategy = ImportStrategy.COPY_KEEP_SOURCE,
             notificationPreference = NotificationPreference.OFF,
             notificationPermission = NotificationPermissionState.NOT_REQUESTED,
             rootSelection = RootSelection.NONE,
@@ -90,6 +95,7 @@ sealed interface SetupEvent {
     data class ToggleScope(val scopeId: String) : SetupEvent
     data class ToggleProtectedDirectory(val directoryId: String) : SetupEvent
     data class SetTrashRetention(val retention: TrashRetention) : SetupEvent
+    data class SetImportStrategy(val strategy: ImportStrategy) : SetupEvent
     data class SetNotificationPreference(val preference: NotificationPreference) : SetupEvent
     data object ChooseNewRoot : SetupEvent
     data object ChooseExistingRoot : SetupEvent
@@ -108,11 +114,16 @@ sealed interface SetupEvent {
     data object OpenTrash : SetupEvent
     data object OpenRecovery : SetupEvent
     data object OpenNotifications : SetupEvent
+    data object OpenImportStrategy : SetupEvent
     data object BackToSettings : SetupEvent
 }
 
 object SetupReducer {
     private val protectedDirectoryIds = setOf("archive", "screenshots", "downloads")
+    private val supportedImportStrategies = setOf(
+        ImportStrategy.COPY_KEEP_SOURCE,
+        ImportStrategy.MOVE_SOURCE,
+    )
 
     fun reduce(state: SetupUiState, event: SetupEvent): SetupUiState = when (event) {
         is SetupEvent.ToggleScope -> {
@@ -140,6 +151,13 @@ object SetupReducer {
             trashRetention = event.retention,
             notice = null,
         )
+        is SetupEvent.SetImportStrategy -> {
+            if (event.strategy !in supportedImportStrategies) {
+                state
+            } else {
+                state.copy(importStrategy = event.strategy, notice = null)
+            }
+        }
         is SetupEvent.SetNotificationPreference -> state.copy(
             notificationPreference = event.preference,
             notice = null,
@@ -207,6 +225,8 @@ object SetupReducer {
             )
         SetupEvent.OpenNotifications ->
             state.copy(destination = SetupDestination.NOTIFICATIONS, notice = null)
+        SetupEvent.OpenImportStrategy ->
+            state.copy(destination = SetupDestination.IMPORT_STRATEGY, notice = null)
         SetupEvent.BackToSettings ->
             state.copy(destination = SetupDestination.SETTINGS, notice = null)
     }

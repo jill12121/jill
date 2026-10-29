@@ -1,5 +1,6 @@
 package com.galleryorganizer.presentation
 
+import com.galleryorganizer.domain.ImportStrategy
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -17,6 +18,7 @@ class SetupUiStateTest {
         assertEquals(RootAdoptionState.NOT_REQUESTED, state.rootAdoptionState)
         assertEquals(NotificationPreference.OFF, state.notificationPreference)
         assertEquals(NotificationPermissionState.NOT_REQUESTED, state.notificationPermission)
+        assertEquals(ImportStrategy.COPY_KEEP_SOURCE, state.importStrategy)
         assertFalse(state.canFinish)
     }
 
@@ -143,6 +145,10 @@ class SetupUiStateTest {
             SetupDestination.NOTIFICATIONS,
             SetupReducer.reduce(initial, SetupEvent.OpenNotifications).destination,
         )
+        assertEquals(
+            SetupDestination.IMPORT_STRATEGY,
+            SetupReducer.reduce(initial, SetupEvent.OpenImportStrategy).destination,
+        )
     }
 
     @Test
@@ -217,5 +223,35 @@ class SetupUiStateTest {
         assertEquals(NotificationPreference.STATUS_AND_CLEANUP, settings.notificationPreference)
         assertEquals(NotificationPermissionState.NOT_REQUESTED, settings.notificationPermission)
         assertEquals(SetupDestination.SETTINGS, settings.destination)
+    }
+
+    @Test
+    fun `supported import strategy is editable in memory without creating a plan`() {
+        val detail = SetupReducer.reduce(
+            SetupUiState.initial(),
+            SetupEvent.OpenImportStrategy,
+        )
+        val edited = SetupReducer.reduce(
+            detail,
+            SetupEvent.SetImportStrategy(ImportStrategy.MOVE_SOURCE),
+        )
+        val settings = SetupReducer.reduce(edited, SetupEvent.BackToSettings)
+
+        assertEquals(SetupDestination.IMPORT_STRATEGY, detail.destination)
+        assertEquals(ImportStrategy.MOVE_SOURCE, settings.importStrategy)
+        assertEquals(RootCapability.DEVICE_GATE_PENDING, settings.rootCapability)
+        assertEquals(SetupDestination.SETTINGS, settings.destination)
+    }
+
+    @Test
+    fun `index in place remains hidden and cannot replace the safe import strategy`() {
+        val initial = SetupUiState.initial()
+        val result = SetupReducer.reduce(
+            initial,
+            SetupEvent.SetImportStrategy(ImportStrategy.INDEX_IN_PLACE),
+        )
+
+        assertEquals(initial, result)
+        assertEquals(ImportStrategy.COPY_KEEP_SOURCE, result.importStrategy)
     }
 }

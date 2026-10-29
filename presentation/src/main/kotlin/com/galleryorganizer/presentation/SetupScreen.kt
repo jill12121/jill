@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.galleryorganizer.domain.ImportStrategy
 
 private val AppBackground = Color(0xFFF6F7F4)
 private val StatusAmber = Color(0xFF8A5A00)
@@ -80,6 +81,7 @@ fun SetupScreen(
                     SetupDestination.TRASH -> TrashContent(onEvent)
                     SetupDestination.RECOVERY -> RecoveryContent(onEvent)
                     SetupDestination.NOTIFICATIONS -> NotificationsContent(state, onEvent)
+                    SetupDestination.IMPORT_STRATEGY -> ImportStrategyContent(state, onEvent)
                 }
             }
         }
@@ -160,6 +162,7 @@ private fun SetupDestination.isSettingsDestination(): Boolean = when (this) {
     SetupDestination.TRASH,
     SetupDestination.RECOVERY,
     SetupDestination.NOTIFICATIONS,
+    SetupDestination.IMPORT_STRATEGY,
     -> true
     SetupDestination.ONBOARDING,
     SetupDestination.SETUP_REVIEW,
@@ -244,6 +247,7 @@ private fun SetupReviewContent(
             "${state.protectedDirectoryIds.size} selected",
         )
         StatusValueLine("Trash retention", state.trashRetention.label)
+        StatusValueLine("Import strategy", state.importStrategy.label())
         StatusValueLine("Notifications", state.notificationPreference.label)
         GateNotice(state.rootSelection)
         Button(
@@ -283,6 +287,10 @@ private fun SettingsContent(
             "Trash retention",
             state.trashRetention.label,
         ) { onEvent(SetupEvent.OpenTrashRetention) }
+        SettingLine(
+            "Import strategy",
+            state.importStrategy.label(),
+        ) { onEvent(SetupEvent.OpenImportStrategy) }
         SettingLine(
             "Storage status",
             "Checks deferred",
@@ -451,6 +459,38 @@ private fun NotificationsContent(
     }
     Text(
         text = "Android notification permission has not been requested.",
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 16.dp)
+            .background(StatusAmberSurface)
+            .padding(12.dp),
+        style = MaterialTheme.typography.bodyMedium,
+        color = StatusAmber,
+    )
+}
+
+@Composable
+private fun ImportStrategyContent(
+    state: SetupUiState,
+    onEvent: (SetupEvent) -> Unit,
+) = DetailPage(
+    title = "Import strategy",
+    detail = "Choose the default behavior for future archive plans.",
+    onBack = { onEvent(SetupEvent.BackToSettings) },
+) {
+    listOf(
+        ImportStrategy.COPY_KEEP_SOURCE,
+        ImportStrategy.MOVE_SOURCE,
+    ).forEach { strategy ->
+        ChoiceRow(
+            label = strategy.label(),
+            detail = strategy.detail(),
+            selected = state.importStrategy == strategy,
+            onClick = { onEvent(SetupEvent.SetImportStrategy(strategy)) },
+        )
+    }
+    Text(
+        text = "Move requires a verified archive commit and separate source-cleanup authorization.",
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 16.dp)
@@ -668,4 +708,19 @@ private fun NotificationPreference.detail(): String = when (this) {
     NotificationPreference.OPERATION_STATUS -> "Allow completion and failure updates."
     NotificationPreference.STATUS_AND_CLEANUP ->
         "Also allow reminders for pending cleanup authorization."
+}
+
+private fun ImportStrategy.label(): String = when (this) {
+    ImportStrategy.COPY_KEEP_SOURCE -> "Copy and keep source"
+    ImportStrategy.MOVE_SOURCE -> "Archive, then request cleanup"
+    ImportStrategy.INDEX_IN_PLACE -> "Index in place"
+}
+
+private fun ImportStrategy.detail(): String = when (this) {
+    ImportStrategy.COPY_KEEP_SOURCE ->
+        "Future plans copy verified files into the archive and retain their sources."
+    ImportStrategy.MOVE_SOURCE ->
+        "Future plans archive first, then request separate authorization to clean sources."
+    ImportStrategy.INDEX_IN_PLACE ->
+        "Advanced mode is unavailable in the P0 setup."
 }
