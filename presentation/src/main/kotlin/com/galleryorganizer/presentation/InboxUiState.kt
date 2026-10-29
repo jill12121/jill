@@ -17,6 +17,15 @@ data class InboxUiState(
     val decisionsBySourceId: Map<String, SourceDecisionValue>,
     val loadState: InboxLoadState,
 ) {
+    val undecidedCount: Int
+        get() = previewItems.count { it.sourceId !in decisionsBySourceId }
+
+    val hasDraft: Boolean
+        get() = decisionsBySourceId.isNotEmpty()
+
+    fun decisionCount(decision: SourceDecisionValue): Int =
+        previewItems.count { decisionsBySourceId[it.sourceId] == decision }
+
     companion object {
         fun initial(): InboxUiState = InboxUiState(
             previewItems = listOf(

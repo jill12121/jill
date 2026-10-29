@@ -182,6 +182,13 @@ internal fun InboxContent(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        WorkspaceStatusLine(
+            "Decision summary",
+            "Keep ${inboxState.decisionCount(SourceDecisionValue.KEEP)} · " +
+                "Review ${inboxState.decisionCount(SourceDecisionValue.REVIEW)} · " +
+                "Trash ${inboxState.decisionCount(SourceDecisionValue.TRASH)}",
+        )
+        WorkspaceStatusLine("Undecided", inboxState.undecidedCount.toString())
         inboxState.previewItems.forEach { item ->
             InboxPreviewRow(
                 item = item,
