@@ -120,6 +120,18 @@ data class WorkspaceReviewSnapshot(
     val selectedAlbumCount: Int
         get() = librarySelectionSummary.selectionCount
 
+    val selectedNeedsReviewAlbumCount: Int
+        get() = librarySelectionSummary.selectedAlbums.count { it.needsReview }
+
+    val keepSourceCount: Int
+        get() = inboxDecisionSummary.keepCount
+
+    val reviewSourceCount: Int
+        get() = inboxDecisionSummary.reviewCount
+
+    val trashSourceCount: Int
+        get() = inboxDecisionSummary.trashCount
+
     val decidedSourceCount: Int
         get() = inboxDecisionSummary.decidedCount
 

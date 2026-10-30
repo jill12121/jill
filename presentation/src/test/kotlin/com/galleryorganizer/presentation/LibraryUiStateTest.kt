@@ -206,4 +206,37 @@ class LibraryUiStateTest {
         assertEquals(InboxDraftStatus.COMPLETE, snapshot.inboxDraftStatus)
         assertTrue(snapshot.hasReviewActivity)
     }
+
+    @Test
+    fun `workspace review snapshot exposes selected review albums and decision breakdown`() {
+        val libraryInitial = LibraryUiState.initial()
+        val library = libraryInitial.previewAlbums.fold(libraryInitial) { state, album ->
+            LibraryReducer.reduce(
+                state,
+                LibraryEvent.ToggleAlbumSelection(album.albumId),
+            )
+        }
+        val inboxInitial = InboxUiState.initial()
+        val inbox = inboxInitial.previewItems.foldIndexed(inboxInitial) { index, state, item ->
+            InboxReducer.reduce(
+                state,
+                InboxEvent.SetDecision(
+                    item.sourceId,
+                    when (index) {
+                        0 -> SourceDecisionValue.KEEP
+                        1 -> SourceDecisionValue.REVIEW
+                        else -> SourceDecisionValue.TRASH
+                    },
+                ),
+            )
+        }
+
+        val snapshot = WorkspaceReviewSnapshot.from(library, inbox)
+
+        assertEquals(3, snapshot.selectedAlbumCount)
+        assertEquals(1, snapshot.selectedNeedsReviewAlbumCount)
+        assertEquals(1, snapshot.keepSourceCount)
+        assertEquals(1, snapshot.reviewSourceCount)
+        assertEquals(1, snapshot.trashSourceCount)
+    }
 }

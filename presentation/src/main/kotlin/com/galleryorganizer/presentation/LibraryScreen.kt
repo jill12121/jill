@@ -371,6 +371,16 @@ private fun WorkspaceReviewSnapshotSection(snapshot: WorkspaceReviewSnapshot) {
     )
     WorkspaceStatusLine("Selected albums", snapshot.selectedAlbumCount.toString())
     WorkspaceStatusLine(
+        "Selected needing review",
+        snapshot.selectedNeedsReviewAlbumCount.toString(),
+    )
+    WorkspaceStatusLine(
+        "Source decisions",
+        "Keep ${snapshot.keepSourceCount} · " +
+            "Review ${snapshot.reviewSourceCount} · " +
+            "Trash ${snapshot.trashSourceCount}",
+    )
+    WorkspaceStatusLine(
         "Decided sources",
         "${snapshot.decidedSourceCount} / " +
             (snapshot.decidedSourceCount + snapshot.undecidedSourceCount),
