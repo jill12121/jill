@@ -347,6 +347,17 @@
   SHA-256
   `C97DBC668C202B31BFB792D5A86D3B6787B543B277EDEF44BE4E3825757F0F8F`.
   Remote Verify `41010791447` passed.
+- F05.1 workspace attention items: commit `b615b67` adds a typed, memory-only
+  `WorkspaceAttentionItem` list. Selected albums needing review appear first,
+  followed by Inbox Review/Trash sources in preview order; ordinary albums and
+  Keep decisions are excluded. Stable IDs distinguish album and source items,
+  clearing both previews empties the list, and the shared Library/Inbox surface
+  remains read-only. All 35 presentation tests pass in debug and release
+  variants; the full 672-task Gradle gate, baseline/app/release policy,
+  architecture and S05 evidence guards, and APK v2 verification pass locally.
+  The debug APK is 25,922,631 bytes with SHA-256
+  `64FB308BF61294371439BE1E413CC9309DCD63F537F82D41B0B549C51F151C3B`.
+  Remote Verify `41013527081` passed.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
