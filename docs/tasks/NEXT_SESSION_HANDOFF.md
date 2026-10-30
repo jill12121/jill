@@ -268,14 +268,24 @@ guard and APK v2 verification pass. The debug APK is 25,888,787 bytes with
   APK v2 verification pass. The debug APK is 25,922,631 bytes with SHA-256
   `64FB308BF61294371439BE1E413CC9309DCD63F537F82D41B0B549C51F151C3B`;
   Remote Verify `41013527081` passed.
+- Device-gate resumption audit: F05.1 is complete and no further F05.1
+  increments are authorized. The S01/S02/S04 probe suite and S02 external
+  fixture helper rebuild successfully, but `adb devices -l` reports no
+  connected device. The v2-signed probe-suite APK is 22,666,227 bytes with
+  SHA-256
+  `8B5C8B08161C6D793FBD08A60F16B8809B60B65054616E2755603F6DA9621E26`;
+  the v2-signed helper APK is 10,639,092 bytes with SHA-256
+  `BDCC143E73B90DDA7B7A95A5543C3E13CC1801AD06F10847E4181CC9938C6FD6`.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action
 
-1. Continue only no-I/O UI/domain work that does not require a deferred device
-   gate or claim full F05 completion.
-2. Before enabling any storage capability, resume the reviewed device matrix,
-   record the missing evidence, and obtain the required decisions.
+1. Connect an eligible physical device and run S01 first, then S02 and S04
+   using the reviewed task runbooks.
+2. Record device evidence and aggregate decisions. CI and desktop tests are
+   not device GO.
+3. Resume full F05 only after the required GO, then proceed to N01 and its
+   downstream I01/I02 path. Do not add more F05.1 preview features.
 
 ## Hard Boundaries
 

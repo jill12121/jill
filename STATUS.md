@@ -2,9 +2,9 @@
 
 ## Current Task
 
-- ID: F05.1
-- Sub-step: Navigable no-I/O workspace and in-memory decision/settings shells
-- State: COMPLETE; DEVICE_GATES_DEFERRED_BY_USER
+- ID: S01/S02/S04
+- Sub-step: Physical-device gate resumption
+- State: READY_FOR_DEVICE; NO_DEVICE_CONNECTED; DEFERRED_BY_USER
 
 ## Completed
 
@@ -358,6 +358,14 @@
   The debug APK is 25,922,631 bytes with SHA-256
   `64FB308BF61294371439BE1E413CC9309DCD63F537F82D41B0B549C51F151C3B`.
   Remote Verify `41013527081` passed.
+- Device-gate resumption audit: F05.1 is complete and no further F05.1
+  increments are authorized. The S01/S02/S04 probe suite and S02 external
+  fixture helper rebuild successfully, but `adb devices -l` reports no
+  connected device. The v2-signed probe-suite APK is 22,666,227 bytes with
+  SHA-256
+  `8B5C8B08161C6D793FBD08A60F16B8809B60B65054616E2755603F6DA9621E26`;
+  the v2-signed helper APK is 10,639,092 bytes with SHA-256
+  `BDCC143E73B90DDA7B7A95A5543C3E13CC1801AD06F10847E4181CC9938C6FD6`.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
@@ -372,11 +380,11 @@
 
 ## Next Exact Action
 
-- Continue F05 only as no-I/O UI/domain work that does not invoke storage
-  capabilities or claim full F05 completion.
-- Resume the deferred device matrices before enabling root selection,
-  adoption, MediaStore scanning, workspace initialization, thumbnails/Paging,
-  Journal, copy, cleanup, or recovery execution.
+- Connect an eligible physical device and execute S01 first, then S02 and S04
+  using their reviewed runbooks. Record evidence and aggregate decisions; CI
+  or desktop tests cannot substitute for these runs.
+- Only after the required device GO may work resume on full F05, followed by
+  N01 and its downstream I01/I02 path. Do not add more F05.1 preview features.
 
 ## Active Gates
 
