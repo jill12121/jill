@@ -38,6 +38,8 @@ internal fun AlbumLibraryContent(
     onLibraryEvent: (LibraryEvent) -> Unit,
     onSetupEvent: (SetupEvent) -> Unit,
 ) {
+    val selectionSummary = libraryState.selectionSummary
+
     Column(modifier = Modifier.padding(top = 24.dp, bottom = 16.dp)) {
         WorkspaceTitle(
             title = "Library",
@@ -77,7 +79,8 @@ internal fun AlbumLibraryContent(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
-            text = "Selected ${libraryState.selectionCount} of ${libraryState.previewAlbums.size}",
+            text = "Selected ${selectionSummary.selectionCount} of " +
+                libraryState.previewAlbums.size,
             modifier = Modifier.padding(top = 4.dp),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -85,13 +88,15 @@ internal fun AlbumLibraryContent(
         libraryState.visibleAlbums.forEach { album ->
             PreviewAlbumRow(
                 album = album,
-                selected = album.albumId in libraryState.selectedAlbumIds,
+                selected = selectionSummary.selectedAlbums.any {
+                    it.albumId == album.albumId
+                },
                 onClick = {
                     onLibraryEvent(LibraryEvent.ToggleAlbumSelection(album.albumId))
                 },
             )
         }
-        if (libraryState.selectedAlbumIds.isNotEmpty()) {
+        if (selectionSummary.hasSelection) {
             TextButton(
                 onClick = { onLibraryEvent(LibraryEvent.ClearSelection) },
                 modifier = Modifier.padding(top = 4.dp),

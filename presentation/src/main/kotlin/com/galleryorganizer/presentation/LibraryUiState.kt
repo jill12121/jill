@@ -22,6 +22,16 @@ data class PreviewAlbum(
     val needsReview: Boolean,
 )
 
+data class LibrarySelectionSummary(
+    val selectedAlbums: List<PreviewAlbum>,
+) {
+    val selectionCount: Int
+        get() = selectedAlbums.size
+
+    val hasSelection: Boolean
+        get() = selectedAlbums.isNotEmpty()
+}
+
 data class LibraryUiState(
     val searchQuery: String,
     val filter: LibraryFilter,
@@ -30,11 +40,18 @@ data class LibraryUiState(
     val loadState: LibraryLoadState,
     val previewAlbums: List<PreviewAlbum>,
 ) {
+    val selectionSummary: LibrarySelectionSummary
+        get() = LibrarySelectionSummary(
+            selectedAlbums = previewAlbums.filter {
+                it.albumId in selectedAlbumIds
+            },
+        )
+
     val selectedPreviewAlbums: List<PreviewAlbum>
-        get() = previewAlbums.filter { it.albumId in selectedAlbumIds }
+        get() = selectionSummary.selectedAlbums
 
     val selectionCount: Int
-        get() = selectedPreviewAlbums.size
+        get() = selectionSummary.selectionCount
 
     val visibleAlbums: List<PreviewAlbum>
         get() {
