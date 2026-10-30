@@ -103,6 +103,26 @@ internal fun AlbumLibraryContent(
             ) {
                 Text("Clear selection")
             }
+            HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
+            Text(
+                text = "Selection preview",
+                modifier = Modifier.padding(top = 12.dp),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = "These selected examples are memory-only and cannot create an archive plan.",
+                modifier = Modifier.padding(top = 4.dp, bottom = 6.dp),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            selectionSummary.selectedAlbums.forEach { album ->
+                WorkspaceStatusLine(
+                    album.title,
+                    album.dateLabel +
+                        if (album.needsReview) " · Needs review" else " · Ready",
+                )
+            }
         }
         HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
         Text(
