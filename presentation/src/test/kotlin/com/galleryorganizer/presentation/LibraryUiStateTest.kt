@@ -1,5 +1,6 @@
 package com.galleryorganizer.presentation
 
+import com.galleryorganizer.domain.ImportStrategy
 import com.galleryorganizer.domain.SourceDecisionValue
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -238,5 +239,56 @@ class LibraryUiStateTest {
         assertEquals(1, snapshot.keepSourceCount)
         assertEquals(1, snapshot.reviewSourceCount)
         assertEquals(1, snapshot.trashSourceCount)
+    }
+
+    @Test
+    fun `workspace review snapshot includes setup configuration without storage`() {
+        val initial = SetupUiState.initial()
+        val setup = SetupReducer.reduce(
+            SetupReducer.reduce(
+                initial,
+                SetupEvent.ToggleScope("downloads"),
+            ),
+            SetupEvent.SetTrashRetention(TrashRetention.NINETY_DAYS),
+        )
+
+        val snapshot = WorkspaceReviewSnapshot.from(
+            setupState = setup,
+            libraryState = LibraryUiState.initial(),
+            inboxState = InboxUiState.initial(),
+        )
+
+        assertEquals(3, snapshot.setupSummary.selectedScopeCount)
+        assertEquals(1, snapshot.setupSummary.protectedDirectoryCount)
+        assertEquals(TrashRetention.NINETY_DAYS, snapshot.setupSummary.trashRetention)
+        assertEquals(ImportStrategy.COPY_KEEP_SOURCE, snapshot.setupSummary.importStrategy)
+        assertEquals(NotificationPreference.OFF, snapshot.setupSummary.notificationPreference)
+        assertEquals(RootAdoptionState.NOT_REQUESTED, snapshot.setupSummary.rootAdoptionState)
+    }
+
+    @Test
+    fun `workspace review snapshot reflects in memory import and notification edits`() {
+        val setup = SetupReducer.reduce(
+            SetupReducer.reduce(
+                SetupUiState.initial(),
+                SetupEvent.SetImportStrategy(ImportStrategy.MOVE_SOURCE),
+            ),
+            SetupEvent.SetNotificationPreference(
+                NotificationPreference.STATUS_AND_CLEANUP,
+            ),
+        )
+
+        val snapshot = WorkspaceReviewSnapshot.from(
+            setupState = setup,
+            libraryState = LibraryUiState.initial(),
+            inboxState = InboxUiState.initial(),
+        )
+
+        assertEquals(ImportStrategy.MOVE_SOURCE, snapshot.setupSummary.importStrategy)
+        assertEquals(
+            NotificationPreference.STATUS_AND_CLEANUP,
+            snapshot.setupSummary.notificationPreference,
+        )
+        assertEquals(RootCapability.DEVICE_GATE_PENDING, snapshot.setupSummary.rootCapability)
     }
 }

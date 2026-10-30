@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.galleryorganizer.domain.ImportStrategy
 import com.galleryorganizer.domain.SourceDecisionValue
 
 private val WorkspaceAmber = Color(0xFF8A5A00)
@@ -34,13 +35,14 @@ private val WorkspaceAmberSurface = Color(0xFFFFE8B2)
 
 @Composable
 internal fun AlbumLibraryContent(
+    setupState: SetupUiState,
     libraryState: LibraryUiState,
     inboxState: InboxUiState,
     onLibraryEvent: (LibraryEvent) -> Unit,
     onSetupEvent: (SetupEvent) -> Unit,
 ) {
     val selectionSummary = libraryState.selectionSummary
-    val workspaceReview = WorkspaceReviewSnapshot.from(libraryState, inboxState)
+    val workspaceReview = WorkspaceReviewSnapshot.from(setupState, libraryState, inboxState)
 
     Column(modifier = Modifier.padding(top = 24.dp, bottom = 16.dp)) {
         WorkspaceTitle(
@@ -196,7 +198,7 @@ internal fun InboxContent(
     onInboxEvent: (InboxEvent) -> Unit,
 ) {
     val decisionSummary = inboxState.decisionSummary
-    val workspaceReview = WorkspaceReviewSnapshot.from(libraryState, inboxState)
+    val workspaceReview = WorkspaceReviewSnapshot.from(setupState, libraryState, inboxState)
 
     Column(modifier = Modifier.padding(top = 24.dp, bottom = 16.dp)) {
         WorkspaceTitle(
@@ -353,6 +355,12 @@ private fun InboxDraftStatus.reviewLabel(): String = when (this) {
     InboxDraftStatus.COMPLETE -> "Complete"
 }
 
+private fun ImportStrategy.reviewLabel(): String = when (this) {
+    ImportStrategy.COPY_KEEP_SOURCE -> "Copy and keep source"
+    ImportStrategy.MOVE_SOURCE -> "Move source"
+    ImportStrategy.INDEX_IN_PLACE -> "Index in place"
+}
+
 @Composable
 private fun WorkspaceReviewSnapshotSection(snapshot: WorkspaceReviewSnapshot) {
     HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
@@ -386,6 +394,18 @@ private fun WorkspaceReviewSnapshotSection(snapshot: WorkspaceReviewSnapshot) {
             (snapshot.decidedSourceCount + snapshot.undecidedSourceCount),
     )
     WorkspaceStatusLine("Inbox draft", snapshot.inboxDraftStatus.reviewLabel())
+    WorkspaceStatusLine(
+        "Scan scopes",
+        snapshot.setupSummary.selectedScopeCount.toString(),
+    )
+    WorkspaceStatusLine(
+        "Import strategy",
+        snapshot.setupSummary.importStrategy.reviewLabel(),
+    )
+    WorkspaceStatusLine(
+        "Trash retention",
+        snapshot.setupSummary.trashRetention.label,
+    )
 }
 
 @Composable

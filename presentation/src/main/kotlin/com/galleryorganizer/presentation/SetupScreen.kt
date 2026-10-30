@@ -68,6 +68,7 @@ fun SetupScreen(
                     SetupDestination.TRASH_RETENTION -> TrashRetentionContent(state, onEvent)
                     SetupDestination.STORAGE_STATUS -> StorageStatusContent(state, onEvent)
                     SetupDestination.LIBRARY -> AlbumLibraryContent(
+                        setupState = state,
                         libraryState = libraryState,
                         inboxState = inboxState,
                         onLibraryEvent = onLibraryEvent,

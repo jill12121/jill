@@ -1,5 +1,7 @@
 package com.galleryorganizer.presentation
 
+import com.galleryorganizer.domain.ImportStrategy
+
 enum class LibraryFilter(val label: String) {
     ALL("All"),
     NEEDS_REVIEW("Needs review"),
@@ -108,6 +110,28 @@ sealed interface LibraryEvent {
     data object ClearSelection : LibraryEvent
 }
 
+data class WorkspaceSetupSummary(
+    val selectedScopeCount: Int,
+    val protectedDirectoryCount: Int,
+    val trashRetention: TrashRetention,
+    val importStrategy: ImportStrategy,
+    val notificationPreference: NotificationPreference,
+    val rootAdoptionState: RootAdoptionState,
+    val rootCapability: RootCapability,
+) {
+    companion object {
+        fun from(state: SetupUiState): WorkspaceSetupSummary = WorkspaceSetupSummary(
+            selectedScopeCount = state.selectedScopeIds.size,
+            protectedDirectoryCount = state.protectedDirectoryIds.size,
+            trashRetention = state.trashRetention,
+            importStrategy = state.importStrategy,
+            notificationPreference = state.notificationPreference,
+            rootAdoptionState = state.rootAdoptionState,
+            rootCapability = state.rootCapability,
+        )
+    }
+}
+
 /**
  * Memory-only, read-only combination of the Library selection preview and the
  * Inbox decision preview. It is derived on demand for display, creates no Plan,
@@ -116,6 +140,7 @@ sealed interface LibraryEvent {
 data class WorkspaceReviewSnapshot(
     val librarySelectionSummary: LibrarySelectionSummary,
     val inboxDecisionSummary: InboxDecisionSummary,
+    val setupSummary: WorkspaceSetupSummary,
 ) {
     val selectedAlbumCount: Int
         get() = librarySelectionSummary.selectionCount
@@ -151,6 +176,17 @@ data class WorkspaceReviewSnapshot(
         ): WorkspaceReviewSnapshot = WorkspaceReviewSnapshot(
             librarySelectionSummary = libraryState.selectionSummary,
             inboxDecisionSummary = inboxState.decisionSummary,
+            setupSummary = WorkspaceSetupSummary.from(SetupUiState.initial()),
+        )
+
+        fun from(
+            setupState: SetupUiState,
+            libraryState: LibraryUiState,
+            inboxState: InboxUiState,
+        ): WorkspaceReviewSnapshot = WorkspaceReviewSnapshot(
+            librarySelectionSummary = libraryState.selectionSummary,
+            inboxDecisionSummary = inboxState.decisionSummary,
+            setupSummary = WorkspaceSetupSummary.from(setupState),
         )
     }
 }
