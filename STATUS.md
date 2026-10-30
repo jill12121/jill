@@ -252,7 +252,7 @@
   guards, and APK v2 verification pass locally. The debug APK is 25,890,139
   bytes with SHA-256
   `31B5ACF2AECD5474C0563AD74C17D571F1AE07C087D84B26AF498EF65B1F981B`.
-  Remote Verify was running after push; its result is pending.
+  Remote Verify `40993697560` passed (docs run `40993946835`).
 - F05.1 Inbox decision summary snapshot: commit `f1c2e68` adds a reusable
   memory-only `InboxDecisionSummary` containing Keep, Review, Trash,
   undecided, decided, and draft-status values. Existing Inbox counters and
@@ -262,7 +262,7 @@
   S05 evidence guards, and APK v2 verification pass locally. The debug APK is
   25,893,435 bytes with SHA-256
   `01852A1468CC857BABFF3D1771040E53BAE3E97638E69114800DECD71631D6D8`.
-  Remote Verify was pending after push.
+  Remote Verify `40995432131` passed (docs run `40995467763`).
 - F05.1 Library selection summary snapshot: commit `348eb80` adds a
   reusable memory-only `LibrarySelectionSummary` for selected preview album
   details, count, and empty/non-empty state. The Library UI now reads the
@@ -272,7 +272,7 @@
   S05 evidence guards, and APK v2 verification pass locally. The debug APK is
   25,895,499 bytes with SHA-256
   `E0DCA8000DDFE42F75851A3628298FD87C8F7B4B69BE8F3D351B518706B06348`.
-  Remote Verify was pending after push.
+  Remote Verify `40996537506` passed (docs run `40996571745`).
 - F05.1 Library selection review preview: commit `f60aa38` adds a
   memory-only review surface for selected example albums, including title,
   date, and needs-review state. The surface is explicitly non-executable and
@@ -281,7 +281,7 @@
   APK v2 verification pass locally. The debug APK is 25,896,623 bytes with
   SHA-256
   `61A0174A2BCF1039580C606FB38BDED9867C2B44CD59730929FE0512C644113C`.
-  Remote Verify was pending after push.
+  Remote Verify `40997851627` passed (docs run `40997923202`).
 - F05.1 Inbox decision review preview: commit `b21ff96` adds a
   memory-only review surface for decided example sources, showing each
   source label, Keep/Review/Trash decision, and source detail. Undecided
@@ -291,7 +291,7 @@
   v2 verification pass locally. The debug APK is 25,897,971 bytes with
   SHA-256
   `39CAB386FF29DF3EE8E1EDB999AB7286E8468582DC54D3E5FA98F9F676E3805C`.
-  Remote Verify was pending after push.
+  Remote Verify `40999080499` passed (docs run `40999153002`).
 - F05.1 Inbox decision review items: commit `9e09925` adds the
   memory-only `InboxDecisionReviewItem` derived collection. It preserves
   preview order, includes only known decided sources, and becomes empty when
@@ -300,7 +300,7 @@
   architecture and S05 evidence guards, and APK v2 verification pass locally.
   The debug APK is 25,900,411 bytes with SHA-256
   `156008D15B75CB2D622569C60A7F2209AEACF37F5B8B7D52AA9CD417B9721E20`.
-  Remote Verify was pending after push.
+  Remote Verify `41000017263` passed (docs run `41000059690`).
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
