@@ -106,6 +106,17 @@ class InboxUiStateTest {
             ),
             decided.decisionSummary,
         )
+        assertEquals(
+            listOf(first, second),
+            decided.decisionReviewItems.map { it.item.sourceId },
+        )
+        assertEquals(
+            listOf(
+                SourceDecisionValue.KEEP,
+                SourceDecisionValue.REVIEW,
+            ),
+            decided.decisionReviewItems.map { it.decision },
+        )
     }
 
     @Test
@@ -124,5 +135,12 @@ class InboxUiStateTest {
         assertEquals(InboxDraftStatus.COMPLETE, completed.draftStatus)
         assertEquals(3, completed.decisionSummary.decidedCount)
         assertEquals(InboxDraftStatus.COMPLETE, completed.decisionSummary.status)
+        assertEquals(3, completed.decisionReviewItems.size)
+        assertTrue(
+            InboxReducer.reduce(
+                completed,
+                InboxEvent.ClearDraft,
+            ).decisionReviewItems.isEmpty(),
+        )
     }
 }

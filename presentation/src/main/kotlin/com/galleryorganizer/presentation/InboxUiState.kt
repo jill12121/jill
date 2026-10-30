@@ -29,6 +29,11 @@ data class InboxPreviewItem(
     val detail: String,
 )
 
+data class InboxDecisionReviewItem(
+    val item: InboxPreviewItem,
+    val decision: SourceDecisionValue,
+)
+
 data class InboxUiState(
     val previewItems: List<InboxPreviewItem>,
     val decisionsBySourceId: Map<String, SourceDecisionValue>,
@@ -52,6 +57,13 @@ data class InboxUiState(
                 undecidedCount = undecided,
                 status = status,
             )
+        }
+
+    val decisionReviewItems: List<InboxDecisionReviewItem>
+        get() = previewItems.mapNotNull { item ->
+            decisionsBySourceId[item.sourceId]?.let { decision ->
+                InboxDecisionReviewItem(item, decision)
+            }
         }
 
     val undecidedCount: Int

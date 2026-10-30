@@ -259,13 +259,12 @@ internal fun InboxContent(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            inboxState.previewItems.forEach { item ->
-                inboxState.decisionsBySourceId[item.sourceId]?.let { decision ->
-                    WorkspaceStatusLine(
-                        item.label,
-                        "${decision.label()} · ${item.detail}",
-                    )
-                }
+            inboxState.decisionReviewItems.forEach { reviewItem ->
+                WorkspaceStatusLine(
+                    reviewItem.item.label,
+                    "${reviewItem.decision.label()} · " +
+                        reviewItem.item.detail,
+                )
             }
         }
         OutlinedButton(
