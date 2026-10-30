@@ -167,6 +167,8 @@ internal fun InboxContent(
     onSetupEvent: (SetupEvent) -> Unit,
     onInboxEvent: (InboxEvent) -> Unit,
 ) {
+    val decisionSummary = inboxState.decisionSummary
+
     Column(modifier = Modifier.padding(top = 24.dp, bottom = 16.dp)) {
         WorkspaceTitle(
             title = "Inbox",
@@ -190,16 +192,16 @@ internal fun InboxContent(
         )
         WorkspaceStatusLine(
             "Decision summary",
-            "Keep ${inboxState.decisionCount(SourceDecisionValue.KEEP)} · " +
-                "Review ${inboxState.decisionCount(SourceDecisionValue.REVIEW)} · " +
-                "Trash ${inboxState.decisionCount(SourceDecisionValue.TRASH)}",
+            "Keep ${decisionSummary.keepCount} · " +
+                "Review ${decisionSummary.reviewCount} · " +
+                "Trash ${decisionSummary.trashCount}",
         )
-        WorkspaceStatusLine("Undecided", inboxState.undecidedCount.toString())
+        WorkspaceStatusLine("Undecided", decisionSummary.undecidedCount.toString())
         WorkspaceStatusLine(
             "Decision coverage",
-            "${inboxState.previewItems.size - inboxState.undecidedCount} / " +
+            "${decisionSummary.decidedCount} / " +
                 inboxState.previewItems.size +
-                " · " + when (inboxState.draftStatus) {
+                " · " + when (decisionSummary.status) {
                     InboxDraftStatus.NOT_STARTED -> "Not started"
                     InboxDraftStatus.IN_PROGRESS -> "In progress"
                     InboxDraftStatus.COMPLETE -> "Complete"

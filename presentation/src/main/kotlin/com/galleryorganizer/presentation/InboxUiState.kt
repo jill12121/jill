@@ -12,6 +12,17 @@ enum class InboxDraftStatus {
     COMPLETE,
 }
 
+data class InboxDecisionSummary(
+    val keepCount: Int,
+    val reviewCount: Int,
+    val trashCount: Int,
+    val undecidedCount: Int,
+    val status: InboxDraftStatus,
+) {
+    val decidedCount: Int
+        get() = keepCount + reviewCount + trashCount
+}
+
 data class InboxPreviewItem(
     val sourceId: String,
     val label: String,
@@ -23,23 +34,46 @@ data class InboxUiState(
     val decisionsBySourceId: Map<String, SourceDecisionValue>,
     val loadState: InboxLoadState,
 ) {
+    val decisionSummary: InboxDecisionSummary
+        get() {
+            val undecided = previewItems.count {
+                it.sourceId !in decisionsBySourceId
+            }
+            val status = when {
+                decisionsBySourceId.isEmpty() -> InboxDraftStatus.NOT_STARTED
+                previewItems.isNotEmpty() && undecided == 0 ->
+                    InboxDraftStatus.COMPLETE
+                else -> InboxDraftStatus.IN_PROGRESS
+            }
+            return InboxDecisionSummary(
+                keepCount = countDecision(SourceDecisionValue.KEEP),
+                reviewCount = countDecision(SourceDecisionValue.REVIEW),
+                trashCount = countDecision(SourceDecisionValue.TRASH),
+                undecidedCount = undecided,
+                status = status,
+            )
+        }
+
     val undecidedCount: Int
-        get() = previewItems.count { it.sourceId !in decisionsBySourceId }
+        get() = decisionSummary.undecidedCount
 
     val hasDraft: Boolean
         get() = decisionsBySourceId.isNotEmpty()
 
     val isDraftComplete: Boolean
-        get() = previewItems.isNotEmpty() && undecidedCount == 0
+        get() = decisionSummary.status == InboxDraftStatus.COMPLETE
 
     val draftStatus: InboxDraftStatus
-        get() = when {
-            decisionsBySourceId.isEmpty() -> InboxDraftStatus.NOT_STARTED
-            isDraftComplete -> InboxDraftStatus.COMPLETE
-            else -> InboxDraftStatus.IN_PROGRESS
-        }
+        get() = decisionSummary.status
 
     fun decisionCount(decision: SourceDecisionValue): Int =
+        when (decision) {
+            SourceDecisionValue.KEEP -> decisionSummary.keepCount
+            SourceDecisionValue.REVIEW -> decisionSummary.reviewCount
+            SourceDecisionValue.TRASH -> decisionSummary.trashCount
+        }
+
+    private fun countDecision(decision: SourceDecisionValue): Int =
         previewItems.count { decisionsBySourceId[it.sourceId] == decision }
 
     companion object {

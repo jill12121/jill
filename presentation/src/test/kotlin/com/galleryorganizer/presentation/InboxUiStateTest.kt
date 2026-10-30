@@ -18,6 +18,16 @@ class InboxUiStateTest {
         assertTrue(!state.hasDraft)
         assertTrue(!state.isDraftComplete)
         assertEquals(InboxDraftStatus.NOT_STARTED, state.draftStatus)
+        assertEquals(
+            InboxDecisionSummary(
+                keepCount = 0,
+                reviewCount = 0,
+                trashCount = 0,
+                undecidedCount = 3,
+                status = InboxDraftStatus.NOT_STARTED,
+            ),
+            state.decisionSummary,
+        )
     }
 
     @Test
@@ -40,6 +50,9 @@ class InboxUiStateTest {
         assertTrue(ignored.hasDraft)
         assertTrue(!ignored.isDraftComplete)
         assertEquals(InboxDraftStatus.IN_PROGRESS, ignored.draftStatus)
+        assertEquals(1, ignored.decisionSummary.reviewCount)
+        assertEquals(2, ignored.decisionSummary.undecidedCount)
+        assertEquals(InboxDraftStatus.IN_PROGRESS, ignored.decisionSummary.status)
     }
 
     @Test
@@ -83,6 +96,16 @@ class InboxUiStateTest {
         assertTrue(decided.hasDraft)
         assertTrue(!decided.isDraftComplete)
         assertEquals(InboxDraftStatus.IN_PROGRESS, decided.draftStatus)
+        assertEquals(
+            InboxDecisionSummary(
+                keepCount = 1,
+                reviewCount = 1,
+                trashCount = 0,
+                undecidedCount = 1,
+                status = InboxDraftStatus.IN_PROGRESS,
+            ),
+            decided.decisionSummary,
+        )
     }
 
     @Test
@@ -99,5 +122,7 @@ class InboxUiStateTest {
         assertTrue(completed.isDraftComplete)
         assertEquals(3, completed.decisionCount(SourceDecisionValue.KEEP))
         assertEquals(InboxDraftStatus.COMPLETE, completed.draftStatus)
+        assertEquals(3, completed.decisionSummary.decidedCount)
+        assertEquals(InboxDraftStatus.COMPLETE, completed.decisionSummary.status)
     }
 }
