@@ -263,6 +263,16 @@
   25,893,435 bytes with SHA-256
   `01852A1468CC857BABFF3D1771040E53BAE3E97638E69114800DECD71631D6D8`.
   Remote Verify was pending after push.
+- F05.1 Library selection summary snapshot: commit `348eb80` adds a
+  reusable memory-only `LibrarySelectionSummary` for selected preview album
+  details, count, and empty/non-empty state. The Library UI now reads the
+  same derived snapshot; unknown album IDs and clear-selection behavior remain
+  unchanged. All 24 presentation tests pass in debug and release variants;
+  the full 672-task Gradle gate, baseline/app/release policy, architecture and
+  S05 evidence guards, and APK v2 verification pass locally. The debug APK is
+  25,895,499 bytes with SHA-256
+  `E0DCA8000DDFE42F75851A3628298FD87C8F7B4B69BE8F3D351B518706B06348`.
+  Remote Verify was pending after push.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
