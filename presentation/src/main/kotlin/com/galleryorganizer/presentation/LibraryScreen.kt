@@ -246,6 +246,27 @@ internal fun InboxContent(
             ) {
                 Text("Clear preview decisions")
             }
+            HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
+            Text(
+                text = "Decision review",
+                modifier = Modifier.padding(top = 12.dp),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = "These decisions are memory-only and cannot create an archive plan.",
+                modifier = Modifier.padding(top = 4.dp, bottom = 6.dp),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            inboxState.previewItems.forEach { item ->
+                inboxState.decisionsBySourceId[item.sourceId]?.let { decision ->
+                    WorkspaceStatusLine(
+                        item.label,
+                        "${decision.label()} · ${item.detail}",
+                    )
+                }
+            }
         }
         OutlinedButton(
             onClick = { onSetupEvent(SetupEvent.OpenScanScopes) },
