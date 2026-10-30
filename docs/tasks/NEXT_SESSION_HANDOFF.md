@@ -156,6 +156,14 @@ and OEM family B physical-device runs are DEFERRED_BY_USER, not GO.
   `3ADC9BE2D59123AAD384C3A42527D1B832AF34B904FA3D657F13EE1E52DFB633`;
   Remote Verify `40858235712` passed. No archive action, Plan, persistence, or
   storage behavior is enabled.
+- F05.1 Inbox decision coverage: commit `2b937c1` adds a derived coverage
+  state that becomes complete only after every known preview source receives a
+  Keep, Review, or Trash decision. All 24 presentation tests pass per variant;
+  the full 672-task local gate, policy and architecture guards, S05 evidence
+  guard, and APK v2 verification pass. The debug APK is 25,888,787 bytes with
+  SHA-256 `A942F08EED57385DA72162B9572A691B8EE79A6579FBB5A9E1F4E1266EEB1BBD`;
+  Remote Verify `40991346751` passed. The state remains memory-only and does
+  not create a Plan, persist decisions, or access storage.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action

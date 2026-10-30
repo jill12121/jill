@@ -234,6 +234,15 @@
   The debug APK is 25,888,427 bytes with SHA-256
   `3ADC9BE2D59123AAD384C3A42527D1B832AF34B904FA3D657F13EE1E52DFB633`.
   Remote Verify `40858235712` passed.
+- F05.1 Inbox decision coverage: commit `2b937c1` adds a derived
+  in-progress/complete coverage state for the known source-decision preview.
+  Completion requires every bounded preview source to have Keep, Review, or
+  Trash; unknown IDs do not count. All 24 presentation tests pass in debug
+  and release variants; the full 672-task Gradle gate, baseline/app/release
+  policy, architecture and S05 evidence guards, and APK v2 verification pass
+  locally. The debug APK is 25,888,787 bytes with SHA-256
+  `A942F08EED57385DA72162B9572A691B8EE79A6579FBB5A9E1F4E1266EEB1BBD`.
+  Remote Verify `40991346751` passed.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
