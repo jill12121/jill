@@ -25,6 +25,12 @@ class S01ProbeResultTest {
             S01SingleDeviceOutcome.PARTIAL,
             completeResult().copy(deviceRebootRetryPassed = false).outcome,
         )
+        assertEquals(
+            S01SingleDeviceOutcome.FAIL,
+            completeResult().copy(
+                webpPartMetadataClass = S01MetadataClass.NAME_APPENDED_EXTENSION,
+            ).outcome,
+        )
     }
 
     @Test
@@ -110,6 +116,15 @@ class S01ProbeResultTest {
         assertEquals(null, S01ProbeResult.decode(legacy)?.exceptionStage)
     }
 
+    @Test
+    fun `legacy state without metadata classes defaults to exact`() {
+        val legacy = completeResult().encode().split('|').take(36).joinToString("|")
+        val decoded = S01ProbeResult.decode(legacy)
+
+        assertEquals(S01MetadataClass.EXACT, decoded?.binaryPartMetadataClass)
+        assertEquals(S01MetadataClass.EXACT, decoded?.webpPartMetadataClass)
+    }
+
     private fun completeResult() = S01ProbeResult(
         deviceModel = "test-device",
         androidSdk = 35,
@@ -144,6 +159,8 @@ class S01ProbeResultTest {
         enumerate5kMillis = 2500,
         flagsRoot = listOf("DIR_SUPPORTS_CREATE"),
         flagsFile = listOf("SUPPORTS_WRITE", "SUPPORTS_RENAME", "SUPPORTS_DELETE"),
+        binaryPartMetadataClass = S01MetadataClass.EXACT,
+        webpPartMetadataClass = S01MetadataClass.EXACT,
     )
 
     private companion object {
@@ -160,6 +177,7 @@ class S01ProbeResultTest {
             "seekSupported", "enumerate2kMillis", "createPerFileMicros",
             "enumerate5kMillis", "flagsRoot", "flagsFile", "exceptionClass",
             "exceptionMaskedMessage", "exceptionStage", "decisionSingleDevice",
+            "binaryPartMetadataClass", "webpPartMetadataClass",
         )
     }
 }

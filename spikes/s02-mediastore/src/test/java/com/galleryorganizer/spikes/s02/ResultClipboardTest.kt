@@ -20,4 +20,24 @@ class ResultClipboardTest {
     fun `clipboard failure is reported without escaping`() {
         assertFalse(ResultClipboard { _, _ -> error("unavailable") }.copy("{}"))
     }
+
+    @Test
+    fun `clipboard reads and trims a fixture token`() {
+        val clipboard = ResultClipboard(
+            writeText = { _, _ -> },
+            readText = { "  123e4567-e89b-12d3-a456-426614174000\n" },
+        )
+
+        assertEquals("123e4567-e89b-12d3-a456-426614174000", clipboard.read())
+    }
+
+    @Test
+    fun `clipboard read failure is contained`() {
+        val clipboard = ResultClipboard(
+            writeText = { _, _ -> },
+            readText = { error("unavailable") },
+        )
+
+        assertEquals(null, clipboard.read())
+    }
 }

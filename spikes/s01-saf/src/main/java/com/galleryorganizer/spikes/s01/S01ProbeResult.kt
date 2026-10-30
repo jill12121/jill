@@ -45,6 +45,8 @@ data class S01ProbeResult(
     val exceptionClass: String? = null,
     val exceptionMaskedMessage: String? = null,
     val exceptionStage: String? = null,
+    val binaryPartMetadataClass: S01MetadataClass = S01MetadataClass.EXACT,
+    val webpPartMetadataClass: S01MetadataClass = S01MetadataClass.EXACT,
 ) {
     val outcome: S01SingleDeviceOutcome
         get() = when {
@@ -52,7 +54,9 @@ data class S01ProbeResult(
                 !renameSucceeded || !finalReadback || !cleanupSucceeded ||
                 !collisionEvidenceComplete(collideCreate) ||
                 !collisionEvidenceComplete(collideRename) ||
-                !collisionEvidenceComplete(createDirIdempotent) ->
+                !collisionEvidenceComplete(createDirIdempotent) ||
+                binaryPartMetadataClass != S01MetadataClass.EXACT ||
+                webpPartMetadataClass != S01MetadataClass.EXACT ->
                 S01SingleDeviceOutcome.FAIL
             !forceStopRetryPassed || !deviceRebootRetryPassed ||
                 !reinstallAdoptionRead || !reinstallAdoptionWrite ||
@@ -74,6 +78,8 @@ data class S01ProbeResult(
         "enumerate2kMillis=$enumerate2kMillis", "enumerate5kMillis=$enumerate5kMillis",
         "outcome=$outcome", "exception=${exceptionClass ?: "none"}",
         "exceptionStage=${exceptionStage ?: "none"}",
+        "binaryPartMetadata=$binaryPartMetadataClass",
+        "webpPartMetadata=$webpPartMetadataClass",
     )
 
     fun toJson(): String = linkedMapOf<String, Any?>(
@@ -105,6 +111,8 @@ data class S01ProbeResult(
         "flagsFile" to flagsFile, "exceptionClass" to exceptionClass,
         "exceptionMaskedMessage" to exceptionMaskedMessage,
         "exceptionStage" to exceptionStage,
+        "binaryPartMetadataClass" to binaryPartMetadataClass,
+        "webpPartMetadataClass" to webpPartMetadataClass,
         "decisionSingleDevice" to outcome,
     ).entries.joinToString(prefix = "{", postfix = "}") { (key, value) ->
         "\"$key\":${jsonValue(value)}"
@@ -125,6 +133,7 @@ data class S01ProbeResult(
         seekSupported, enumerate2kMillis, createPerFileMicros,
         enumerate5kMillis ?: "", flagsRoot.joinToString(","), flagsFile.joinToString(","),
         exceptionClass ?: "", exceptionMaskedMessage ?: "", exceptionStage ?: "",
+        binaryPartMetadataClass, webpPartMetadataClass,
     ).map(Any?::toString)
 
     companion object {
@@ -139,7 +148,7 @@ data class S01ProbeResult(
             val v = value?.split('|')?.map {
                 URLDecoder.decode(it, Charsets.UTF_8.name())
             } ?: return null
-            require(v.size in 35..36)
+            require(v.size in 35..38)
             S01ProbeResult(
                 v[0], v[1].toInt(), v[2], v[3], v[4], RootKind.valueOf(v[5]),
                 DownloadRootSelection.valueOf(v[6]), v[7].toBoolean(), v[8].toBoolean(),
@@ -151,6 +160,8 @@ data class S01ProbeResult(
                 v[30].toLongOrNull(), v[31].split(',').filter(String::isNotEmpty),
                 v[32].split(',').filter(String::isNotEmpty), v[33].ifEmpty { null },
                 v[34].ifEmpty { null }, v.getOrNull(35)?.ifEmpty { null },
+                v.getOrNull(36)?.let(S01MetadataClass::valueOf) ?: S01MetadataClass.EXACT,
+                v.getOrNull(37)?.let(S01MetadataClass::valueOf) ?: S01MetadataClass.EXACT,
             )
         }.getOrNull()
 

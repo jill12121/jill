@@ -1,8 +1,8 @@
 package com.galleryorganizer.spikes.s02.fixturehelper
 
-import android.content.ComponentName
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.ContentValues
-import android.content.Intent
 import android.os.Bundle
 import android.provider.MediaStore
 import android.widget.Button
@@ -22,7 +22,7 @@ class ExternalFixtureHelperActivity : ComponentActivity() {
         val status = TextView(this).apply {
             text = "Creates one helper-owned MediaStore fixture for the S02 probe."
         }
-        val create = Button(this).apply { text = "Create fixture and open S02" }
+        val create = Button(this).apply { text = "Create fixture and copy token" }
         setContentView(
             LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
@@ -37,10 +37,11 @@ class ExternalFixtureHelperActivity : ComponentActivity() {
             lifecycleScope.launch {
                 runCatching { withContext(Dispatchers.IO) { createFixture() } }
                     .onSuccess { token ->
-                        status.text = "Fixture created. Opening S02..."
-                        openS02Probe(token).onFailure {
+                        if (copyToken(token)) {
                             status.text =
-                                "Fixture created, but S02 could not open: ${it.javaClass.simpleName}"
+                                "Fixture created. Token copied. Open Probe Suite > S02 and paste it."
+                        } else {
+                            status.text = "Fixture created, but clipboard copy failed. Token: $token"
                         }
                     }
                     .onFailure { status.text = "Fixture creation failed: ${it.javaClass.simpleName}" }
@@ -80,16 +81,8 @@ class ExternalFixtureHelperActivity : ComponentActivity() {
         }
     }
 
-    private fun openS02Probe(token: String) = runCatching {
-        startActivity(
-            Intent(ExternalFixtureContract.OPEN_ACTION)
-                .setComponent(
-                    ComponentName(
-                        ExternalFixtureContract.SUITE_PACKAGE,
-                        ExternalFixtureContract.PROBE_ACTIVITY,
-                    ),
-                )
-                .putExtra(ExternalFixtureContract.TOKEN_EXTRA, token),
-        )
-    }
+    private fun copyToken(token: String): Boolean = runCatching {
+        requireNotNull(getSystemService(ClipboardManager::class.java))
+            .setPrimaryClip(ClipData.newPlainText("s02-fixture-token", token))
+    }.isSuccess
 }

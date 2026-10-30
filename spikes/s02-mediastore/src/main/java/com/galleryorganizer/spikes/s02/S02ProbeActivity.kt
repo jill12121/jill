@@ -31,6 +31,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -378,10 +379,13 @@ class S02ProbeActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val probe = MediaStoreProbe(applicationContext)
         val probeState = ViewModelProvider(this)[S02ProbeViewModel::class.java]
-        val externalToken = intent.getStringExtra(ExternalFixtureContract.TOKEN_EXTRA).orEmpty()
         setContent {
             var running by remember { mutableStateOf(false) }
             var copyStatus by remember { mutableStateOf<String?>(null) }
+            var externalToken by rememberSaveable { mutableStateOf("") }
+            var tokenStatus by rememberSaveable {
+                mutableStateOf("Create a fixture in the helper, then paste its token here.")
+            }
             val scope = rememberCoroutineScope()
             val cleanupLauncher = rememberLauncherForActivityResult(
                 ActivityResultContracts.StartIntentSenderForResult(),
@@ -424,9 +428,23 @@ class S02ProbeActivity : ComponentActivity() {
                             if (ExternalFixtureContract.isValidToken(externalToken)) {
                                 "Fixture token: $externalToken"
                             } else {
-                                "Open S02 from the external fixture helper."
+                                tokenStatus
                             },
                         )
+                        OutlinedButton(
+                            onClick = {
+                                val pasted = ResultClipboard(this@S02ProbeActivity).read().orEmpty()
+                                if (ExternalFixtureContract.isValidToken(pasted)) {
+                                    externalToken = pasted
+                                    tokenStatus = "Fixture token ready"
+                                } else {
+                                    externalToken = ""
+                                    tokenStatus = "Clipboard does not contain a valid fixture token."
+                                }
+                            },
+                            enabled = !running,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text("Paste fixture token") }
                         Button(
                             onClick = {
                                 val permission = probe.permissionState(false)

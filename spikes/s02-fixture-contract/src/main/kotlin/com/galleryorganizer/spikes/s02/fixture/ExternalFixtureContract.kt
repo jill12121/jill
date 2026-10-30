@@ -4,11 +4,6 @@ import java.util.Base64
 
 object ExternalFixtureContract {
     const val HELPER_PACKAGE = "com.galleryorganizer.spikes.s02.fixturehelper"
-    const val SUITE_PACKAGE = "com.galleryorganizer.spikes.suite"
-    const val PROBE_ACTIVITY = "com.galleryorganizer.spikes.s02.S02ProbeActivity"
-    const val RUN_PERMISSION = "$SUITE_PACKAGE.permission.RUN_S02_FIXTURE"
-    const val OPEN_ACTION = "com.galleryorganizer.spikes.s02.OPEN_EXTERNAL_FIXTURE"
-    const val TOKEN_EXTRA = "s02.externalFixtureToken"
     const val RELATIVE_PATH = "Pictures/GalleryOrganizerProbe/"
     const val MIME_TYPE = "image/png"
 

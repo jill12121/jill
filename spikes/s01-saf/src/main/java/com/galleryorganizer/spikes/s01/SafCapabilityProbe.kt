@@ -37,6 +37,8 @@ class SafCapabilityProbe(private val context: Context) {
         var performance = Performance()
         var rootFlags = emptyList<String>()
         var fileFlags = emptyList<String>()
+        var binaryPartMetadata = S01MetadataClass.NOT_RUN
+        var webpPartMetadata = S01MetadataClass.NOT_RUN
         var operationStage = "INITIALIZE"
         val token = UUID.randomUUID().toString().take(8)
 
@@ -60,9 +62,11 @@ class SafCapabilityProbe(private val context: Context) {
             val binary = fileFlow(
                 probeRoot, token, "application/octet-stream", "bin", "BINARY", created,
             ) { operationStage = it }
+            binaryPartMetadata = binary.partMetadataClass
             val webp = fileFlow(
                 probeRoot, token, "image/webp", "webp", "WEBP", created,
             ) { operationStage = it }
+            webpPartMetadata = webp.partMetadataClass
             partReadback = binary.partReadback && webp.partReadback
             renamed = binary.renamed && webp.renamed
             finalReadback = binary.finalReadback && webp.finalReadback
@@ -109,6 +113,8 @@ class SafCapabilityProbe(private val context: Context) {
             exceptionClass = failure?.javaClass?.simpleName,
             exceptionMaskedMessage = failure?.let { "Probe operation failed; no URI retained" },
             exceptionStage = failure?.let { operationStage },
+            binaryPartMetadataClass = binaryPartMetadata,
+            webpPartMetadataClass = webpPartMetadata,
         )
     }
 
@@ -148,7 +154,10 @@ class SafCapabilityProbe(private val context: Context) {
         setStage("${stagePrefix}_CREATE_PART")
         val part = created.register(requireNotNull(create(parent, mime, partName)))
         setStage("${stagePrefix}_PART_METADATA")
-        check(metadata(part).name == partName)
+        val partMetadata = metadata(part)
+        val partMetadataClass = S01MetadataRules.classify(
+            partName, mime, partMetadata.name, partMetadata.mime,
+        )
         setStage("${stagePrefix}_PART_WRITE")
         write(part, bytes)
         setStage("${stagePrefix}_PART_READ")
@@ -159,13 +168,15 @@ class SafCapabilityProbe(private val context: Context) {
         )
         setStage("${stagePrefix}_FINAL_METADATA")
         val actual = metadata(final)
-        check(actual.name == finalName && actual.mime == mime)
+        val renamed = S01MetadataRules.classify(
+            finalName, mime, actual.name, actual.mime,
+        ) == S01MetadataClass.EXACT
         setStage("${stagePrefix}_OLD_URI_READ")
         val oldReadable = runCatching { read(part); true }.getOrDefault(false)
         setStage("${stagePrefix}_FINAL_READ")
         return FileFlow(
-            partReadback, true, read(final).contentEquals(bytes), actual.name, actual.mime,
-            oldReadable, final,
+            partReadback, renamed, read(final).contentEquals(bytes), actual.name, actual.mime,
+            oldReadable, final, partMetadataClass,
         )
     }
 
@@ -483,7 +494,7 @@ class SafCapabilityProbe(private val context: Context) {
     private data class FileFlow(
         val partReadback: Boolean, val renamed: Boolean, val finalReadback: Boolean,
         val actualName: String, val actualMime: String, val oldUriReadable: Boolean,
-        val finalUri: Uri,
+        val finalUri: Uri, val partMetadataClass: S01MetadataClass,
     )
     private data class Adoption(
         val read: Boolean = false, val write: Boolean = false, val delete: Boolean = false,

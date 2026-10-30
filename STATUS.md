@@ -391,6 +391,24 @@
   `4BDD1C2D3A6C06E22C98D0D93C154F530B482BE720662DC7310876A6DE96B909`;
   helper 0.1.1 is 10,652,220 bytes with SHA-256
   `F21EFE688DD90017CF5CFB70C2E47D603F40B59ED7796F7AECFBD1C6089A2F2E`.
+- Second offline device triage: probe-suite 0.1.2 reached
+  `WEBP_PART_METADATA`. This proves WebP part creation succeeded, but the
+  provider returned non-exact metadata and the probe stopped before write,
+  rename, collision, performance, and cleanup evidence. This remains
+  diagnostically incomplete rather than a device NO_GO. Probe-suite 0.1.3
+  classifies binary/WebP part metadata without exporting the actual random
+  part name and continues the remaining operations; non-exact metadata still
+  fails the single-device outcome. S02 remained blank through the direct
+  cross-APK launch, so helper 0.1.2 now copies the fixture token and S02
+  provides an explicit paste action. The S02 Activity is non-exported and the
+  obsolete signature launch permission is removed. S01 has 26 tests, S02 has
+  13 tests, and the fixture contract has one test, all green. The new APKs are
+  v2-signed; all five policy/architecture/evidence guards and the full
+  `check lint assembleDebug` gate pass. Probe-suite 0.1.3 is 22,698,999 bytes
+  with SHA-256
+  `93F2A5B1FE78380D94BDFFBBB161AF59EF726CB89B647B23A46B5D04DC663D03`;
+  helper 0.1.2 is 10,638,448 bytes with SHA-256
+  `82CADE3CC9ABDB6CAF535DF1988B1D62347C4D27CDF551C4BE90EF374D1232AD`.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
@@ -405,10 +423,11 @@
 
 ## Next Exact Action
 
-- Install probe-suite `0.1.2` first and fixture-helper `0.1.1` second on the
-  same vivo device without ADB. Rerun S01 and return its JSON with
-  `exceptionStage`. Then open the helper, select `Create fixture and open S02`,
-  select `Run S02 probe` on the S02 page, and return its copied JSON.
+- Install probe-suite `0.1.3` and fixture-helper `0.1.2` on the same vivo
+  device without ADB. Rerun S01 and return its JSON, including
+  `binaryPartMetadataClass` and `webpPartMetadataClass`. For S02, create the
+  fixture and copy its token in the helper, open Probe Suite > S02, paste the
+  token, run the probe, and return its copied JSON.
 - Do not rerun S04 until the S01/S02 retry has been reviewed.
 - Record evidence and aggregate decisions; copied device JSON, not CI or
   desktop tests, is required for device GO.
@@ -419,10 +438,10 @@
 
 - F06: COMPLETE; golden manifest fixtures and the progressive pure-domain E2E
   are delivered. Storage executors stay outside F06 and remain gated.
-- S01: DEVICE_EVIDENCE_RETRY_REQUIRED; the 0.1.1 current-target result is
-  diagnostically inconclusive and requires the 0.1.2 `exceptionStage`.
-- S02: DEVICE_EVIDENCE_RETRY_REQUIRED; helper 0.1.1 removes the forwarding
-  path that produced the blank/no-response 0.1.0 run.
+- S01: DEVICE_EVIDENCE_RETRY_REQUIRED; the 0.1.2 result identifies a provider
+  metadata difference but requires the 0.1.3 full-flow classification.
+- S02: DEVICE_EVIDENCE_RETRY_REQUIRED; direct cross-APK launch also produced
+  no response, so helper 0.1.2 uses clipboard token handoff.
 - S04: DEVICE_DEFERRED_BY_USER; durable recovery, overwrite, and provenance
   hardening are independently reviewed and CI-green.
 - S05: ANDROID_HARNESS_COMPLETE / DEVICE_EVIDENCE_PARTIAL; S05.1/S05.2a remain
@@ -476,9 +495,10 @@
 
 ## Known Issues
 
-- S01/S02 current-target retries are required with probe-suite 0.1.2 and
-  fixture-helper 0.1.1. The old S01 payload cannot support device NO_GO, and
-  the old S02 flow produced no result. Other required rows remain deferred.
+- S01/S02 current-target retries are required with probe-suite 0.1.3 and
+  fixture-helper 0.1.2. The 0.1.2 S01 result stopped before full evidence, and
+  the direct-launch S02 flow produced no result. Other required rows remain
+  deferred.
 - S05 has one accepted `target` row and three deferred rows; the recorded
   budget values remain provisional until the matrix completes.
 - J1/J2/J3 and all production workspace/Manifest/cleanup execution are blocked

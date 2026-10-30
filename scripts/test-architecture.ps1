@@ -132,12 +132,16 @@ try {
         "spikes/s02-fixture-helper/src/main/AndroidManifest.xml"
     )
     $helperManifest = Get-Content -Raw -LiteralPath $helperManifestPath
+    $permissionElement = (
+        '<uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />' +
+        "`n    <application"
+    )
     $helperManifest = $helperManifest -replace `
-        'com\.galleryorganizer\.spikes\.suite\.permission\.RUN_S02_FIXTURE', `
-        'com.galleryorganizer.spikes.suite.permission.BROKEN'
+        '<application', `
+        $permissionElement
     Set-Content -NoNewline -LiteralPath $helperManifestPath -Value $helperManifest
     Assert-VerificationFails `
-        -ExpectedMessage "S02 fixture helper must request the signature launch permission"
+        -ExpectedMessage "S02 fixture helper must not request permissions"
     Copy-Item -Force -LiteralPath `
         (Join-Path $projectRoot "spikes/s02-fixture-helper/src/main/AndroidManifest.xml") `
         -Destination $helperManifestPath
@@ -145,21 +149,11 @@ try {
     $s02ManifestPath = Join-Path $fixtureRoot "spikes/s02-mediastore/src/main/AndroidManifest.xml"
     $s02Manifest = Get-Content -Raw -LiteralPath $s02ManifestPath
     $s02Manifest = $s02Manifest -replace `
-        'android:protectionLevel="signature"', `
-        'android:protectionLevel="normal"'
-    Set-Content -NoNewline -LiteralPath $s02ManifestPath -Value $s02Manifest
-    Assert-VerificationFails -ExpectedMessage "S02 launch permission must use signature protection"
-    Copy-Item -Force -LiteralPath `
-        (Join-Path $projectRoot "spikes/s02-mediastore/src/main/AndroidManifest.xml") `
-        -Destination $s02ManifestPath
-
-    $s02Manifest = Get-Content -Raw -LiteralPath $s02ManifestPath
-    $s02Manifest = $s02Manifest -replace `
-        'android:permission="com\.galleryorganizer\.spikes\.suite\.permission\.RUN_S02_FIXTURE"', `
-        'android:permission="com.galleryorganizer.spikes.suite.permission.BROKEN"'
+        'android:exported="false"', `
+        'android:exported="true"'
     Set-Content -NoNewline -LiteralPath $s02ManifestPath -Value $s02Manifest
     Assert-VerificationFails `
-        -ExpectedMessage "S02 probe activity must be exported only through the signature launch permission"
+        -ExpectedMessage "S02 probe activity must remain non-exported for clipboard token handoff"
     Copy-Item -Force -LiteralPath `
         (Join-Path $projectRoot "spikes/s02-mediastore/src/main/AndroidManifest.xml") `
         -Destination $s02ManifestPath

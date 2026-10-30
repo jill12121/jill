@@ -299,13 +299,22 @@ guard and APK v2 verification pass. The debug APK is 25,888,787 bytes with
   `4BDD1C2D3A6C06E22C98D0D93C154F530B482BE720662DC7310876A6DE96B909`;
   helper SHA-256 is
   `F21EFE688DD90017CF5CFB70C2E47D603F40B59ED7796F7AECFBD1C6089A2F2E`.
+- Second current-target offline run: S01 0.1.2 reached
+  `WEBP_PART_METADATA`; S02 direct cross-APK launch still produced no visible
+  response. Probe-suite 0.1.3 now classifies part metadata and continues the
+  full diagnostic flow. Helper 0.1.2 copies the fixture token; S02 pastes and
+  validates it without an exported Activity or signature permission. S01/S02/
+  contract tests are 26/13/1 and green. Suite SHA-256 is
+  `93F2A5B1FE78380D94BDFFBBB161AF59EF726CB89B647B23A46B5D04DC663D03`;
+  helper SHA-256 is
+  `82CADE3CC9ABDB6CAF535DF1988B1D62347C4D27CDF551C4BE90EF374D1232AD`.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action
 
-1. Install probe-suite 0.1.2 first, then fixture-helper 0.1.1, without ADB.
-2. Rerun S01 and return the JSON containing `exceptionStage`. Launch S02 from
-   the helper, then select `Run S02 probe` and return its result JSON.
+1. Install probe-suite 0.1.3 and fixture-helper 0.1.2 without ADB.
+2. Rerun S01 and return its JSON. In the helper, create the fixture and copy
+   the token; open Probe Suite > S02, paste the token, run, and return its JSON.
 3. Review those retries before asking for S04 or recording a device decision.
 4. Record device evidence and aggregate decisions. CI and desktop tests are
    not device GO.
