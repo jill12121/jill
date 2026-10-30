@@ -276,15 +276,24 @@ guard and APK v2 verification pass. The debug APK is 25,888,787 bytes with
   `8B5C8B08161C6D793FBD08A60F16B8809B60B65054616E2755603F6DA9621E26`;
   the v2-signed helper APK is 10,639,092 bytes with SHA-256
   `BDCC143E73B90DDA7B7A95A5543C3E13CC1801AD06F10847E4181CC9938C6FD6`.
+- Offline device export: probe-suite `0.1.1` provides `Copy result JSON` with
+  feedback for S01/S02/S04 and requires no ADB connection. S01/S02/S04 have
+  21/11/18 tests green per variant. The full 672-task gate, five policy guards,
+  release policy, and APK v2 verification pass. Probe-suite is 22,682,611
+  bytes, SHA-256
+  `ED77105CF38B1E12145B7461669245ADD1F917FBDB2B17769429295290E30955`;
+  helper SHA-256 remains
+  `BDCC143E73B90DDA7B7A95A5543C3E13CC1801AD06F10847E4181CC9938C6FD6`.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action
 
-1. Connect an eligible physical device and run S01 first, then S02 and S04
-   using the reviewed task runbooks.
-2. Record device evidence and aggregate decisions. CI and desktop tests are
+1. Transfer and install the probe-suite and helper APKs without ADB.
+2. Run S01, then launch S02 from its external helper, then run S04. Copy and
+   return each result JSON through the in-app action.
+3. Record device evidence and aggregate decisions. CI and desktop tests are
    not device GO.
-3. Resume full F05 only after the required GO, then proceed to N01 and its
+4. Resume full F05 only after the required GO, then proceed to N01 and its
    downstream I01/I02 path. Do not add more F05.1 preview features.
 
 ## Hard Boundaries

@@ -3,8 +3,8 @@
 ## Current Task
 
 - ID: S01/S02/S04
-- Sub-step: Physical-device gate resumption
-- State: READY_FOR_DEVICE; NO_DEVICE_CONNECTED; DEFERRED_BY_USER
+- Sub-step: Offline physical-device evidence collection
+- State: READY_FOR_OFFLINE_DEVICE_VALIDATION; DEVICE_RESULTS_PENDING
 
 ## Completed
 
@@ -366,6 +366,17 @@
   `8B5C8B08161C6D793FBD08A60F16B8809B60B65054616E2755603F6DA9621E26`;
   the v2-signed helper APK is 10,639,092 bytes with SHA-256
   `BDCC143E73B90DDA7B7A95A5543C3E13CC1801AD06F10847E4181CC9938C6FD6`.
+- Offline device export: probe-suite `0.1.1` adds a tested, permission-free
+  `Copy result JSON` action and explicit success/failure feedback to S01, S02,
+  and S04. S02 and S04 are scrollable on bounded phone screens. S01 has 21,
+  S02 has 11, and S04 has 18 green tests per build variant. The five policy
+  guards, full 672-task Gradle gate, release dependency policy, and APK v2
+  verification pass locally. The probe-suite APK is 22,682,611 bytes with
+  SHA-256
+  `ED77105CF38B1E12145B7461669245ADD1F917FBDB2B17769429295290E30955`;
+  the unchanged helper APK is 10,639,092 bytes with SHA-256
+  `BDCC143E73B90DDA7B7A95A5543C3E13CC1801AD06F10847E4181CC9938C6FD6`.
+  No ADB or USB-debugging connection is required.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
@@ -380,9 +391,12 @@
 
 ## Next Exact Action
 
-- Connect an eligible physical device and execute S01 first, then S02 and S04
-  using their reviewed runbooks. Record evidence and aggregate decisions; CI
-  or desktop tests cannot substitute for these runs.
+- Install the two offline validation APKs directly on an eligible physical
+  device without ADB. Execute S01 first, then use the external helper to open
+  S02, then execute S04. Use each screen's `Copy result JSON` action and return
+  the three JSON payloads for review.
+- Record evidence and aggregate decisions; copied device JSON, not CI or
+  desktop tests, is required for device GO.
 - Only after the required device GO may work resume on full F05, followed by
   N01 and its downstream I01/I02 path. Do not add more F05.1 preview features.
 
