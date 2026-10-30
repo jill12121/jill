@@ -194,6 +194,15 @@ guard and APK v2 verification pass. The debug APK is 25,888,787 bytes with
   `E0DCA8000DDFE42F75851A3628298FD87C8F7B4B69BE8F3D351B518706B06348`.
   Remote Verify was pending after the push; record its result before treating
   this commit as remotely verified.
+- F05.1 Library selection review preview: commit `f60aa38` adds a
+  memory-only review surface for selected example albums with title, date,
+  and needs-review state. It is explicitly non-executable and cannot create
+  an archive Plan. Presentation tests, the full 672-task local gate, policy and
+  architecture guards, and APK v2 verification pass. The debug APK is
+  25,896,623 bytes with SHA-256
+  `61A0174A2BCF1039580C606FB38BDED9867C2B44CD59730929FE0512C644113C`.
+  Remote Verify was pending after the push; record its result before treating
+  this commit as remotely verified.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action

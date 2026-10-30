@@ -273,6 +273,15 @@
   25,895,499 bytes with SHA-256
   `E0DCA8000DDFE42F75851A3628298FD87C8F7B4B69BE8F3D351B518706B06348`.
   Remote Verify was pending after push.
+- F05.1 Library selection review preview: commit `f60aa38` adds a
+  memory-only review surface for selected example albums, including title,
+  date, and needs-review state. The surface is explicitly non-executable and
+  cannot create an archive Plan. Presentation tests, the full 672-task Gradle
+  gate, baseline/app/release policy, architecture and S05 evidence guards, and
+  APK v2 verification pass locally. The debug APK is 25,896,623 bytes with
+  SHA-256
+  `61A0174A2BCF1039580C606FB38BDED9867C2B44CD59730929FE0512C644113C`.
+  Remote Verify was pending after push.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
