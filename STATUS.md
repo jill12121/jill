@@ -301,6 +301,18 @@
   The debug APK is 25,900,411 bytes with SHA-256
   `156008D15B75CB2D622569C60A7F2209AEACF37F5B8B7D52AA9CD417B9721E20`.
   Remote Verify `41000017263` passed (docs run `41000059690`).
+- F05.1 workspace review snapshot: commit `745fc6e` adds the memory-only,
+  read-only `WorkspaceReviewSnapshot` that combines `LibrarySelectionSummary`
+  and `InboxDecisionSummary`. It derives selected album count, decided and
+  undecided source counts, inbox draft status, and combined review activity;
+  clearing both previews returns it to an empty, not-started snapshot. The
+  Library and Inbox screens share a non-executable workspace review section,
+  and no Plan is created. All 28 presentation tests pass in debug and release
+  variants; the full 672-task Gradle gate, baseline/app/release policy,
+  architecture and S05 evidence guards, and APK v2 verification pass locally.
+  The debug APK is 25,905,751 bytes with SHA-256
+  `FA521D2E11DF73170C4D9009EAFD26E29668180D1AB32DF3BF5895C7C2E2D246`.
+  Remote Verify `41002193435` passed.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision

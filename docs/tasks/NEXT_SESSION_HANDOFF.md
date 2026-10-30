@@ -215,6 +215,18 @@ guard and APK v2 verification pass. The debug APK is 25,888,787 bytes with
   The debug APK is 25,900,411 bytes with SHA-256
   `156008D15B75CB2D622569C60A7F2209AEACF37F5B8B7D52AA9CD417B9721E20`.
   Remote Verify `41000017263` passed (docs run `41000059690`).
+- F05.1 workspace review snapshot: commit `745fc6e` adds the memory-only,
+  read-only `WorkspaceReviewSnapshot.from(libraryState, inboxState)` combining
+  `LibrarySelectionSummary` with `InboxDecisionSummary`. It exposes selected
+  album count, decided/undecided source counts, inbox draft status, and
+  combined review activity, and returns to an empty, not-started snapshot
+  after both previews are cleared. Library and Inbox share a non-executable
+  workspace review section; it creates no Plan and performs no I/O. All 28
+  presentation tests pass per variant; the full 672-task local gate, policy
+  and architecture guards, S05 evidence guard, and APK v2 verification pass.
+  The debug APK is 25,905,751 bytes with SHA-256
+  `FA521D2E11DF73170C4D9009EAFD26E29668180D1AB32DF3BF5895C7C2E2D246`;
+  Remote Verify `41002193435` passed.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action
