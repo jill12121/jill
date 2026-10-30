@@ -363,6 +363,8 @@ private fun ImportStrategy.reviewLabel(): String = when (this) {
 
 @Composable
 private fun WorkspaceReviewSnapshotSection(snapshot: WorkspaceReviewSnapshot) {
+    val attentionSummary = snapshot.attentionSummary
+
     HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
     Text(
         text = "Workspace review",
@@ -405,6 +407,18 @@ private fun WorkspaceReviewSnapshotSection(snapshot: WorkspaceReviewSnapshot) {
     WorkspaceStatusLine(
         "Trash retention",
         snapshot.setupSummary.trashRetention.label,
+    )
+    WorkspaceStatusLine(
+        "Attention items",
+        attentionSummary.attentionItemCount.toString(),
+    )
+    WorkspaceStatusLine(
+        "Trash preview",
+        if (attentionSummary.hasTrashPreview) {
+            "${attentionSummary.trashSourceCount} source decisions"
+        } else {
+            "None"
+        },
     )
 }
 

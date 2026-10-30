@@ -291,4 +291,62 @@ class LibraryUiStateTest {
         )
         assertEquals(RootCapability.DEVICE_GATE_PENDING, snapshot.setupSummary.rootCapability)
     }
+
+    @Test
+    fun `workspace attention summary starts empty`() {
+        val snapshot = WorkspaceReviewSnapshot.from(
+            setupState = SetupUiState.initial(),
+            libraryState = LibraryUiState.initial(),
+            inboxState = InboxUiState.initial(),
+        )
+
+        assertEquals(
+            WorkspaceAttentionSummary(
+                selectedNeedsReviewAlbumCount = 0,
+                reviewSourceCount = 0,
+                trashSourceCount = 0,
+            ),
+            snapshot.attentionSummary,
+        )
+        assertEquals(0, snapshot.attentionSummary.attentionItemCount)
+        assertFalse(snapshot.attentionSummary.hasAttentionItems)
+        assertFalse(snapshot.attentionSummary.hasTrashPreview)
+    }
+
+    @Test
+    fun `workspace attention summary combines review albums and source decisions`() {
+        val libraryInitial = LibraryUiState.initial()
+        val needsReviewAlbum = libraryInitial.previewAlbums.single { it.needsReview }
+        val library = LibraryReducer.reduce(
+            libraryInitial,
+            LibraryEvent.ToggleAlbumSelection(needsReviewAlbum.albumId),
+        )
+        val inboxInitial = InboxUiState.initial()
+        val inbox = InboxReducer.reduce(
+            InboxReducer.reduce(
+                inboxInitial,
+                InboxEvent.SetDecision(
+                    inboxInitial.previewItems[0].sourceId,
+                    SourceDecisionValue.REVIEW,
+                ),
+            ),
+            InboxEvent.SetDecision(
+                inboxInitial.previewItems[1].sourceId,
+                SourceDecisionValue.TRASH,
+            ),
+        )
+
+        val snapshot = WorkspaceReviewSnapshot.from(
+            setupState = SetupUiState.initial(),
+            libraryState = library,
+            inboxState = inbox,
+        )
+
+        assertEquals(1, snapshot.attentionSummary.selectedNeedsReviewAlbumCount)
+        assertEquals(1, snapshot.attentionSummary.reviewSourceCount)
+        assertEquals(1, snapshot.attentionSummary.trashSourceCount)
+        assertEquals(3, snapshot.attentionSummary.attentionItemCount)
+        assertTrue(snapshot.attentionSummary.hasAttentionItems)
+        assertTrue(snapshot.attentionSummary.hasTrashPreview)
+    }
 }

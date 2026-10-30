@@ -132,9 +132,24 @@ data class WorkspaceSetupSummary(
     }
 }
 
+data class WorkspaceAttentionSummary(
+    val selectedNeedsReviewAlbumCount: Int,
+    val reviewSourceCount: Int,
+    val trashSourceCount: Int,
+) {
+    val attentionItemCount: Int
+        get() = selectedNeedsReviewAlbumCount + reviewSourceCount + trashSourceCount
+
+    val hasAttentionItems: Boolean
+        get() = attentionItemCount > 0
+
+    val hasTrashPreview: Boolean
+        get() = trashSourceCount > 0
+}
+
 /**
- * Memory-only, read-only combination of the Library selection preview and the
- * Inbox decision preview. It is derived on demand for display, creates no Plan,
+ * Memory-only, read-only combination of setup, Library selection, and Inbox
+ * decision previews. It is derived on demand for display, creates no Plan,
  * and never touches storage.
  */
 data class WorkspaceReviewSnapshot(
@@ -168,6 +183,13 @@ data class WorkspaceReviewSnapshot(
 
     val hasReviewActivity: Boolean
         get() = librarySelectionSummary.hasSelection || decidedSourceCount > 0
+
+    val attentionSummary: WorkspaceAttentionSummary
+        get() = WorkspaceAttentionSummary(
+            selectedNeedsReviewAlbumCount = selectedNeedsReviewAlbumCount,
+            reviewSourceCount = reviewSourceCount,
+            trashSourceCount = trashSourceCount,
+        )
 
     companion object {
         fun from(
