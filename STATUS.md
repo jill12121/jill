@@ -336,6 +336,17 @@
   SHA-256
   `5297AD1B0DC0606B401ED9D491DDFA740AB440D60AE9F298A600E1D132C7D526`.
   Remote Verify `41008156086` passed.
+- F05.1 workspace attention summary: commit `edb8255` adds the memory-only
+  `WorkspaceAttentionSummary`, combining selected-needs-review albums with
+  Inbox Review and Trash decisions. It derives a total attention-item count
+  and an explicit Trash-preview flag; the shared Library/Inbox review surface
+  remains read-only and exposes no destructive action. All 33 presentation
+  tests pass in debug and release variants; the full 672-task Gradle gate,
+  baseline/app/release policy, architecture and S05 evidence guards, and APK
+  v2 verification pass locally. The debug APK is 25,914,607 bytes with
+  SHA-256
+  `C97DBC668C202B31BFB792D5A86D3B6787B543B277EDEF44BE4E3825757F0F8F`.
+  Remote Verify `41010791447` passed.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision

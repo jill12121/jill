@@ -248,6 +248,16 @@ guard and APK v2 verification pass. The debug APK is 25,888,787 bytes with
   The debug APK is 25,912,151 bytes with SHA-256
   `5297AD1B0DC0606B401ED9D491DDFA740AB440D60AE9F298A600E1D132C7D526`;
   Remote Verify `41008156086` passed.
+- F05.1 workspace attention summary: commit `edb8255` adds the memory-only
+  `WorkspaceAttentionSummary`, combining selected-needs-review albums with
+  Inbox Review and Trash decisions. It derives a total attention-item count
+  and explicit Trash-preview flag. The shared Library/Inbox review surface is
+  read-only and exposes no destructive action. All 33 presentation tests pass
+  per variant; the full 672-task local gate, policy and architecture guards,
+  S05 evidence guard, and APK v2 verification pass. The debug APK is
+  25,914,607 bytes with SHA-256
+  `C97DBC668C202B31BFB792D5A86D3B6787B543B277EDEF44BE4E3825757F0F8F`;
+  Remote Verify `41010791447` passed.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action
