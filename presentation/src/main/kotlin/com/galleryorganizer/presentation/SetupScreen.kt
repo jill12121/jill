@@ -69,12 +69,14 @@ fun SetupScreen(
                     SetupDestination.STORAGE_STATUS -> StorageStatusContent(state, onEvent)
                     SetupDestination.LIBRARY -> AlbumLibraryContent(
                         libraryState = libraryState,
+                        inboxState = inboxState,
                         onLibraryEvent = onLibraryEvent,
                         onSetupEvent = onEvent,
                     )
                     SetupDestination.INBOX -> InboxContent(
                         setupState = state,
                         inboxState = inboxState,
+                        libraryState = libraryState,
                         onSetupEvent = onEvent,
                         onInboxEvent = onInboxEvent,
                     )

@@ -108,6 +108,41 @@ sealed interface LibraryEvent {
     data object ClearSelection : LibraryEvent
 }
 
+/**
+ * Memory-only, read-only combination of the Library selection preview and the
+ * Inbox decision preview. It is derived on demand for display, creates no Plan,
+ * and never touches storage.
+ */
+data class WorkspaceReviewSnapshot(
+    val librarySelectionSummary: LibrarySelectionSummary,
+    val inboxDecisionSummary: InboxDecisionSummary,
+) {
+    val selectedAlbumCount: Int
+        get() = librarySelectionSummary.selectionCount
+
+    val decidedSourceCount: Int
+        get() = inboxDecisionSummary.decidedCount
+
+    val undecidedSourceCount: Int
+        get() = inboxDecisionSummary.undecidedCount
+
+    val inboxDraftStatus: InboxDraftStatus
+        get() = inboxDecisionSummary.status
+
+    val hasReviewActivity: Boolean
+        get() = librarySelectionSummary.hasSelection || decidedSourceCount > 0
+
+    companion object {
+        fun from(
+            libraryState: LibraryUiState,
+            inboxState: InboxUiState,
+        ): WorkspaceReviewSnapshot = WorkspaceReviewSnapshot(
+            librarySelectionSummary = libraryState.selectionSummary,
+            inboxDecisionSummary = inboxState.decisionSummary,
+        )
+    }
+}
+
 object LibraryReducer {
     private const val MAX_SEARCH_LENGTH = 80
 

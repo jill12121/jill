@@ -35,10 +35,12 @@ private val WorkspaceAmberSurface = Color(0xFFFFE8B2)
 @Composable
 internal fun AlbumLibraryContent(
     libraryState: LibraryUiState,
+    inboxState: InboxUiState,
     onLibraryEvent: (LibraryEvent) -> Unit,
     onSetupEvent: (SetupEvent) -> Unit,
 ) {
     val selectionSummary = libraryState.selectionSummary
+    val workspaceReview = WorkspaceReviewSnapshot.from(libraryState, inboxState)
 
     Column(modifier = Modifier.padding(top = 24.dp, bottom = 16.dp)) {
         WorkspaceTitle(
@@ -124,7 +126,7 @@ internal fun AlbumLibraryContent(
                 )
             }
         }
-        HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
+        WorkspaceReviewSnapshotSection(workspaceReview)
         Text(
             text = "These examples are not scanned albums.",
             modifier = Modifier.padding(top = 6.dp),
@@ -189,10 +191,12 @@ private fun PreviewAlbumRow(
 internal fun InboxContent(
     setupState: SetupUiState,
     inboxState: InboxUiState,
+    libraryState: LibraryUiState,
     onSetupEvent: (SetupEvent) -> Unit,
     onInboxEvent: (InboxEvent) -> Unit,
 ) {
     val decisionSummary = inboxState.decisionSummary
+    val workspaceReview = WorkspaceReviewSnapshot.from(libraryState, inboxState)
 
     Column(modifier = Modifier.padding(top = 24.dp, bottom = 16.dp)) {
         WorkspaceTitle(
@@ -226,11 +230,7 @@ internal fun InboxContent(
             "Decision coverage",
             "${decisionSummary.decidedCount} / " +
                 inboxState.previewItems.size +
-                " · " + when (decisionSummary.status) {
-                    InboxDraftStatus.NOT_STARTED -> "Not started"
-                    InboxDraftStatus.IN_PROGRESS -> "In progress"
-                    InboxDraftStatus.COMPLETE -> "Complete"
-                },
+                " · " + decisionSummary.status.reviewLabel(),
         )
         inboxState.previewItems.forEach { item ->
             InboxPreviewRow(
@@ -267,6 +267,7 @@ internal fun InboxContent(
                 )
             }
         }
+        WorkspaceReviewSnapshotSection(workspaceReview)
         OutlinedButton(
             onClick = { onSetupEvent(SetupEvent.OpenScanScopes) },
             modifier = Modifier.padding(top = 16.dp),
@@ -344,6 +345,37 @@ private fun SourceDecisionValue.label(): String = when (this) {
     SourceDecisionValue.KEEP -> "Keep"
     SourceDecisionValue.REVIEW -> "Review"
     SourceDecisionValue.TRASH -> "Trash"
+}
+
+private fun InboxDraftStatus.reviewLabel(): String = when (this) {
+    InboxDraftStatus.NOT_STARTED -> "Not started"
+    InboxDraftStatus.IN_PROGRESS -> "In progress"
+    InboxDraftStatus.COMPLETE -> "Complete"
+}
+
+@Composable
+private fun WorkspaceReviewSnapshotSection(snapshot: WorkspaceReviewSnapshot) {
+    HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
+    Text(
+        text = "Workspace review",
+        modifier = Modifier.padding(top = 12.dp),
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.SemiBold,
+    )
+    Text(
+        text = "Combined memory preview of library selection and inbox decisions. " +
+            "It cannot create or run a plan.",
+        modifier = Modifier.padding(top = 4.dp, bottom = 6.dp),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    WorkspaceStatusLine("Selected albums", snapshot.selectedAlbumCount.toString())
+    WorkspaceStatusLine(
+        "Decided sources",
+        "${snapshot.decidedSourceCount} / " +
+            (snapshot.decidedSourceCount + snapshot.undecidedSourceCount),
+    )
+    WorkspaceStatusLine("Inbox draft", snapshot.inboxDraftStatus.reviewLabel())
 }
 
 @Composable
