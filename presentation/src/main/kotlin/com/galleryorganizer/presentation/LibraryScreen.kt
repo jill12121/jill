@@ -199,7 +199,11 @@ internal fun InboxContent(
             "Decision coverage",
             "${inboxState.previewItems.size - inboxState.undecidedCount} / " +
                 inboxState.previewItems.size +
-                if (inboxState.isDraftComplete) " · Complete" else " · In progress",
+                " · " + when (inboxState.draftStatus) {
+                    InboxDraftStatus.NOT_STARTED -> "Not started"
+                    InboxDraftStatus.IN_PROGRESS -> "In progress"
+                    InboxDraftStatus.COMPLETE -> "Complete"
+                },
         )
         inboxState.previewItems.forEach { item ->
             InboxPreviewRow(

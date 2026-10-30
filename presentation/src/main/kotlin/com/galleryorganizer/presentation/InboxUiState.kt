@@ -6,6 +6,12 @@ enum class InboxLoadState {
     STORAGE_DEFERRED,
 }
 
+enum class InboxDraftStatus {
+    NOT_STARTED,
+    IN_PROGRESS,
+    COMPLETE,
+}
+
 data class InboxPreviewItem(
     val sourceId: String,
     val label: String,
@@ -25,6 +31,13 @@ data class InboxUiState(
 
     val isDraftComplete: Boolean
         get() = previewItems.isNotEmpty() && undecidedCount == 0
+
+    val draftStatus: InboxDraftStatus
+        get() = when {
+            decisionsBySourceId.isEmpty() -> InboxDraftStatus.NOT_STARTED
+            isDraftComplete -> InboxDraftStatus.COMPLETE
+            else -> InboxDraftStatus.IN_PROGRESS
+        }
 
     fun decisionCount(decision: SourceDecisionValue): Int =
         previewItems.count { decisionsBySourceId[it.sourceId] == decision }
