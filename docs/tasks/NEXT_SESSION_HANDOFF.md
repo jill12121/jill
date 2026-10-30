@@ -160,10 +160,20 @@ and OEM family B physical-device runs are DEFERRED_BY_USER, not GO.
   state that becomes complete only after every known preview source receives a
   Keep, Review, or Trash decision. All 24 presentation tests pass per variant;
   the full 672-task local gate, policy and architecture guards, S05 evidence
-  guard, and APK v2 verification pass. The debug APK is 25,888,787 bytes with
+guard and APK v2 verification pass. The debug APK is 25,888,787 bytes with
   SHA-256 `A942F08EED57385DA72162B9572A691B8EE79A6579FBB5A9E1F4E1266EEB1BBD`;
   Remote Verify `40991346751` passed. The state remains memory-only and does
   not create a Plan, persist decisions, or access storage.
+- F05.1 Inbox draft status: commit `1545255` adds reusable
+  `NOT_STARTED`/`IN_PROGRESS`/`COMPLETE` state derivation for the bounded
+  memory-only source-decision preview. Clearing the draft returns to
+  `NOT_STARTED`; unknown source IDs remain ignored. All 24 presentation tests
+  pass per variant; the full 672-task local gate, policy and architecture
+  guards, and APK v2 verification pass. The debug APK is 25,890,139 bytes
+  with SHA-256
+  `31B5ACF2AECD5474C0563AD74C17D571F1AE07C087D84B26AF498EF65B1F981B`.
+  Remote Verify was still running after the push; record its result before
+  treating this commit as remotely verified.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action

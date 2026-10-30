@@ -243,6 +243,16 @@
   locally. The debug APK is 25,888,787 bytes with SHA-256
   `A942F08EED57385DA72162B9572A691B8EE79A6579FBB5A9E1F4E1266EEB1BBD`.
   Remote Verify `40991346751` passed.
+- F05.1 Inbox draft status: commit `1545255` replaces the UI-facing
+  in-progress/complete branching with the reusable memory-only
+  `NOT_STARTED`/`IN_PROGRESS`/`COMPLETE` status enum. Clearing the preview
+  draft returns to `NOT_STARTED`; unknown source IDs remain ignored. All 24
+  presentation tests pass in debug and release variants; the full 672-task
+  Gradle gate, baseline/app/release policy, architecture and S05 evidence
+  guards, and APK v2 verification pass locally. The debug APK is 25,890,139
+  bytes with SHA-256
+  `31B5ACF2AECD5474C0563AD74C17D571F1AE07C087D84B26AF498EF65B1F981B`.
+  Remote Verify was running after push; its result is pending.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
