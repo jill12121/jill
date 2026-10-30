@@ -361,6 +361,12 @@ private fun ImportStrategy.reviewLabel(): String = when (this) {
     ImportStrategy.INDEX_IN_PLACE -> "Index in place"
 }
 
+private fun WorkspaceAttentionKind.reviewLabel(): String = when (this) {
+    WorkspaceAttentionKind.ALBUM_NEEDS_REVIEW -> "Album needs review"
+    WorkspaceAttentionKind.SOURCE_REVIEW -> "Source marked Review"
+    WorkspaceAttentionKind.SOURCE_TRASH -> "Source marked Trash"
+}
+
 @Composable
 private fun WorkspaceReviewSnapshotSection(snapshot: WorkspaceReviewSnapshot) {
     val attentionSummary = snapshot.attentionSummary
@@ -420,6 +426,12 @@ private fun WorkspaceReviewSnapshotSection(snapshot: WorkspaceReviewSnapshot) {
             "None"
         },
     )
+    snapshot.attentionItems.forEach { item ->
+        WorkspaceStatusLine(
+            item.label,
+            "${item.kind.reviewLabel()} · ${item.detail}",
+        )
+    }
 }
 
 @Composable

@@ -349,4 +349,94 @@ class LibraryUiStateTest {
         assertTrue(snapshot.attentionSummary.hasAttentionItems)
         assertTrue(snapshot.attentionSummary.hasTrashPreview)
     }
+
+    @Test
+    fun `workspace attention items preserve album then source preview order`() {
+        val libraryInitial = LibraryUiState.initial()
+        val library = libraryInitial.previewAlbums.fold(libraryInitial) { state, album ->
+            LibraryReducer.reduce(
+                state,
+                LibraryEvent.ToggleAlbumSelection(album.albumId),
+            )
+        }
+        val inboxInitial = InboxUiState.initial()
+        val inbox = InboxReducer.reduce(
+            InboxReducer.reduce(
+                InboxReducer.reduce(
+                    inboxInitial,
+                    InboxEvent.SetDecision(
+                        inboxInitial.previewItems[0].sourceId,
+                        SourceDecisionValue.KEEP,
+                    ),
+                ),
+                InboxEvent.SetDecision(
+                    inboxInitial.previewItems[1].sourceId,
+                    SourceDecisionValue.TRASH,
+                ),
+            ),
+            InboxEvent.SetDecision(
+                inboxInitial.previewItems[2].sourceId,
+                SourceDecisionValue.REVIEW,
+            ),
+        )
+
+        val snapshot = WorkspaceReviewSnapshot.from(
+            setupState = SetupUiState.initial(),
+            libraryState = library,
+            inboxState = inbox,
+        )
+
+        assertEquals(
+            listOf(
+                WorkspaceAttentionKind.ALBUM_NEEDS_REVIEW,
+                WorkspaceAttentionKind.SOURCE_TRASH,
+                WorkspaceAttentionKind.SOURCE_REVIEW,
+            ),
+            snapshot.attentionItems.map { it.kind },
+        )
+        assertEquals(
+            listOf(
+                "album:preview-autumn",
+                "source:preview-screenshot",
+                "source:preview-download",
+            ),
+            snapshot.attentionItems.map { it.id },
+        )
+        assertEquals(
+            listOf(
+                "Autumn references",
+                "Screenshot",
+                "Downloaded image",
+            ),
+            snapshot.attentionItems.map { it.label },
+        )
+    }
+
+    @Test
+    fun `workspace attention items clear with their in memory previews`() {
+        val libraryInitial = LibraryUiState.initial()
+        val reviewAlbum = libraryInitial.previewAlbums.single { it.needsReview }
+        val library = LibraryReducer.reduce(
+            libraryInitial,
+            LibraryEvent.ToggleAlbumSelection(reviewAlbum.albumId),
+        )
+        val inboxInitial = InboxUiState.initial()
+        val inbox = InboxReducer.reduce(
+            inboxInitial,
+            InboxEvent.SetDecision(
+                inboxInitial.previewItems.first().sourceId,
+                SourceDecisionValue.TRASH,
+            ),
+        )
+
+        val cleared = WorkspaceReviewSnapshot.from(
+            setupState = SetupUiState.initial(),
+            libraryState = LibraryReducer.reduce(library, LibraryEvent.ClearSelection),
+            inboxState = InboxReducer.reduce(inbox, InboxEvent.ClearDraft),
+        )
+
+        assertTrue(cleared.attentionItems.isEmpty())
+        assertEquals(0, cleared.attentionSummary.attentionItemCount)
+        assertFalse(cleared.attentionSummary.hasAttentionItems)
+    }
 }

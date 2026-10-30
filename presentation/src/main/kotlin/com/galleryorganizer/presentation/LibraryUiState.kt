@@ -1,6 +1,7 @@
 package com.galleryorganizer.presentation
 
 import com.galleryorganizer.domain.ImportStrategy
+import com.galleryorganizer.domain.SourceDecisionValue
 
 enum class LibraryFilter(val label: String) {
     ALL("All"),
@@ -147,6 +148,19 @@ data class WorkspaceAttentionSummary(
         get() = trashSourceCount > 0
 }
 
+enum class WorkspaceAttentionKind {
+    ALBUM_NEEDS_REVIEW,
+    SOURCE_REVIEW,
+    SOURCE_TRASH,
+}
+
+data class WorkspaceAttentionItem(
+    val id: String,
+    val label: String,
+    val detail: String,
+    val kind: WorkspaceAttentionKind,
+)
+
 /**
  * Memory-only, read-only combination of setup, Library selection, and Inbox
  * decision previews. It is derived on demand for display, creates no Plan,
@@ -156,6 +170,7 @@ data class WorkspaceReviewSnapshot(
     val librarySelectionSummary: LibrarySelectionSummary,
     val inboxDecisionSummary: InboxDecisionSummary,
     val setupSummary: WorkspaceSetupSummary,
+    val attentionItems: List<WorkspaceAttentionItem>,
 ) {
     val selectedAlbumCount: Int
         get() = librarySelectionSummary.selectionCount
@@ -186,9 +201,15 @@ data class WorkspaceReviewSnapshot(
 
     val attentionSummary: WorkspaceAttentionSummary
         get() = WorkspaceAttentionSummary(
-            selectedNeedsReviewAlbumCount = selectedNeedsReviewAlbumCount,
-            reviewSourceCount = reviewSourceCount,
-            trashSourceCount = trashSourceCount,
+            selectedNeedsReviewAlbumCount = attentionItems.count {
+                it.kind == WorkspaceAttentionKind.ALBUM_NEEDS_REVIEW
+            },
+            reviewSourceCount = attentionItems.count {
+                it.kind == WorkspaceAttentionKind.SOURCE_REVIEW
+            },
+            trashSourceCount = attentionItems.count {
+                it.kind == WorkspaceAttentionKind.SOURCE_TRASH
+            },
         )
 
     companion object {
@@ -199,6 +220,7 @@ data class WorkspaceReviewSnapshot(
             librarySelectionSummary = libraryState.selectionSummary,
             inboxDecisionSummary = inboxState.decisionSummary,
             setupSummary = WorkspaceSetupSummary.from(SetupUiState.initial()),
+            attentionItems = buildAttentionItems(libraryState, inboxState),
         )
 
         fun from(
@@ -209,7 +231,40 @@ data class WorkspaceReviewSnapshot(
             librarySelectionSummary = libraryState.selectionSummary,
             inboxDecisionSummary = inboxState.decisionSummary,
             setupSummary = WorkspaceSetupSummary.from(setupState),
+            attentionItems = buildAttentionItems(libraryState, inboxState),
         )
+
+        private fun buildAttentionItems(
+            libraryState: LibraryUiState,
+            inboxState: InboxUiState,
+        ): List<WorkspaceAttentionItem> {
+            val albumItems = libraryState.selectionSummary.selectedAlbums
+                .filter { it.needsReview }
+                .map { album ->
+                    WorkspaceAttentionItem(
+                        id = "album:${album.albumId}",
+                        label = album.title,
+                        detail = album.dateLabel,
+                        kind = WorkspaceAttentionKind.ALBUM_NEEDS_REVIEW,
+                    )
+                }
+            val sourceItems = inboxState.decisionReviewItems.mapNotNull { reviewItem ->
+                val kind = when (reviewItem.decision) {
+                    SourceDecisionValue.KEEP -> null
+                    SourceDecisionValue.REVIEW -> WorkspaceAttentionKind.SOURCE_REVIEW
+                    SourceDecisionValue.TRASH -> WorkspaceAttentionKind.SOURCE_TRASH
+                }
+                kind?.let {
+                    WorkspaceAttentionItem(
+                        id = "source:${reviewItem.item.sourceId}",
+                        label = reviewItem.item.label,
+                        detail = reviewItem.item.detail,
+                        kind = it,
+                    )
+                }
+            }
+            return albumItems + sourceItems
+        }
     }
 }
 
