@@ -20,8 +20,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
@@ -378,6 +381,7 @@ class S02ProbeActivity : ComponentActivity() {
         val externalToken = intent.getStringExtra(ExternalFixtureContract.TOKEN_EXTRA).orEmpty()
         setContent {
             var running by remember { mutableStateOf(false) }
+            var copyStatus by remember { mutableStateOf<String?>(null) }
             val scope = rememberCoroutineScope()
             val cleanupLauncher = rememberLauncherForActivityResult(
                 ActivityResultContracts.StartIntentSenderForResult(),
@@ -411,7 +415,7 @@ class S02ProbeActivity : ComponentActivity() {
             MaterialTheme {
                 Surface {
                     Column(
-                        Modifier.fillMaxSize().padding(24.dp),
+                        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
                         Text("S02 / MediaStore", style = MaterialTheme.typography.headlineSmall)
@@ -439,6 +443,21 @@ class S02ProbeActivity : ComponentActivity() {
                                 ExternalFixtureContract.isValidToken(externalToken),
                             modifier = Modifier.fillMaxWidth(),
                         ) { Text(if (running) "Running..." else "Run S02 probe") }
+                        OutlinedButton(
+                            onClick = {
+                                val json = probeState.run?.result?.toJson() ?: return@OutlinedButton
+                                copyStatus = if (
+                                    ResultClipboard(this@S02ProbeActivity).copy(json)
+                                ) {
+                                    "Result JSON copied"
+                                } else {
+                                    "Clipboard unavailable"
+                                }
+                            },
+                            enabled = probeState.run != null,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text("Copy result JSON") }
+                        copyStatus?.let { Text(it) }
                         Text(probeState.run?.result?.toJson() ?: "PENDING")
                     }
                 }

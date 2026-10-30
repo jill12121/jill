@@ -22,5 +22,6 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.ui)
+    testImplementation(libs.junit4)
     testImplementation(kotlin("test"))
 }

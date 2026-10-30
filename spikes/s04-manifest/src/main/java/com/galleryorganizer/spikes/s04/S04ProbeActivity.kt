@@ -12,8 +12,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
@@ -888,6 +891,7 @@ class S04ProbeActivity : ComponentActivity() {
             var action by remember { mutableStateOf("PENDING") }
             var result by remember { mutableStateOf(probe.result()) }
             var running by remember { mutableStateOf(false) }
+            var copyStatus by remember { mutableStateOf<String?>(null) }
             val scope = rememberCoroutineScope()
 
             fun prepare(stage: AtomicInterruption) {
@@ -909,7 +913,7 @@ class S04ProbeActivity : ComponentActivity() {
             MaterialTheme {
                 Surface {
                     Column(
-                        Modifier.fillMaxSize().padding(24.dp),
+                        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         Text("S04 / Manifest atomicity", style = MaterialTheme.typography.headlineSmall)
@@ -947,6 +951,19 @@ class S04ProbeActivity : ComponentActivity() {
                             enabled = !running,
                             modifier = Modifier.fillMaxWidth(),
                         ) { Text("Start new run") }
+                        OutlinedButton(
+                            onClick = {
+                                copyStatus = if (
+                                    ResultClipboard(this@S04ProbeActivity).copy(result.toJson())
+                                ) {
+                                    "Result JSON copied"
+                                } else {
+                                    "Clipboard unavailable"
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text("Copy result JSON") }
+                        copyStatus?.let { Text(it) }
                         Text(action)
                         Text(result.toJson())
                     }

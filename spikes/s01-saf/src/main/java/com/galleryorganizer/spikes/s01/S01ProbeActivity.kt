@@ -1,7 +1,5 @@
 package com.galleryorganizer.spikes.s01
 
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -43,6 +41,7 @@ class S01ProbeActivity : ComponentActivity() {
                 mutableStateOf(S01ProbeResult.decode(preferences.getString("result", null)))
             }
             var running by remember { mutableStateOf(false) }
+            var copyStatus by remember { mutableStateOf<String?>(null) }
             val scope = rememberCoroutineScope()
 
             fun persist(updated: S01ProbeResult) {
@@ -124,14 +123,17 @@ class S01ProbeActivity : ComponentActivity() {
                         OutlinedButton(
                             onClick = {
                                 result?.toJson()?.let { json ->
-                                    getSystemService(ClipboardManager::class.java).setPrimaryClip(
-                                        ClipData.newPlainText("S01 result JSON", json),
-                                    )
+                                    copyStatus = if (ResultClipboard(this@S01ProbeActivity).copy(json)) {
+                                        "Result JSON copied"
+                                    } else {
+                                        "Clipboard unavailable"
+                                    }
                                 }
                             },
                             enabled = result != null,
                             modifier = Modifier.fillMaxWidth(),
                         ) { Text("Copy result JSON") }
+                        copyStatus?.let { Text(it, color = Color(0xFF4C5B54)) }
                         HorizontalDivider()
                         Text("Device result", style = MaterialTheme.typography.titleMedium)
                         result?.reportLines()?.forEach { line ->
