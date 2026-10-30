@@ -292,6 +292,15 @@
   SHA-256
   `39CAB386FF29DF3EE8E1EDB999AB7286E8468582DC54D3E5FA98F9F676E3805C`.
   Remote Verify was pending after push.
+- F05.1 Inbox decision review items: commit `9e09925` adds the
+  memory-only `InboxDecisionReviewItem` derived collection. It preserves
+  preview order, includes only known decided sources, and becomes empty when
+  the draft is cleared; the review UI consumes this collection. Presentation
+  tests, the full 672-task Gradle gate, baseline/app/release policy,
+  architecture and S05 evidence guards, and APK v2 verification pass locally.
+  The debug APK is 25,900,411 bytes with SHA-256
+  `156008D15B75CB2D622569C60A7F2209AEACF37F5B8B7D52AA9CD417B9721E20`.
+  Remote Verify was pending after push.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
