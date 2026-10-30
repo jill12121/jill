@@ -37,14 +37,19 @@ class SafCapabilityProbe(private val context: Context) {
         var performance = Performance()
         var rootFlags = emptyList<String>()
         var fileFlags = emptyList<String>()
+        var operationStage = "INITIALIZE"
         val token = UUID.randomUUID().toString().take(8)
 
         try {
+            operationStage = "PERSIST_PERMISSION"
             resolver.takePersistableUriPermission(root, READ_WRITE_FLAGS)
+            operationStage = "ROOT_FLAGS"
             rootFlags = flags(organizerRoot)
+            operationStage = "OWNED_ROOT"
             val ownedRoot = openOrCreateOwnedRoot(organizerRoot)
             adoption = ownedRoot.adoption
             val probeRoot = ownedRoot.uri
+            operationStage = "DIRECTORY_LAYOUT"
             val albums = ensureDirectory(probeRoot, "Albums")
             ensureDirectory(probeRoot, "Review")
             val trash = ensureDirectory(probeRoot, "Trash")
@@ -52,21 +57,30 @@ class SafCapabilityProbe(private val context: Context) {
             ensureDirectory(trash, "meta")
             dirsReady = true
 
-            val binary = fileFlow(probeRoot, token, "application/octet-stream", "bin", created)
-            val webp = fileFlow(probeRoot, token, "image/webp", "webp", created)
+            val binary = fileFlow(
+                probeRoot, token, "application/octet-stream", "bin", "BINARY", created,
+            ) { operationStage = it }
+            val webp = fileFlow(
+                probeRoot, token, "image/webp", "webp", "WEBP", created,
+            ) { operationStage = it }
             partReadback = binary.partReadback && webp.partReadback
             renamed = binary.renamed && webp.renamed
             finalReadback = binary.finalReadback && webp.finalReadback
             renamedName = webp.actualName
             renamedMime = webp.actualMime
             oldReadable = webp.oldUriReadable
+            operationStage = "FINAL_FILE_FLAGS"
             fileFlags = flags(webp.finalUri)
 
+            operationStage = "CREATE_COLLISION"
             collideCreate = createCollision(probeRoot, webp.finalUri, webp.actualName, created)
+            operationStage = "RENAME_COLLISION"
             collideRename = renameCollision(probeRoot, token, created)
+            operationStage = "DIRECTORY_COLLISION"
             val repeatedAlbums = requireNotNull(create(probeRoot, DIR_MIME, "Albums"))
             if (repeatedAlbums != albums) created.register(repeatedAlbums)
             dirIdempotent = classifyCreated(albums, repeatedAlbums, "Albums")
+            operationStage = "PERFORMANCE"
             performance = performanceProbe(probeRoot, token, created)
         } catch (caught: Exception) {
             failure = caught
@@ -94,6 +108,7 @@ class SafCapabilityProbe(private val context: Context) {
             flagsRoot = rootFlags, flagsFile = fileFlags,
             exceptionClass = failure?.javaClass?.simpleName,
             exceptionMaskedMessage = failure?.let { "Probe operation failed; no URI retained" },
+            exceptionStage = failure?.let { operationStage },
         )
     }
 
@@ -123,21 +138,31 @@ class SafCapabilityProbe(private val context: Context) {
         token: String,
         mime: String,
         extension: String,
+        stagePrefix: String,
         created: CleanupLedger<Uri>,
+        setStage: (String) -> Unit,
     ): FileFlow {
         val partName = ".s01-$token.$extension.part"
         val finalName = ".s01-$token.$extension"
         val bytes = "s01-$mime-$token".encodeToByteArray()
+        setStage("${stagePrefix}_CREATE_PART")
         val part = created.register(requireNotNull(create(parent, mime, partName)))
+        setStage("${stagePrefix}_PART_METADATA")
         check(metadata(part).name == partName)
+        setStage("${stagePrefix}_PART_WRITE")
         write(part, bytes)
+        setStage("${stagePrefix}_PART_READ")
         val partReadback = read(part).contentEquals(bytes)
+        setStage("${stagePrefix}_RENAME")
         val final = created.register(
             requireNotNull(DocumentsContract.renameDocument(resolver, part, finalName)),
         )
+        setStage("${stagePrefix}_FINAL_METADATA")
         val actual = metadata(final)
         check(actual.name == finalName && actual.mime == mime)
+        setStage("${stagePrefix}_OLD_URI_READ")
         val oldReadable = runCatching { read(part); true }.getOrDefault(false)
+        setStage("${stagePrefix}_FINAL_READ")
         return FileFlow(
             partReadback, true, read(final).contentEquals(bytes), actual.name, actual.mime,
             oldReadable, final,

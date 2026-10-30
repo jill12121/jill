@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission
+        android:name="com.galleryorganizer.spikes.suite.permission.RUN_S02_FIXTURE" />
     <application
         android:allowBackup="false"
         android:label="S02 External Fixture Helper"

@@ -91,6 +91,36 @@ $probeManifest = Get-ProjectFileContent "spikes/probe-suite/src/main/AndroidMani
 if ($helperManifest -match 'sharedUserId' -or $probeManifest -match 'sharedUserId') {
     throw "Probe suite and S02 fixture helper must not share an Android UID"
 }
+$s02Manifest = Get-ProjectFileContent "spikes/s02-mediastore/src/main/AndroidManifest.xml"
+$runS02Permission = "com.galleryorganizer.spikes.suite.permission.RUN_S02_FIXTURE"
+$androidNamespace = "http://schemas.android.com/apk/res/android"
+$helperManifestXml = [xml]$helperManifest
+$s02ManifestXml = [xml]$s02Manifest
+$helperUsesRunPermission = @($helperManifestXml.manifest.'uses-permission') | Where-Object {
+    $_.GetAttribute("name", $androidNamespace) -eq $runS02Permission
+}
+if (-not $helperUsesRunPermission) {
+    throw "S02 fixture helper must request the signature launch permission"
+}
+$s02RunPermission = @($s02ManifestXml.manifest.permission) | Where-Object {
+    $_.GetAttribute("name", $androidNamespace) -eq $runS02Permission
+}
+if (
+    -not $s02RunPermission -or
+    $s02RunPermission.GetAttribute("protectionLevel", $androidNamespace) -ne "signature"
+) {
+    throw "S02 launch permission must use signature protection"
+}
+$s02ProbeActivity = @($s02ManifestXml.manifest.application.activity) | Where-Object {
+    $_.GetAttribute("name", $androidNamespace) -eq ".S02ProbeActivity"
+}
+if (
+    -not $s02ProbeActivity -or
+    $s02ProbeActivity.GetAttribute("exported", $androidNamespace) -ne "true" -or
+    $s02ProbeActivity.GetAttribute("permission", $androidNamespace) -ne $runS02Permission
+) {
+    throw "S02 probe activity must be exported only through the signature launch permission"
+}
 $s05Build = Get-ProjectFileContent "spikes/s05-thumbnail/build.gradle.kts"
 if (
     $s05Build -notmatch [regex]::Escape("alias(libs.plugins.kotlin.jvm)") -or

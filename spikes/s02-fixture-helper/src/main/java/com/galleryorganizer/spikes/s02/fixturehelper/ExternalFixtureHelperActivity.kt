@@ -33,12 +33,14 @@ class ExternalFixtureHelperActivity : ComponentActivity() {
         )
         create.setOnClickListener {
             create.isEnabled = false
+            status.text = "Creating helper-owned fixture..."
             lifecycleScope.launch {
                 runCatching { withContext(Dispatchers.IO) { createFixture() } }
                     .onSuccess { token ->
-                        status.text = "Fixture token: $token"
-                        openProbeSuite(token).onFailure {
-                            status.text = "Fixture created, but probe-suite is not installed: $token"
+                        status.text = "Fixture created. Opening S02..."
+                        openS02Probe(token).onFailure {
+                            status.text =
+                                "Fixture created, but S02 could not open: ${it.javaClass.simpleName}"
                         }
                     }
                     .onFailure { status.text = "Fixture creation failed: ${it.javaClass.simpleName}" }
@@ -78,13 +80,13 @@ class ExternalFixtureHelperActivity : ComponentActivity() {
         }
     }
 
-    private fun openProbeSuite(token: String) = runCatching {
+    private fun openS02Probe(token: String) = runCatching {
         startActivity(
             Intent(ExternalFixtureContract.OPEN_ACTION)
                 .setComponent(
                     ComponentName(
                         ExternalFixtureContract.SUITE_PACKAGE,
-                        ExternalFixtureContract.SUITE_ACTIVITY,
+                        ExternalFixtureContract.PROBE_ACTIVITY,
                     ),
                 )
                 .putExtra(ExternalFixtureContract.TOKEN_EXTRA, token),

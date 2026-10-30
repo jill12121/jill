@@ -37,6 +37,7 @@ try {
         Get-Item -LiteralPath (Join-Path $projectRoot "spikes/probe-suite/src/main/AndroidManifest.xml")
         Get-Item -LiteralPath (Join-Path $projectRoot "spikes/s02-fixture-helper/build.gradle.kts")
         Get-Item -LiteralPath (Join-Path $projectRoot "spikes/s02-fixture-helper/src/main/AndroidManifest.xml")
+        Get-Item -LiteralPath (Join-Path $projectRoot "spikes/s02-mediastore/src/main/AndroidManifest.xml")
         Get-Item -LiteralPath (Join-Path $projectRoot "spikes/s05-thumbnail/build.gradle.kts")
         Get-Item -LiteralPath (Join-Path $projectRoot "spikes/s05-thumbnail-harness/build.gradle.kts")
         Get-Item -LiteralPath (Join-Path $projectRoot "spikes/s05-thumbnail-harness/src/main/AndroidManifest.xml")
@@ -126,6 +127,42 @@ try {
     Copy-Item -Force -LiteralPath `
         (Join-Path $projectRoot "spikes/probe-suite/build.gradle.kts") `
         -Destination $probeSuiteBuildPath
+
+    $helperManifestPath = Join-Path $fixtureRoot (
+        "spikes/s02-fixture-helper/src/main/AndroidManifest.xml"
+    )
+    $helperManifest = Get-Content -Raw -LiteralPath $helperManifestPath
+    $helperManifest = $helperManifest -replace `
+        'com\.galleryorganizer\.spikes\.suite\.permission\.RUN_S02_FIXTURE', `
+        'com.galleryorganizer.spikes.suite.permission.BROKEN'
+    Set-Content -NoNewline -LiteralPath $helperManifestPath -Value $helperManifest
+    Assert-VerificationFails `
+        -ExpectedMessage "S02 fixture helper must request the signature launch permission"
+    Copy-Item -Force -LiteralPath `
+        (Join-Path $projectRoot "spikes/s02-fixture-helper/src/main/AndroidManifest.xml") `
+        -Destination $helperManifestPath
+
+    $s02ManifestPath = Join-Path $fixtureRoot "spikes/s02-mediastore/src/main/AndroidManifest.xml"
+    $s02Manifest = Get-Content -Raw -LiteralPath $s02ManifestPath
+    $s02Manifest = $s02Manifest -replace `
+        'android:protectionLevel="signature"', `
+        'android:protectionLevel="normal"'
+    Set-Content -NoNewline -LiteralPath $s02ManifestPath -Value $s02Manifest
+    Assert-VerificationFails -ExpectedMessage "S02 launch permission must use signature protection"
+    Copy-Item -Force -LiteralPath `
+        (Join-Path $projectRoot "spikes/s02-mediastore/src/main/AndroidManifest.xml") `
+        -Destination $s02ManifestPath
+
+    $s02Manifest = Get-Content -Raw -LiteralPath $s02ManifestPath
+    $s02Manifest = $s02Manifest -replace `
+        'android:permission="com\.galleryorganizer\.spikes\.suite\.permission\.RUN_S02_FIXTURE"', `
+        'android:permission="com.galleryorganizer.spikes.suite.permission.BROKEN"'
+    Set-Content -NoNewline -LiteralPath $s02ManifestPath -Value $s02Manifest
+    Assert-VerificationFails `
+        -ExpectedMessage "S02 probe activity must be exported only through the signature launch permission"
+    Copy-Item -Force -LiteralPath `
+        (Join-Path $projectRoot "spikes/s02-mediastore/src/main/AndroidManifest.xml") `
+        -Destination $s02ManifestPath
 
     $s05BuildPath = Join-Path $fixtureRoot "spikes/s05-thumbnail/build.gradle.kts"
     Add-Content -LiteralPath $s05BuildPath `

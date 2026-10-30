@@ -91,6 +91,25 @@ class S01ProbeResultTest {
         assertFalse(json.contains("\u0000"))
     }
 
+    @Test
+    fun `safe failure stage is exported and round trips`() {
+        val result = completeResult().copy(
+            exceptionClass = "IllegalStateException",
+            exceptionMaskedMessage = "Probe operation failed; no URI retained",
+            exceptionStage = "BINARY_PART_METADATA",
+        )
+
+        assertTrue(result.toJson().contains("\"exceptionStage\":\"BINARY_PART_METADATA\""))
+        assertEquals(result, S01ProbeResult.decode(result.encode()))
+    }
+
+    @Test
+    fun `legacy state without failure stage still decodes`() {
+        val legacy = completeResult().encode().substringBeforeLast('|')
+
+        assertEquals(null, S01ProbeResult.decode(legacy)?.exceptionStage)
+    }
+
     private fun completeResult() = S01ProbeResult(
         deviceModel = "test-device",
         androidSdk = 35,
@@ -140,7 +159,7 @@ class S01ProbeResultTest {
             "reinstallOrphanClass", "writeMbps", "readMbps", "peakHeapMb",
             "seekSupported", "enumerate2kMillis", "createPerFileMicros",
             "enumerate5kMillis", "flagsRoot", "flagsFile", "exceptionClass",
-            "exceptionMaskedMessage", "decisionSingleDevice",
+            "exceptionMaskedMessage", "exceptionStage", "decisionSingleDevice",
         )
     }
 }

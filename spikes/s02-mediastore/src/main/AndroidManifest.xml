@@ -3,7 +3,13 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
+    <permission
+        android:name="com.galleryorganizer.spikes.suite.permission.RUN_S02_FIXTURE"
+        android:protectionLevel="signature" />
     <application>
-        <activity android:name=".S02ProbeActivity" android:exported="false" />
+        <activity
+            android:name=".S02ProbeActivity"
+            android:exported="true"
+            android:permission="com.galleryorganizer.spikes.suite.permission.RUN_S02_FIXTURE" />
     </application>
 </manifest>
