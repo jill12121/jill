@@ -16,6 +16,7 @@ class InboxUiStateTest {
         assertEquals(0, state.decisionCount(SourceDecisionValue.KEEP))
         assertEquals(3, state.undecidedCount)
         assertTrue(!state.hasDraft)
+        assertTrue(!state.isDraftComplete)
     }
 
     @Test
@@ -36,6 +37,7 @@ class InboxUiStateTest {
         assertEquals(1, ignored.decisionCount(SourceDecisionValue.REVIEW))
         assertEquals(2, ignored.undecidedCount)
         assertTrue(ignored.hasDraft)
+        assertTrue(!ignored.isDraftComplete)
     }
 
     @Test
@@ -76,5 +78,21 @@ class InboxUiStateTest {
         assertEquals(0, decided.decisionCount(SourceDecisionValue.TRASH))
         assertEquals(1, decided.undecidedCount)
         assertTrue(decided.hasDraft)
+        assertTrue(!decided.isDraftComplete)
+    }
+
+    @Test
+    fun `draft is complete only when every known preview source has a decision`() {
+        val initial = InboxUiState.initial()
+        val completed = initial.previewItems.fold(initial) { state, item ->
+            InboxReducer.reduce(
+                state,
+                InboxEvent.SetDecision(item.sourceId, SourceDecisionValue.KEEP),
+            )
+        }
+
+        assertEquals(0, completed.undecidedCount)
+        assertTrue(completed.isDraftComplete)
+        assertEquals(3, completed.decisionCount(SourceDecisionValue.KEEP))
     }
 }

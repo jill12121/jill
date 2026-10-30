@@ -195,6 +195,12 @@ internal fun InboxContent(
                 "Trash ${inboxState.decisionCount(SourceDecisionValue.TRASH)}",
         )
         WorkspaceStatusLine("Undecided", inboxState.undecidedCount.toString())
+        WorkspaceStatusLine(
+            "Decision coverage",
+            "${inboxState.previewItems.size - inboxState.undecidedCount} / " +
+                inboxState.previewItems.size +
+                if (inboxState.isDraftComplete) " · Complete" else " · In progress",
+        )
         inboxState.previewItems.forEach { item ->
             InboxPreviewRow(
                 item = item,
