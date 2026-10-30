@@ -237,6 +237,17 @@ guard and APK v2 verification pass. The debug APK is 25,888,787 bytes with
   The debug APK is 25,907,095 bytes with SHA-256
   `4E016BADC5EA8CC7810412384216D94EA4B51CCE95A683E3ADF183028B94FC92`;
   Remote Verify `41005610207` passed.
+- F05.1 workspace setup snapshot: commit `50316f7` adds a memory-only
+  `WorkspaceSetupSummary` to the shared review snapshot. It carries selected
+  scope count, protected-directory count, trash retention, import strategy,
+  notification preference, and deferred root capability/adoption state.
+  Library and Inbox display the setup-derived scope, import, and retention
+  values; no Plan is created and no I/O is performed. All 31 presentation
+  tests pass per variant; the full 672-task local gate, policy and
+  architecture guards, S05 evidence guard, and APK v2 verification pass.
+  The debug APK is 25,912,151 bytes with SHA-256
+  `5297AD1B0DC0606B401ED9D491DDFA740AB440D60AE9F298A600E1D132C7D526`;
+  Remote Verify `41008156086` passed.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action

@@ -324,6 +324,18 @@
   25,907,095 bytes with SHA-256
   `4E016BADC5EA8CC7810412384216D94EA4B51CCE95A683E3ADF183028B94FC92`.
   Remote Verify `41005610207` passed.
+- F05.1 workspace setup snapshot: commit `50316f7` adds a memory-only
+  `WorkspaceSetupSummary` to the shared review snapshot. It carries selected
+  scope count, protected-directory count, trash retention, import strategy,
+  notification preference, and deferred root capability/adoption state.
+  Library and Inbox display the setup-derived scope, import, and retention
+  values without creating a Plan or invoking storage. All 31 presentation
+  tests pass in debug and release variants; the full 672-task Gradle gate,
+  baseline/app/release policy, architecture and S05 evidence guards, and APK
+  v2 verification pass locally. The debug APK is 25,912,151 bytes with
+  SHA-256
+  `5297AD1B0DC0606B401ED9D491DDFA740AB440D60AE9F298A600E1D132C7D526`.
+  Remote Verify `41008156086` passed.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
