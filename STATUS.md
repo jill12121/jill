@@ -377,6 +377,20 @@
   the unchanged helper APK is 10,639,092 bytes with SHA-256
   `BDCC143E73B90DDA7B7A95A5543C3E13CC1801AD06F10847E4181CC9938C6FD6`.
   No ADB or USB-debugging connection is required.
+- First offline device triage: the vivo V2304A/API 36 S01 0.1.1 payload is
+  `PROBE_DIAGNOSTIC_INCONCLUSIVE`, not device NO_GO. It proves organizer-root
+  and directory-layout setup, then reports a masked `IllegalStateException`;
+  the old payload cannot distinguish part metadata, write, read, or rename.
+  S02 0.1.0 helper produced a blank/no-response flow. Probe-suite `0.1.2`
+  therefore exports a privacy-safe S01 `exceptionStage`, while helper `0.1.1`
+  launches the S02 Activity directly through a signature permission. The
+  permission contract is covered by unit and architecture negative tests.
+  All five guards and the full `check lint assembleDebug` gate pass locally.
+  Both APKs use v2 signing and the same signing certificate. Probe-suite
+  0.1.2 is 22,682,659 bytes with SHA-256
+  `4BDD1C2D3A6C06E22C98D0D93C154F530B482BE720662DC7310876A6DE96B909`;
+  helper 0.1.1 is 10,652,220 bytes with SHA-256
+  `F21EFE688DD90017CF5CFB70C2E47D603F40B59ED7796F7AECFBD1C6089A2F2E`.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
@@ -391,10 +405,11 @@
 
 ## Next Exact Action
 
-- Install the two offline validation APKs directly on an eligible physical
-  device without ADB. Execute S01 first, then use the external helper to open
-  S02, then execute S04. Use each screen's `Copy result JSON` action and return
-  the three JSON payloads for review.
+- Install probe-suite `0.1.2` first and fixture-helper `0.1.1` second on the
+  same vivo device without ADB. Rerun S01 and return its JSON with
+  `exceptionStage`. Then open the helper, select `Create fixture and open S02`,
+  select `Run S02 probe` on the S02 page, and return its copied JSON.
+- Do not rerun S04 until the S01/S02 retry has been reviewed.
 - Record evidence and aggregate decisions; copied device JSON, not CI or
   desktop tests, is required for device GO.
 - Only after the required device GO may work resume on full F05, followed by
@@ -404,9 +419,10 @@
 
 - F06: COMPLETE; golden manifest fixtures and the progressive pure-domain E2E
   are delivered. Storage executors stay outside F06 and remain gated.
-- S01: DEVICE_DEFERRED_BY_USER; independent review is complete and CI-green.
-- S02: DEVICE_DEFERRED_BY_USER; external-helper ownership, strict provenance,
-  and release isolation are independently reviewed and CI-green.
+- S01: DEVICE_EVIDENCE_RETRY_REQUIRED; the 0.1.1 current-target result is
+  diagnostically inconclusive and requires the 0.1.2 `exceptionStage`.
+- S02: DEVICE_EVIDENCE_RETRY_REQUIRED; helper 0.1.1 removes the forwarding
+  path that produced the blank/no-response 0.1.0 run.
 - S04: DEVICE_DEFERRED_BY_USER; durable recovery, overwrite, and provenance
   hardening are independently reviewed and CI-green.
 - S05: ANDROID_HARNESS_COMPLETE / DEVICE_EVIDENCE_PARTIAL; S05.1/S05.2a remain
@@ -460,8 +476,9 @@
 
 ## Known Issues
 
-- S01/S02/S04 physical-device results are DEFERRED_BY_USER; emulator and
-  desktop results cannot satisfy the REQUIRED matrix.
+- S01/S02 current-target retries are required with probe-suite 0.1.2 and
+  fixture-helper 0.1.1. The old S01 payload cannot support device NO_GO, and
+  the old S02 flow produced no result. Other required rows remain deferred.
 - S05 has one accepted `target` row and three deferred rows; the recorded
   budget values remain provisional until the matrix completes.
 - J1/J2/J3 and all production workspace/Manifest/cleanup execution are blocked

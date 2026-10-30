@@ -65,9 +65,10 @@ and OEM family B physical-device runs are DEFERRED_BY_USER, not GO.
 - F01-F04: complete safety and test foundation.
 - F06: `COMPLETE` within its pure-domain scope; golden manifest fixtures and
   the progressive pure-domain E2E are delivered (35 domain tests green).
-- S01/S02/S04: `DEVICE_DEFERRED_BY_USER`; independent review is complete.
-- Spike unit tests: S01 19, S02 9, S04 16, S05 core 10, S05 harness 7 per
-  build variant; all green.
+- S01/S02: `DEVICE_EVIDENCE_RETRY_REQUIRED` on the current-target device;
+  S04 remains `DEVICE_DEFERRED_BY_USER`. Independent review is complete.
+- Spike unit tests: S01 23, S02 11, S04 18, S05 core 10, S05 harness 7 per
+  build variant; all green. The S02 launch contract also has one JVM test.
 - S05.1/S05.2a/S05.2b/S05.2c: `COMPLETE`; the `target` device row is measured
   and PASS (`docs/evidence/s05/target.json`), while Android 11, OEM family A,
   and OEM family B are DEFERRED_BY_USER. I04 remains blocked.
@@ -284,16 +285,31 @@ guard and APK v2 verification pass. The debug APK is 25,888,787 bytes with
   `ED77105CF38B1E12145B7461669245ADD1F917FBDB2B17769429295290E30955`;
   helper SHA-256 remains
   `BDCC143E73B90DDA7B7A95A5543C3E13CC1801AD06F10847E4181CC9938C6FD6`.
+- First current-target offline run: S01 0.1.1 reached organizer-root and
+  directory-layout readiness, then returned a masked `IllegalStateException`
+  without enough stage detail. Classify it as
+  `PROBE_DIAGNOSTIC_INCONCLUSIVE`, not device NO_GO. S02 helper 0.1.0 produced
+  a blank/no-response flow. Probe-suite 0.1.2 adds privacy-safe
+  `exceptionStage`; helper 0.1.1 directly launches the signature-protected S02
+  Activity and no longer relies on ProbeSuite forwarding. All five guards and
+  the full `check lint assembleDebug` gate pass. Both debug APKs verify with v2
+  signing and share certificate SHA-256
+  `C804D97E63E6D1533B352F7907911D13DBCDFC174804C3D9E4F8D0DCDE1BFC9E`.
+  Suite SHA-256 is
+  `4BDD1C2D3A6C06E22C98D0D93C154F530B482BE720662DC7310876A6DE96B909`;
+  helper SHA-256 is
+  `F21EFE688DD90017CF5CFB70C2E47D603F40B59ED7796F7AECFBD1C6089A2F2E`.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action
 
-1. Transfer and install the probe-suite and helper APKs without ADB.
-2. Run S01, then launch S02 from its external helper, then run S04. Copy and
-   return each result JSON through the in-app action.
-3. Record device evidence and aggregate decisions. CI and desktop tests are
+1. Install probe-suite 0.1.2 first, then fixture-helper 0.1.1, without ADB.
+2. Rerun S01 and return the JSON containing `exceptionStage`. Launch S02 from
+   the helper, then select `Run S02 probe` and return its result JSON.
+3. Review those retries before asking for S04 or recording a device decision.
+4. Record device evidence and aggregate decisions. CI and desktop tests are
    not device GO.
-4. Resume full F05 only after the required GO, then proceed to N01 and its
+5. Resume full F05 only after the required GO, then proceed to N01 and its
    downstream I01/I02 path. Do not add more F05.1 preview features.
 
 ## Hard Boundaries
