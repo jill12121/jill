@@ -282,6 +282,16 @@
   SHA-256
   `61A0174A2BCF1039580C606FB38BDED9867C2B44CD59730929FE0512C644113C`.
   Remote Verify was pending after push.
+- F05.1 Inbox decision review preview: commit `b21ff96` adds a
+  memory-only review surface for decided example sources, showing each
+  source label, Keep/Review/Trash decision, and source detail. Undecided
+  sources stay out of the review section, and the surface cannot create an
+  archive Plan. Presentation tests, the full 672-task Gradle gate,
+  baseline/app/release policy, architecture and S05 evidence guards, and APK
+  v2 verification pass locally. The debug APK is 25,897,971 bytes with
+  SHA-256
+  `39CAB386FF29DF3EE8E1EDB999AB7286E8468582DC54D3E5FA98F9F676E3805C`.
+  Remote Verify was pending after push.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision

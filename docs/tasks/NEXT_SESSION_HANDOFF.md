@@ -203,6 +203,15 @@ guard and APK v2 verification pass. The debug APK is 25,888,787 bytes with
   `61A0174A2BCF1039580C606FB38BDED9867C2B44CD59730929FE0512C644113C`.
   Remote Verify was pending after the push; record its result before treating
   this commit as remotely verified.
+- F05.1 Inbox decision review preview: commit `b21ff96` adds a memory-only
+  review surface for decided example sources, showing source label,
+  Keep/Review/Trash decision, and source detail. Undecided sources remain out
+  of the review section, and no archive Plan can be created. Presentation
+  tests, the full 672-task local gate, policy and architecture guards, and APK
+  v2 verification pass. The debug APK is 25,897,971 bytes with SHA-256
+  `39CAB386FF29DF3EE8E1EDB999AB7286E8468582DC54D3E5FA98F9F676E3805C`.
+  Remote Verify was pending after the push; record its result before treating
+  this commit as remotely verified.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action
