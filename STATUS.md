@@ -253,6 +253,16 @@
   bytes with SHA-256
   `31B5ACF2AECD5474C0563AD74C17D571F1AE07C087D84B26AF498EF65B1F981B`.
   Remote Verify was running after push; its result is pending.
+- F05.1 Inbox decision summary snapshot: commit `f1c2e68` adds a reusable
+  memory-only `InboxDecisionSummary` containing Keep, Review, Trash,
+  undecided, decided, and draft-status values. Existing Inbox counters and
+  coverage UI now read the same derived snapshot; unknown source IDs remain
+  excluded. All 24 presentation tests pass in debug and release variants;
+  the full 672-task Gradle gate, baseline/app/release policy, architecture and
+  S05 evidence guards, and APK v2 verification pass locally. The debug APK is
+  25,893,435 bytes with SHA-256
+  `01852A1468CC857BABFF3D1771040E53BAE3E97638E69114800DECD71631D6D8`.
+  Remote Verify was pending after push.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision

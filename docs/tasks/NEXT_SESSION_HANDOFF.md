@@ -174,6 +174,16 @@ guard and APK v2 verification pass. The debug APK is 25,888,787 bytes with
   `31B5ACF2AECD5474C0563AD74C17D571F1AE07C087D84B26AF498EF65B1F981B`.
   Remote Verify was still running after the push; record its result before
   treating this commit as remotely verified.
+- F05.1 Inbox decision summary snapshot: commit `f1c2e68` adds the reusable
+  memory-only `InboxDecisionSummary` for Keep, Review, Trash, undecided,
+  decided, and draft-status values. The Inbox UI and compatibility accessors
+  use the same derived snapshot, while unknown source IDs remain excluded.
+  All 24 presentation tests pass per variant; the full 672-task local gate,
+  policy and architecture guards, and APK v2 verification pass. The debug APK
+  is 25,893,435 bytes with SHA-256
+  `01852A1468CC857BABFF3D1771040E53BAE3E97638E69114800DECD71631D6D8`.
+  Remote Verify was pending after the push; record its result before treating
+  this commit as remotely verified.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action
