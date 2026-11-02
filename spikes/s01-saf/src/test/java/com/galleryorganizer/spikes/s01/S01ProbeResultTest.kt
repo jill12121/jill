@@ -34,6 +34,42 @@ class S01ProbeResultTest {
     }
 
     @Test
+    fun `direct final write fallback is evaluated separately from primary strategy`() {
+        val providerLimited = completeResult().copy(
+            webpPartMetadataClass = S01MetadataClass.NAME_APPENDED_EXTENSION,
+        )
+
+        assertEquals(S01SingleDeviceOutcome.FAIL, providerLimited.outcome)
+        assertEquals(S01FallbackOutcome.PASS, providerLimited.webpFallbackOutcome)
+        assertEquals(
+            S01FallbackOutcome.PARTIAL,
+            providerLimited.copy(deviceRebootRetryPassed = false).webpFallbackOutcome,
+        )
+        assertEquals(
+            S01FallbackOutcome.FAIL,
+            providerLimited.copy(webpDirectWriteReadback = false).webpFallbackOutcome,
+        )
+        assertEquals(
+            S01FallbackOutcome.FAIL,
+            providerLimited.copy(
+                webpDirectWriteMetadataClass = S01MetadataClass.NAME_APPENDED_EXTENSION,
+            ).webpFallbackOutcome,
+        )
+        assertEquals(
+            S01FallbackOutcome.FAIL,
+            providerLimited.copy(
+                webpDirectWriteMetadataClass = S01MetadataClass.NOT_RUN,
+                exceptionClass = "IllegalStateException",
+                exceptionStage = "WEBP_DIRECT_CREATE",
+            ).webpFallbackOutcome,
+        )
+        assertEquals(
+            S01FallbackOutcome.NOT_NEEDED,
+            completeResult().webpFallbackOutcome,
+        )
+    }
+
+    @Test
     fun `missing collision evidence cannot pass`() {
         listOf("NOT_RUN", "ERROR_SecurityException").forEach { incomplete ->
             assertEquals(
@@ -111,7 +147,7 @@ class S01ProbeResultTest {
 
     @Test
     fun `legacy state without failure stage still decodes`() {
-        val legacy = completeResult().encode().substringBeforeLast('|')
+        val legacy = completeResult().encode().split('|').take(35).joinToString("|")
 
         assertEquals(null, S01ProbeResult.decode(legacy)?.exceptionStage)
     }
@@ -123,6 +159,18 @@ class S01ProbeResultTest {
 
         assertEquals(S01MetadataClass.EXACT, decoded?.binaryPartMetadataClass)
         assertEquals(S01MetadataClass.EXACT, decoded?.webpPartMetadataClass)
+    }
+
+    @Test
+    fun `legacy state without direct write fallback defaults to not run`() {
+        val legacy = completeResult().copy(
+            webpPartMetadataClass = S01MetadataClass.NAME_APPENDED_EXTENSION,
+        ).encode().split('|').take(38).joinToString("|")
+        val decoded = S01ProbeResult.decode(legacy)
+
+        assertEquals(S01MetadataClass.NOT_RUN, decoded?.webpDirectWriteMetadataClass)
+        assertEquals(false, decoded?.webpDirectWriteReadback)
+        assertEquals(S01FallbackOutcome.NOT_RUN, decoded?.webpFallbackOutcome)
     }
 
     private fun completeResult() = S01ProbeResult(
@@ -161,6 +209,8 @@ class S01ProbeResultTest {
         flagsFile = listOf("SUPPORTS_WRITE", "SUPPORTS_RENAME", "SUPPORTS_DELETE"),
         binaryPartMetadataClass = S01MetadataClass.EXACT,
         webpPartMetadataClass = S01MetadataClass.EXACT,
+        webpDirectWriteMetadataClass = S01MetadataClass.EXACT,
+        webpDirectWriteReadback = true,
     )
 
     private companion object {
@@ -178,6 +228,8 @@ class S01ProbeResultTest {
             "enumerate5kMillis", "flagsRoot", "flagsFile", "exceptionClass",
             "exceptionMaskedMessage", "exceptionStage", "decisionSingleDevice",
             "binaryPartMetadataClass", "webpPartMetadataClass",
+            "webpDirectWriteMetadataClass", "webpDirectWriteReadback",
+            "webpFallbackOutcome",
         )
     }
 }

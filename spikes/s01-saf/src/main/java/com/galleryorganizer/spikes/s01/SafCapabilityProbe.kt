@@ -39,6 +39,8 @@ class SafCapabilityProbe(private val context: Context) {
         var fileFlags = emptyList<String>()
         var binaryPartMetadata = S01MetadataClass.NOT_RUN
         var webpPartMetadata = S01MetadataClass.NOT_RUN
+        var webpDirectWriteMetadata = S01MetadataClass.NOT_RUN
+        var webpDirectWriteReadback = false
         var operationStage = "INITIALIZE"
         val token = UUID.randomUUID().toString().take(8)
 
@@ -86,6 +88,13 @@ class SafCapabilityProbe(private val context: Context) {
             dirIdempotent = classifyCreated(albums, repeatedAlbums, "Albums")
             operationStage = "PERFORMANCE"
             performance = performanceProbe(probeRoot, token, created)
+            if (webpPartMetadata != S01MetadataClass.EXACT) {
+                val webpDirectWrite = directWriteFlow(
+                    probeRoot, token, "image/webp", "webp", created,
+                ) { operationStage = it }
+                webpDirectWriteMetadata = webpDirectWrite.metadataClass
+                webpDirectWriteReadback = webpDirectWrite.readback
+            }
         } catch (caught: Exception) {
             failure = caught
         } finally {
@@ -115,6 +124,8 @@ class SafCapabilityProbe(private val context: Context) {
             exceptionStage = failure?.let { operationStage },
             binaryPartMetadataClass = binaryPartMetadata,
             webpPartMetadataClass = webpPartMetadata,
+            webpDirectWriteMetadataClass = webpDirectWriteMetadata,
+            webpDirectWriteReadback = webpDirectWriteReadback,
         )
     }
 
@@ -179,6 +190,29 @@ class SafCapabilityProbe(private val context: Context) {
             partReadback, renamed, read(final).contentEquals(bytes), actual.name, actual.mime,
             oldReadable, final, partMetadataClass,
         )
+    }
+
+    private fun directWriteFlow(
+        parent: Uri,
+        token: String,
+        mime: String,
+        extension: String,
+        created: CleanupLedger<Uri>,
+        setStage: (String) -> Unit,
+    ): DirectWriteFlow {
+        val finalName = ".s01-direct-$token.$extension"
+        val bytes = "s01-direct-$mime-$token".encodeToByteArray()
+        setStage("WEBP_DIRECT_CREATE")
+        val final = created.register(requireNotNull(create(parent, mime, finalName)))
+        setStage("WEBP_DIRECT_METADATA")
+        val actual = metadata(final)
+        val metadataClass = S01MetadataRules.classify(
+            finalName, mime, actual.name, actual.mime,
+        )
+        setStage("WEBP_DIRECT_WRITE")
+        write(final, bytes)
+        setStage("WEBP_DIRECT_READ")
+        return DirectWriteFlow(metadataClass, read(final).contentEquals(bytes))
     }
 
     private fun openOrCreateOwnedRoot(organizerRoot: Uri): OwnedRoot {
@@ -499,6 +533,10 @@ class SafCapabilityProbe(private val context: Context) {
         val partReadback: Boolean, val renamed: Boolean, val finalReadback: Boolean,
         val actualName: String, val actualMime: String, val oldUriReadable: Boolean,
         val finalUri: Uri, val partMetadataClass: S01MetadataClass,
+    )
+    private data class DirectWriteFlow(
+        val metadataClass: S01MetadataClass,
+        val readback: Boolean,
     )
     private data class Adoption(
         val read: Boolean = false, val write: Boolean = false, val delete: Boolean = false,

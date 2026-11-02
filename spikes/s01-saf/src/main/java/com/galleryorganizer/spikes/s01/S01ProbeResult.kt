@@ -7,6 +7,7 @@ import java.security.MessageDigest
 enum class RootKind { DOWNLOAD, PICTURES, OTHER }
 enum class DownloadRootSelection { TRUE, FALSE, PROMPT_MESSAGE }
 enum class S01SingleDeviceOutcome { PASS, PARTIAL, FAIL }
+enum class S01FallbackOutcome { NOT_NEEDED, NOT_RUN, PARTIAL, PASS, FAIL }
 
 data class S01ProbeResult(
     val deviceModel: String,
@@ -47,6 +48,8 @@ data class S01ProbeResult(
     val exceptionStage: String? = null,
     val binaryPartMetadataClass: S01MetadataClass = S01MetadataClass.EXACT,
     val webpPartMetadataClass: S01MetadataClass = S01MetadataClass.EXACT,
+    val webpDirectWriteMetadataClass: S01MetadataClass = S01MetadataClass.NOT_RUN,
+    val webpDirectWriteReadback: Boolean = false,
 ) {
     val outcome: S01SingleDeviceOutcome
         get() = when {
@@ -62,6 +65,26 @@ data class S01ProbeResult(
                 !reinstallAdoptionRead || !reinstallAdoptionWrite ||
                 !reinstallAdoptionDelete -> S01SingleDeviceOutcome.PARTIAL
             else -> S01SingleDeviceOutcome.PASS
+        }
+
+    val webpFallbackOutcome: S01FallbackOutcome
+        get() = when {
+            webpPartMetadataClass == S01MetadataClass.EXACT ->
+                S01FallbackOutcome.NOT_NEEDED
+            exceptionStage?.startsWith("WEBP_DIRECT_") == true ->
+                S01FallbackOutcome.FAIL
+            webpDirectWriteMetadataClass == S01MetadataClass.NOT_RUN ->
+                S01FallbackOutcome.NOT_RUN
+            exceptionClass != null || !organizerRootReady || !cleanupSucceeded ||
+                !collisionEvidenceComplete(collideCreate) ||
+                !collisionEvidenceComplete(collideRename) ||
+                !collisionEvidenceComplete(createDirIdempotent) ||
+                webpDirectWriteMetadataClass != S01MetadataClass.EXACT ||
+                !webpDirectWriteReadback -> S01FallbackOutcome.FAIL
+            !forceStopRetryPassed || !deviceRebootRetryPassed ||
+                !reinstallAdoptionRead || !reinstallAdoptionWrite ||
+                !reinstallAdoptionDelete -> S01FallbackOutcome.PARTIAL
+            else -> S01FallbackOutcome.PASS
         }
 
     private fun collisionEvidenceComplete(value: String): Boolean =
@@ -80,6 +103,9 @@ data class S01ProbeResult(
         "exceptionStage=${exceptionStage ?: "none"}",
         "binaryPartMetadata=$binaryPartMetadataClass",
         "webpPartMetadata=$webpPartMetadataClass",
+        "webpDirectWriteMetadata=$webpDirectWriteMetadataClass",
+        "webpDirectWriteReadback=$webpDirectWriteReadback",
+        "webpFallback=$webpFallbackOutcome",
     )
 
     fun toJson(): String = linkedMapOf<String, Any?>(
@@ -113,6 +139,9 @@ data class S01ProbeResult(
         "exceptionStage" to exceptionStage,
         "binaryPartMetadataClass" to binaryPartMetadataClass,
         "webpPartMetadataClass" to webpPartMetadataClass,
+        "webpDirectWriteMetadataClass" to webpDirectWriteMetadataClass,
+        "webpDirectWriteReadback" to webpDirectWriteReadback,
+        "webpFallbackOutcome" to webpFallbackOutcome,
         "decisionSingleDevice" to outcome,
     ).entries.joinToString(prefix = "{", postfix = "}") { (key, value) ->
         "\"$key\":${jsonValue(value)}"
@@ -134,6 +163,7 @@ data class S01ProbeResult(
         enumerate5kMillis ?: "", flagsRoot.joinToString(","), flagsFile.joinToString(","),
         exceptionClass ?: "", exceptionMaskedMessage ?: "", exceptionStage ?: "",
         binaryPartMetadataClass, webpPartMetadataClass,
+        webpDirectWriteMetadataClass, webpDirectWriteReadback,
     ).map(Any?::toString)
 
     companion object {
@@ -148,7 +178,7 @@ data class S01ProbeResult(
             val v = value?.split('|')?.map {
                 URLDecoder.decode(it, Charsets.UTF_8.name())
             } ?: return null
-            require(v.size in 35..38)
+            require(v.size in 35..40)
             S01ProbeResult(
                 v[0], v[1].toInt(), v[2], v[3], v[4], RootKind.valueOf(v[5]),
                 DownloadRootSelection.valueOf(v[6]), v[7].toBoolean(), v[8].toBoolean(),
@@ -162,6 +192,8 @@ data class S01ProbeResult(
                 v[34].ifEmpty { null }, v.getOrNull(35)?.ifEmpty { null },
                 v.getOrNull(36)?.let(S01MetadataClass::valueOf) ?: S01MetadataClass.EXACT,
                 v.getOrNull(37)?.let(S01MetadataClass::valueOf) ?: S01MetadataClass.EXACT,
+                v.getOrNull(38)?.let(S01MetadataClass::valueOf) ?: S01MetadataClass.NOT_RUN,
+                v.getOrNull(39)?.toBoolean() ?: false,
             )
         }.getOrNull()
 

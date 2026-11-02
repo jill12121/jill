@@ -440,6 +440,16 @@
   copied a valid S02 token on-device, but no S02 probe JSON has been returned.
   The repeated empty S04 payload remains PENDING and is not evidence. Remote
   Verify `41377003379` for commit `9ab7840` passed.
+- S01 direct-final fallback diagnostic: probe-suite 0.1.5 preserves the
+  primary WebP `.part` FAIL semantics and conditionally tests the delivery-plan
+  fallback only when part metadata is non-exact. The fallback creates the
+  final `.webp` name directly, requires exact metadata and byte readback, uses
+  the shared cleanup ledger, and exports a separate fallback outcome. Existing
+  0.1.4 state remains decodable. All 30 S01 tests pass after forced
+  recompilation; all five guards and the full `check lint assembleDebug` gate
+  pass. The v2-signed APK is 22,698,995 bytes with SHA-256
+  `A42B05477E22FF0374BC3EC0B2C47C280DA207B9435033B15E8E36E996F67947`.
+  Production storage behavior remains disabled.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
@@ -454,10 +464,11 @@
 
 ## Next Exact Action
 
-- Complete the S01 force-stop and reboot retry actions, then copy the updated
-  S01 JSON. The S02 helper token is already available: open Probe Suite > S02,
-  paste it, run the probe, approve the bounded cleanup request, and return the
-  copied S02 JSON.
+- Install probe-suite 0.1.5. Run S01 once to collect the direct-final fallback
+  fields, complete its force-stop and reboot retry actions, then copy the
+  updated S01 JSON. The S02 helper token is already available: open Probe
+  Suite > S02, paste it, run the probe, approve the bounded cleanup request,
+  and return the copied S02 JSON.
 - Do not rerun S04 until the S01/S02 retry has been reviewed.
 - Record evidence and aggregate decisions; copied device JSON, not CI or
   desktop tests, is required for device GO.
@@ -470,7 +481,8 @@
   are delivered. Storage executors stay outside F06 and remain gated.
 - S01: DEVICE_EVIDENCE_PARTIAL / FALLBACK_REQUIRED; probe-suite 0.1.4 confirms
   cleanup and reinstall read/write/delete, while the WebP part-name limitation
-  reproduces. Force-stop/reboot and a tested safe fallback remain required.
+  reproduces. Probe-suite 0.1.5 is ready to test direct-final write/readback;
+  force-stop/reboot and physical-device fallback evidence remain required.
 - S02: DEVICE_EVIDENCE_RETRY_REQUIRED; helper 0.1.3 clipboard handoff is
   confirmed, but the token has not yet been run through the S02 probe.
 - S04: DEVICE_DEFERRED_BY_USER; durable recovery, overwrite, and provenance

@@ -328,11 +328,19 @@ guard and APK v2 verification pass. The debug APK is 25,888,787 bytes with
   Force-stop/reboot remain pending. Helper 0.1.3 copied a valid S02 token, but
   no S02 probe JSON was returned. The empty S04 payload remains non-evidence.
   Remote Verify `41377003379` for `9ab7840` passed.
+- Probe-suite 0.1.5 adds a conditional direct-final WebP fallback diagnostic.
+  It leaves the primary `.part` outcome unchanged, requires exact final
+  metadata plus byte readback, shares cleanup tracking, exports a separate
+  fallback outcome, and decodes older state. All 30 S01 tests pass after a
+  forced rebuild. Probe-suite 0.1.5 is v2-signed, 22,698,995 bytes, SHA-256
+  `A42B05477E22FF0374BC3EC0B2C47C280DA207B9435033B15E8E36E996F67947`.
+  This remains spike-only and does not authorize production storage behavior.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action
 
-1. Complete S01 force-stop and reboot retries, then return the updated JSON.
+1. Install probe-suite 0.1.5, run S01, complete force-stop and reboot retries,
+   then return the updated JSON including all three fallback fields.
 2. Open Probe Suite > S02, paste the already copied helper token, run the
    probe, approve its bounded cleanup request, and return the S02 JSON.
 3. Review those retries before asking for S04 or recording a device decision.
