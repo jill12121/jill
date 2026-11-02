@@ -380,18 +380,18 @@ guard and APK v2 verification pass. The debug APK is 25,888,787 bytes with
   copies a compact page summary; helper 0.1.5 is unchanged. The suite APK is
   v2-signed, 22,715,383 bytes, SHA-256
   `21895D8F4776767BAACEF538E92BF69E735C6BDE5C04FF7883B29675DC6EE1CB`.
+- S02.7 is PASS on vivo/API 36: FULL permission; 142,997 rows; 286 bounded,
+  monotonic, duplicate-free, honored pages; 23 ms maximum page time; exact
+  token payload with redacted owner; one-item authorization; and confirmed
+  removal. No exception or failure stage remains. Current-target S02 is closed.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action
 
-1. Install probe-suite 0.1.9 and fixture-helper 0.1.5. Open the Helper once and
-   wait for the token-copied Toast even if the UI is blank.
-2. Immediately open Probe Suite > S02, paste the copied token, run the
-   probe, approve its bounded cleanup request, and return the S02 JSON.
-3. Review those retries before asking for S04 or recording a device decision.
-4. Record device evidence and aggregate decisions. CI and desktop tests are
-   not device GO.
-5. Resume full F05 only after the required GO, then proceed to N01 and its
+1. Resolve the deferred current-target S04 run and remaining required device
+   rows, or approve a formal ADR changing those release gates.
+2. Do not begin full F05, N01, I01, or I02 until aggregate device GO.
+3. Resume full F05 only after the required GO, then proceed to N01 and its
    downstream I01/I02 path. Do not add more F05.1 preview features.
 
 ## Hard Boundaries

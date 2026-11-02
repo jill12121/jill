@@ -520,6 +520,14 @@
   tests, all five guards, and the full `check lint assembleDebug` gate pass.
   The v2-signed suite APK is 22,715,383 bytes with SHA-256
   `21895D8F4776767BAACEF538E92BF69E735C6BDE5C04FF7883B29675DC6EE1CB`.
+- S02.7 current-target result: PASS on vivo V2304A/API 36. FULL permission
+  exposes 142,997 rows over 286 bounded pages; IDs are monotonic, duplicate
+  count is zero, all query args are honored, and the slowest page is 23 ms.
+  The fixture owner column is redacted, while exact path, MIME, token-bound
+  display name, and full payload match. One-item delete authorization was
+  granted and post-consent absence was confirmed (`GRANTED_REMOVED`). No
+  exception or failure stage is present. This closes current-target S02 only;
+  S04 and the remaining required device rows still block aggregate device GO.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
@@ -534,14 +542,9 @@
 
 ## Next Exact Action
 
-- Install probe-suite 0.1.9 and fixture-helper 0.1.5. Open the Helper once and
-  wait for the token-copied
-  Toast even if the screen is blank, then immediately open Probe Suite > S02,
-  paste the token, run the probe, approve the bounded cleanup request, and
-  return the copied S02 JSON.
-- Do not rerun S04 until the S01/S02 retry has been reviewed.
-- Record evidence and aggregate decisions; copied device JSON, not CI or
-  desktop tests, is required for device GO.
+- S02 current-target evidence is complete and requires no further retry.
+- Resolve the deferred S04 current-target run and remaining required device
+  matrix, or approve a formal ADR that changes those release gates.
 - Only after the required device GO may work resume on full F05, followed by
   N01 and its downstream I01/I02 path. Do not add more F05.1 preview features.
 
@@ -551,12 +554,10 @@
   are delivered. Storage executors stay outside F06 and remain gated.
 - S01: CURRENT_TARGET_LIMITED_GO_CANDIDATE; direct-final fallback, cleanup,
   restart, and reinstall checks pass on vivo/API 36. Aggregate decision remains
-  pending the other required devices and mandatory S02/S04 evidence.
-- S02: DEVICE_EVIDENCE_RETRY_REQUIRED; helper 0.1.3 clipboard handoff is
-  blocked by clipboard overwrite. The first full run then exposed a
-  dot-prefixed fixture visibility defect; S02.5 then exposed evidence loss on
-  exception. S02.6 confirms pagination PASS and owner-column redaction.
-  S02.7 / suite 0.1.9 is ready for the token-bound payload and cleanup check.
+  pending the other required devices and mandatory S04 evidence.
+- S02: CURRENT_TARGET_PASS; pagination, redacted-owner token payload
+  provenance, bounded cleanup authorization, and confirmed removal all pass on
+  vivo/API 36. Aggregate matrix coverage remains incomplete.
 - S04: DEVICE_DEFERRED_BY_USER; durable recovery, overwrite, and provenance
   hardening are independently reviewed and CI-green.
 - S05: ANDROID_HARNESS_COMPLETE / DEVICE_EVIDENCE_PARTIAL; S05.1/S05.2a remain
