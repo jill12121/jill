@@ -7,6 +7,127 @@ import kotlin.test.assertTrue
 
 class S04ProbeModelTest {
     @Test
+    fun `guide starts with the first missing cutoff`() {
+        val result = S04ProbeResult(
+            observations = emptyMap(),
+            providerOverwriteBehavior = "NOT_RUN",
+        )
+
+        assertEquals(
+            S04GuideAction.Prepare(AtomicInterruption.BEFORE_PROCESS_KILL),
+            S04GuidePolicy.forResult(result, pendingReadyToObserve = false).primaryAction,
+        )
+        assertEquals(
+            0,
+            S04GuidePolicy.forResult(result, pendingReadyToObserve = false).completedStageCount,
+        )
+        assertFalse(
+            S04GuidePolicy.forResult(result, pendingReadyToObserve = false).canReset,
+        )
+    }
+
+    @Test
+    fun `guide advances to the first missing cutoff`() {
+        val observations = linkedMapOf(
+            AtomicInterruption.BEFORE_PROCESS_KILL to
+                observation(AtomicInterruption.BEFORE_PROCESS_KILL),
+            AtomicInterruption.AFTER_PROCESS_KILL to
+                observation(AtomicInterruption.AFTER_PROCESS_KILL),
+        )
+
+        val guide = S04GuidePolicy.forResult(
+            result(observations, "AUTO_RENAMED"),
+            pendingReadyToObserve = false,
+        )
+
+        assertEquals(
+            S04GuideAction.Prepare(AtomicInterruption.BEFORE_RENAME),
+            guide.primaryAction,
+        )
+        assertEquals(2, guide.completedStageCount)
+        assertFalse(guide.canReset)
+    }
+
+    @Test
+    fun `guide waits for restart before allowing observation`() {
+        val pending = result(
+            observations = mapOf(
+                AtomicInterruption.BEFORE_PROCESS_KILL to
+                    observation(AtomicInterruption.BEFORE_PROCESS_KILL),
+            ),
+            overwrite = "AUTO_RENAMED",
+            pendingStagePresent = true,
+        )
+
+        assertEquals(
+            S04GuideAction.ForceStopAndReopen,
+            S04GuidePolicy.forResult(
+                pending,
+                pendingReadyToObserve = false,
+            ).primaryAction,
+        )
+        assertEquals(
+            S04GuideAction.ObserveAfterRestart,
+            S04GuidePolicy.forResult(
+                pending,
+                pendingReadyToObserve = true,
+            ).primaryAction,
+        )
+    }
+
+    @Test
+    fun `guide requires observation after restart while a cutoff is pending`() {
+        val guide = S04GuidePolicy.forResult(
+            result(
+                observations = mapOf(
+                    AtomicInterruption.BEFORE_PROCESS_KILL to
+                        observation(AtomicInterruption.BEFORE_PROCESS_KILL),
+                ),
+                overwrite = "AUTO_RENAMED",
+                pendingStagePresent = true,
+            ),
+            pendingReadyToObserve = true,
+        )
+
+        assertEquals(S04GuideAction.ObserveAfterRestart, guide.primaryAction)
+        assertEquals(1, guide.completedStageCount)
+        assertFalse(guide.canReset)
+    }
+
+    @Test
+    fun `guide exposes final copy only after pass`() {
+        val guide = S04GuidePolicy.forResult(
+            result(
+                AtomicInterruption.entries.associateWith(::observation),
+                "AUTO_RENAMED",
+            ),
+            pendingReadyToObserve = false,
+        )
+
+        assertEquals(S04GuideAction.CopyPassResult, guide.primaryAction)
+        assertEquals(4, guide.completedStageCount)
+        assertTrue(guide.canReset)
+    }
+
+    @Test
+    fun `guide preserves failed evidence for review`() {
+        val guide = S04GuidePolicy.forResult(
+            result(
+                observations = mapOf(
+                    AtomicInterruption.BEFORE_PROCESS_KILL to
+                        observation(AtomicInterruption.BEFORE_PROCESS_KILL),
+                ),
+                overwrite = "INCONCLUSIVE",
+            ),
+            pendingReadyToObserve = false,
+        )
+
+        assertEquals(S04GuideAction.ReviewFailure, guide.primaryAction)
+        assertEquals(1, guide.completedStageCount)
+        assertTrue(guide.canReset)
+    }
+
+    @Test
     fun `all four restarted recoverable stages are required to pass`() {
         val observations = AtomicInterruption.entries.associateWith {
             observation(it)

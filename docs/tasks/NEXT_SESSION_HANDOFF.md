@@ -384,11 +384,19 @@ guard and APK v2 verification pass. The debug APK is 25,888,787 bytes with
   monotonic, duplicate-free, honored pages; 23 ms maximum page time; exact
   token payload with redacted owner; one-item authorization; and confirmed
   removal. No exception or failure stage remains. Current-target S02 is closed.
+- Probe-suite 0.1.10 adds a pure, tested S04 guide policy and a single-action
+  UI. It advances through the first missing cutoff, blocks observation until
+  a real process restart, protects partial progress from reset, and separates
+  PASS export from diagnostic JSON. All 24 S04 tests pass after forced
+  recompilation. The v2-signed APK is 22,731,771 bytes, SHA-256
+  `97C95C5A40BD597350662332596F2326092E7C199F86D488429EA390402E7F4F`.
+  Current-target S01/S02 must not be rerun.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action
 
-1. Resolve the deferred current-target S04 run and remaining required device
+1. Run only the current-target S04 four-cutoff flow with probe-suite 0.1.10,
+   then resolve the remaining required device
    rows, or approve a formal ADR changing those release gates.
 2. Do not begin full F05, N01, I01, or I02 until aggregate device GO.
 3. Resume full F05 only after the required GO, then proceed to N01 and its

@@ -211,6 +211,12 @@ class ManifestAtomicProbe(private val context: Context) {
         )
     }
 
+    fun pendingReadyToObserve(): Boolean = when (val pending = pendingStage()) {
+        PendingRead.None -> false
+        is PendingRead.Incompatible -> true
+        is PendingRead.Valid -> pending.value.processSession != S04ProcessSession.id
+    }
+
     private fun cleanupIncompletePreparation(pending: PendingStage): S04ActionResult {
         val persistedRoot = pending.root
         val query = if (persistedRoot == null) {
@@ -893,6 +899,10 @@ class S04ProbeActivity : ComponentActivity() {
             var running by remember { mutableStateOf(false) }
             var copyStatus by remember { mutableStateOf<String?>(null) }
             val scope = rememberCoroutineScope()
+            val guide = S04GuidePolicy.forResult(
+                result,
+                pendingReadyToObserve = probe.pendingReadyToObserve(),
+            )
 
             fun prepare(stage: AtomicInterruption) {
                 val tree = getSharedPreferences("s01", MODE_PRIVATE)
@@ -917,40 +927,43 @@ class S04ProbeActivity : ComponentActivity() {
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         Text("S04 / Manifest atomicity", style = MaterialTheme.typography.headlineSmall)
-                        Text("Prepare one cutoff, force-stop the suite, reopen, then observe.")
-                        AtomicInterruption.entries.forEach { stage ->
-                            Button(
-                                onClick = { prepare(stage) },
-                                enabled = !running,
-                                modifier = Modifier.fillMaxWidth(),
-                            ) { Text("Prepare ${stage.name}") }
+                        Text("Completed ${guide.completedStageCount} / ${AtomicInterruption.entries.size}")
+                        when (val primaryAction = guide.primaryAction) {
+                            is S04GuideAction.Prepare -> {
+                                Text("Prepare the next cutoff, then force-stop and reopen the suite.")
+                                Button(
+                                    onClick = { prepare(primaryAction.stage) },
+                                    enabled = !running,
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) { Text("Prepare ${primaryAction.stage.name}") }
+                            }
+
+                            S04GuideAction.ForceStopAndReopen ->
+                                Text("Now force-stop the Probe Suite, reopen it, and return to S04.")
+
+                            S04GuideAction.ObserveAfterRestart -> {
+                                Text("The process restart is confirmed. Record this cutoff.")
+                                Button(
+                                    onClick = {
+                                        running = true
+                                        scope.launch {
+                                            val updated = probe.observeAfterRestart()
+                                            action = updated.message
+                                            result = updated.result
+                                            running = false
+                                        }
+                                    },
+                                    enabled = !running,
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) { Text("Observe after restart") }
+                            }
+
+                            S04GuideAction.CopyPassResult ->
+                                Text("All four cutoffs passed. Copy the final result JSON.")
+
+                            S04GuideAction.ReviewFailure ->
+                                Text("The run failed. Copy the diagnostic JSON before starting over.")
                         }
-                        Button(
-                            onClick = {
-                                running = true
-                                scope.launch {
-                                    val updated = probe.observeAfterRestart()
-                                    action = updated.message
-                                    result = updated.result
-                                    running = false
-                                }
-                            },
-                            enabled = !running,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) { Text("Observe after restart") }
-                        Button(
-                            onClick = {
-                                running = true
-                                scope.launch {
-                                    val updated = probe.resetRun()
-                                    action = updated.message
-                                    result = updated.result
-                                    running = false
-                                }
-                            },
-                            enabled = !running,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) { Text("Start new run") }
                         OutlinedButton(
                             onClick = {
                                 copyStatus = if (
@@ -962,7 +975,30 @@ class S04ProbeActivity : ComponentActivity() {
                                 }
                             },
                             modifier = Modifier.fillMaxWidth(),
-                        ) { Text("Copy result JSON") }
+                        ) {
+                            Text(
+                                if (guide.primaryAction == S04GuideAction.CopyPassResult) {
+                                    "Copy PASS result JSON"
+                                } else {
+                                    "Copy diagnostic JSON"
+                                },
+                            )
+                        }
+                        if (guide.canReset) {
+                            OutlinedButton(
+                                onClick = {
+                                    running = true
+                                    scope.launch {
+                                        val updated = probe.resetRun()
+                                        action = updated.message
+                                        result = updated.result
+                                        running = false
+                                    }
+                                },
+                                enabled = !running,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) { Text("Start new run") }
+                        }
                         copyStatus?.let { Text(it) }
                         Text(action)
                         Text(result.toJson())

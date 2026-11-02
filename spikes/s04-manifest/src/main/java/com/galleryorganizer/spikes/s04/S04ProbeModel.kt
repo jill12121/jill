@@ -15,6 +15,55 @@ enum class S04PendingPhase { PREPARING, READY, OBSERVED }
 
 enum class S04SingleDeviceOutcome { PASS, PENDING, FAIL }
 
+sealed interface S04GuideAction {
+    data class Prepare(val stage: AtomicInterruption) : S04GuideAction
+    data object ForceStopAndReopen : S04GuideAction
+    data object ObserveAfterRestart : S04GuideAction
+    data object CopyPassResult : S04GuideAction
+    data object ReviewFailure : S04GuideAction
+}
+
+data class S04GuideState(
+    val completedStageCount: Int,
+    val primaryAction: S04GuideAction,
+    val canReset: Boolean,
+)
+
+object S04GuidePolicy {
+    fun forResult(
+        result: S04ProbeResult,
+        pendingReadyToObserve: Boolean,
+    ): S04GuideState {
+        val completedStageCount = result.observations.keys
+            .count { it in AtomicInterruption.entries }
+        val action = when (result.outcome) {
+            S04SingleDeviceOutcome.PASS -> S04GuideAction.CopyPassResult
+            S04SingleDeviceOutcome.FAIL -> S04GuideAction.ReviewFailure
+            S04SingleDeviceOutcome.PENDING -> {
+                if (result.pendingStagePresent) {
+                    if (pendingReadyToObserve) {
+                        S04GuideAction.ObserveAfterRestart
+                    } else {
+                        S04GuideAction.ForceStopAndReopen
+                    }
+                } else {
+                    val nextStage = AtomicInterruption.entries.firstOrNull {
+                        it !in result.observations
+                    }
+                    nextStage?.let(S04GuideAction::Prepare)
+                        ?: S04GuideAction.ReviewFailure
+                }
+            }
+        }
+        return S04GuideState(
+            completedStageCount = completedStageCount,
+            primaryAction = action,
+            canReset = action == S04GuideAction.CopyPassResult ||
+                action == S04GuideAction.ReviewFailure,
+        )
+    }
+}
+
 enum class ChildQueryStatus { FOUND, ABSENT, QUERY_FAILED }
 
 object ChildQueryPolicy {
