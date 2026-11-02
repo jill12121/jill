@@ -450,6 +450,18 @@
   pass. The v2-signed APK is 22,698,995 bytes with SHA-256
   `A42B05477E22FF0374BC3EC0B2C47C280DA207B9435033B15E8E36E996F67947`.
   Production storage behavior remains disabled.
+- Fifth offline S01 update: the returned state has both force-stop and reboot
+  retries passing, while its unchanged random filename and measurements plus
+  `webpFallbackOutcome=NOT_RUN` prove it is the prior main result updated by
+  retry actions, not a 0.1.5 main probe run. Probe-suite 0.1.6 preserves
+  previously passed manual retry evidence when and only when the newly
+  selected tree URI exactly matches the saved tree URI. A changed root never
+  inherits that evidence. This allows one same-root main rerun to collect
+  fallback evidence without repeating already completed restart checks. All
+  33 S01 tests pass after forced recompilation; all five guards and the full
+  `check lint assembleDebug` gate pass. The v2-signed APK is 22,715,379 bytes
+  with SHA-256
+  `F80DA13ECCB46645D1F934D49E91C84C8D7DBE450F788831A733F20BC58FA703`.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
@@ -464,11 +476,11 @@
 
 ## Next Exact Action
 
-- Install probe-suite 0.1.5. Run S01 once to collect the direct-final fallback
-  fields, complete its force-stop and reboot retry actions, then copy the
-  updated S01 JSON. The S02 helper token is already available: open Probe
-  Suite > S02, paste it, run the probe, approve the bounded cleanup request,
-  and return the copied S02 JSON.
+- Install probe-suite 0.1.6. Select the same organizer root and run S01 once;
+  the completed force-stop/reboot evidence is retained while direct-final
+  fallback fields are collected. Copy the updated S01 JSON. The S02 helper
+  token is already available: open Probe Suite > S02, paste it, run the probe,
+  approve the bounded cleanup request, and return the copied S02 JSON.
 - Do not rerun S04 until the S01/S02 retry has been reviewed.
 - Record evidence and aggregate decisions; copied device JSON, not CI or
   desktop tests, is required for device GO.
@@ -481,8 +493,8 @@
   are delivered. Storage executors stay outside F06 and remain gated.
 - S01: DEVICE_EVIDENCE_PARTIAL / FALLBACK_REQUIRED; probe-suite 0.1.4 confirms
   cleanup and reinstall read/write/delete, while the WebP part-name limitation
-  reproduces. Probe-suite 0.1.5 is ready to test direct-final write/readback;
-  force-stop/reboot and physical-device fallback evidence remain required.
+  reproduces. Force-stop/reboot now pass. Probe-suite 0.1.6 is ready to retain
+  those checks while collecting physical-device direct-final fallback evidence.
 - S02: DEVICE_EVIDENCE_RETRY_REQUIRED; helper 0.1.3 clipboard handoff is
   confirmed, but the token has not yet been run through the S02 probe.
 - S04: DEVICE_DEFERRED_BY_USER; durable recovery, overwrite, and provenance

@@ -53,16 +53,34 @@ class S01ProbeActivity : ComponentActivity() {
                 ActivityResultContracts.OpenDocumentTree(),
             ) { uri ->
                 if (uri != null) {
-                    val previous = preferences.getString("treeUri", null)?.let(Uri::parse)
+                    val previousRoot = preferences.getString("treeUri", null)?.let(Uri::parse)
+                    val previousResult = result
                     scope.launch {
                         running = true
-                        val updated = probe.run(uri)
+                        val current = probe.run(uri)
+                        val retries = S01RerunPolicy.merge(
+                            sameRoot = previousRoot == uri,
+                            previous = previousResult?.let {
+                                S01ManualRetryEvidence(
+                                    it.forceStopRetryPassed,
+                                    it.deviceRebootRetryPassed,
+                                )
+                            },
+                            current = S01ManualRetryEvidence(
+                                current.forceStopRetryPassed,
+                                current.deviceRebootRetryPassed,
+                            ),
+                        )
+                        val updated = current.copy(
+                            forceStopRetryPassed = retries.forceStop,
+                            deviceRebootRetryPassed = retries.reboot,
+                        )
                         if (probe.hasPersistedGrant(uri)) {
                             check(
                                 preferences.edit().putString("treeUri", uri.toString()).commit(),
                             )
-                            if (previous != null && previous != uri) {
-                                probe.releasePersistedGrant(previous)
+                            if (previousRoot != null && previousRoot != uri) {
+                                probe.releasePersistedGrant(previousRoot)
                             }
                         }
                         persist(updated)

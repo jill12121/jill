@@ -335,12 +335,20 @@ guard and APK v2 verification pass. The debug APK is 25,888,787 bytes with
   forced rebuild. Probe-suite 0.1.5 is v2-signed, 22,698,995 bytes, SHA-256
   `A42B05477E22FF0374BC3EC0B2C47C280DA207B9435033B15E8E36E996F67947`.
   This remains spike-only and does not authorize production storage behavior.
+- The next returned S01 state has force-stop/reboot both true but retains the
+  prior main run's random name, measurements, and `NOT_RUN` fallback fields.
+  Treat it as valid restart evidence, not a fallback attempt. Probe-suite
+  0.1.6 retains passed manual retry evidence across a main rerun only when the
+  newly selected URI exactly equals the saved URI; changed roots never inherit
+  it. All 33 S01 tests pass after forced recompilation. Probe-suite 0.1.6 is
+  v2-signed, 22,715,379 bytes, SHA-256
+  `F80DA13ECCB46645D1F934D49E91C84C8D7DBE450F788831A733F20BC58FA703`.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action
 
-1. Install probe-suite 0.1.5, run S01, complete force-stop and reboot retries,
-   then return the updated JSON including all three fallback fields.
+1. Install probe-suite 0.1.6, select the same organizer root, run S01 once,
+   then return the JSON including the retained retry checks and fallback fields.
 2. Open Probe Suite > S02, paste the already copied helper token, run the
    probe, approve its bounded cleanup request, and return the S02 JSON.
 3. Review those retries before asking for S04 or recording a device decision.
