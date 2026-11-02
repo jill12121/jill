@@ -343,13 +343,23 @@ guard and APK v2 verification pass. The debug APK is 25,888,787 bytes with
   it. All 33 S01 tests pass after forced recompilation. Probe-suite 0.1.6 is
   v2-signed, 22,715,379 bytes, SHA-256
   `F80DA13ECCB46645D1F934D49E91C84C8D7DBE450F788831A733F20BC58FA703`.
+- The 0.1.6 same-root rerun completes current-target S01 fallback evidence:
+  direct-final WebP metadata/readback, cleanup, force-stop, reboot, and
+  reinstall read/write/delete all pass. The primary `.part` result remains
+  FAIL by design. Mark vivo/API 36 as `LIMITED_GO_CANDIDATE`, not aggregate GO.
+- Helper 0.1.4 persists and validates its last helper-owned fixture before
+  re-copying the token; absent, malformed, duplicate, removed, or mismatched
+  rows cause a new fixture to be created. This handles clipboard overwrite
+  without relying on the blank Helper UI. All four helper policy tests pass.
+  Helper 0.1.4 is v2-signed, 10,648,876 bytes, SHA-256
+  `A8710555F5B221842B0EE1CA9B97A619A152206D3106DD52E4597DA1D62BC854`.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action
 
-1. Install probe-suite 0.1.6, select the same organizer root, run S01 once,
-   then return the JSON including the retained retry checks and fallback fields.
-2. Open Probe Suite > S02, paste the already copied helper token, run the
+1. Install fixture-helper 0.1.4, open it once, and wait for the token-copied
+   Toast even if the UI is blank.
+2. Immediately open Probe Suite > S02, paste the copied token, run the
    probe, approve its bounded cleanup request, and return the S02 JSON.
 3. Review those retries before asking for S04 or recording a device decision.
 4. Record device evidence and aggregate decisions. CI and desktop tests are
