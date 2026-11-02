@@ -60,46 +60,58 @@ class ManifestAtomicProbe(private val context: Context) {
                     result("RUN_IDENTITY_MISMATCH"),
                 )
             val token = UUID.randomUUID().toString().replace("-", "")
-            check(
-                preferences.edit()
-                    .putString(PENDING_TREE, tree.toString())
-                    .putString(PENDING_STAGE, stage.name)
-                    .putString(PENDING_TOKEN, token)
-                    .putString(PENDING_SESSION, S04ProcessSession.id)
-                    .putString(PENDING_PHASE, S04PendingPhase.PREPARING.name)
-                    .putString(PENDING_RUN_ID, identity.runId)
-                    .putString(PENDING_TREE_HASH, identity.treeUriSha256)
-                    .remove(PENDING_ROOT_URI)
-                    .remove(observationKey(stage))
-                    .commit(),
-            )
             var root: Uri? = null
+            var operationStage = S04PrepareStage.PERSIST_PENDING
             try {
+                check(
+                    preferences.edit()
+                        .putString(PENDING_TREE, tree.toString())
+                        .putString(PENDING_STAGE, stage.name)
+                        .putString(PENDING_TOKEN, token)
+                        .putString(PENDING_SESSION, S04ProcessSession.id)
+                        .putString(PENDING_PHASE, S04PendingPhase.PREPARING.name)
+                        .putString(PENDING_RUN_ID, identity.runId)
+                        .putString(PENDING_TREE_HASH, identity.treeUriSha256)
+                        .remove(PENDING_ROOT_URI)
+                        .remove(observationKey(stage))
+                        .commit(),
+                )
+                operationStage = S04PrepareStage.RESOLVE_ROOT
                 val parent = documentUri(tree)
+                operationStage = S04PrepareStage.CREATE_PROBE_ROOT
                 val createdRoot = createDirectory(parent, "$ROOT_PREFIX$token")
                 root = createdRoot
+                operationStage = S04PrepareStage.PERSIST_PROBE_ROOT
                 check(
                     preferences.edit()
                         .putString(PENDING_ROOT_URI, createdRoot.toString())
                         .commit(),
                 )
+                operationStage = S04PrepareStage.VERIFY_PROBE_ROOT_NAME
                 check(displayName(createdRoot) == "$ROOT_PREFIX$token")
+                operationStage = S04PrepareStage.VERIFY_PROBE_ROOT_EMPTY
                 check(childCount(createdRoot) == 0)
-                create(createdRoot, MARKER_NAME, marker(token))
+                operationStage = S04PrepareStage.CREATE_OWNER_MARKER
+                create(createdRoot, S04OwnerMarkerPolicy.WRITE_NAME, marker(token))
+                operationStage = S04PrepareStage.CREATE_FINAL
                 val final = create(createdRoot, FINAL_NAME, """{"generation":1}""")
                 if (stage != AtomicInterruption.BEFORE_PROCESS_KILL) {
+                    operationStage = S04PrepareStage.CREATE_TMP
                     val tmp = create(createdRoot, TMP_NAME, """{"generation":2}""")
                     if (stage != AtomicInterruption.AFTER_PROCESS_KILL) {
+                        operationStage = S04PrepareStage.RENAME_FINAL_TO_BACKUP
                         requireNotNull(
                             DocumentsContract.renameDocument(resolver, final, BAK_NAME),
                         )
                         if (stage == AtomicInterruption.AFTER_RENAME) {
+                            operationStage = S04PrepareStage.RENAME_TMP_TO_FINAL
                             requireNotNull(
                                 DocumentsContract.renameDocument(resolver, tmp, FINAL_NAME),
                             )
                         }
                     }
                 }
+                operationStage = S04PrepareStage.PERSIST_READY
                 check(
                     preferences.edit()
                         .putString(PENDING_PHASE, S04PendingPhase.READY.name)
@@ -112,8 +124,8 @@ class ManifestAtomicProbe(private val context: Context) {
                 }.getOrDefault(false)
                 if (cleaned) clearPending()
                 return@withContext S04ActionResult(
-                    "PREPARE_FAILED_${caught.javaClass.simpleName}",
-                    result(caught.javaClass.simpleName),
+                    "PREPARE_FAILED_${operationStage}_${caught.javaClass.simpleName}",
+                    result(caught.javaClass.simpleName, operationStage),
                 )
             }
             S04ActionResult(
@@ -194,7 +206,10 @@ class ManifestAtomicProbe(private val context: Context) {
         }
     }
 
-    fun result(exceptionClass: String? = null): S04ProbeResult {
+    fun result(
+        exceptionClass: String? = null,
+        exceptionStage: S04PrepareStage? = null,
+    ): S04ProbeResult {
         val observations = AtomicInterruption.entries.mapNotNull { stage ->
             preferences.getString(observationKey(stage), null)
                 ?.let { decode(stage, it) }
@@ -204,6 +219,7 @@ class ManifestAtomicProbe(private val context: Context) {
             observations,
             preferences.getString(OVERWRITE, "NOT_RUN") ?: "NOT_RUN",
             exceptionClass,
+            exceptionStage,
             pendingRecordStatus() != PendingRecordStatus.NONE,
             preferences.getString(RUN_ID, null),
             preferences.getString(RUN_TREE_HASH, null),
@@ -513,7 +529,9 @@ class ManifestAtomicProbe(private val context: Context) {
         val rootName = runCatching { displayName(root) }
             .getOrElse { throw ChildQueryFailure() }
         if (rootName != "$ROOT_PREFIX$token") return false
-        val marker = findChild(root, MARKER_NAME) ?: return false
+        val marker = S04OwnerMarkerPolicy.readableNames.firstNotNullOfOrNull { name ->
+            findChild(root, name)
+        } ?: return false
         val markerContent = runCatching { read(marker) }
             .getOrElse { throw ChildQueryFailure() }
         return markerContent == marker(token)
@@ -596,7 +614,7 @@ class ManifestAtomicProbe(private val context: Context) {
         }
         val fixtures = mutableListOf<Uri>()
         children.documents.forEach { child ->
-            if (child.displayName == MARKER_NAME) return@forEach
+            if (S04OwnerMarkerPolicy.isReadableName(child.displayName)) return@forEach
             val json = runCatching { JSONObject(read(child.uri)) }.getOrNull()
                 ?: return OverwriteFixtureQuery(ChildQueryStatus.QUERY_FAILED, emptyList())
             if (
@@ -862,7 +880,6 @@ class ManifestAtomicProbe(private val context: Context) {
 
     private companion object {
         const val ROOT_PREFIX = ".s04-probe-"
-        const val MARKER_NAME = ".s04-owner"
         const val FINAL_NAME = "manifest.json"
         const val TMP_NAME = "manifest.json.tmp"
         const val BAK_NAME = "manifest.json.bak"

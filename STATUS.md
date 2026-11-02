@@ -536,6 +536,16 @@
   mutation behavior are unchanged. The v2-signed APK is 22,731,771 bytes with
   SHA-256
   `97C95C5A40BD597350662332596F2326092E7C199F86D488429EA390402E7F4F`.
+- First guided S04 attempt on vivo/API 36 failed before any cutoff observation
+  with `IllegalStateException`; `pendingStagePresent=false` confirms the owned
+  sandbox was cleaned. The unextended `.s04-owner` filename was inconsistent
+  with its `application/json` MIME type on a provider already proven to append
+  MIME extensions. Probe-suite 0.1.11 / S04.4 writes
+  `.s04-owner.json`, reads both new and legacy marker names, and exports an
+  exact `exceptionStage` for every prepare operation. All 26 S04 tests pass
+  after forced recompilation. The v2-signed APK is 22,731,767 bytes with
+  SHA-256
+  `7E6E4FD0119750EC6F2E64F7642EA002E062591C7D54E3BA17E8535D98A31753`.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
@@ -551,7 +561,7 @@
 ## Next Exact Action
 
 - S02 current-target evidence is complete and requires no further retry.
-- Run S04 only on the current target with probe-suite 0.1.10, then resolve the
+- Run S04 only on the current target with probe-suite 0.1.11, then resolve the
   remaining required device
   matrix, or approve a formal ADR that changes those release gates.
 - Only after the required device GO may work resume on full F05, followed by
@@ -568,8 +578,8 @@
   provenance, bounded cleanup authorization, and confirmed removal all pass on
   vivo/API 36. Aggregate matrix coverage remains incomplete.
 - S04: CURRENT_TARGET_DEVICE_READY; durable recovery, overwrite, provenance,
-  and guided four-cutoff execution are reviewed and locally green. Device
-  evidence remains pending.
+  guided four-cutoff execution, MIME-aligned marker naming, and staged prepare
+  diagnostics are reviewed and locally green. Device evidence remains pending.
 - S05: ANDROID_HARNESS_COMPLETE / DEVICE_EVIDENCE_PARTIAL; S05.1/S05.2a remain
   pure and CI-green, S05.2b is isolated from production, and S05.2c binds each
   result to one device with a reviewed guard. The `target` row is PASS; three

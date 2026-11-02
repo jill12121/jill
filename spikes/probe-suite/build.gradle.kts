@@ -10,8 +10,8 @@ android {
         applicationId = "com.galleryorganizer.spikes.suite"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 11
-        versionName = "0.1.10"
+        versionCode = 12
+        versionName = "0.1.11"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

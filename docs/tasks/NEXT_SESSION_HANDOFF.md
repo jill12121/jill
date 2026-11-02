@@ -391,11 +391,19 @@ guard and APK v2 verification pass. The debug APK is 25,888,787 bytes with
   recompilation. The v2-signed APK is 22,731,771 bytes, SHA-256
   `97C95C5A40BD597350662332596F2326092E7C199F86D488429EA390402E7F4F`.
   Current-target S01/S02 must not be rerun.
+- The first guided S04 attempt on vivo/API 36 returned no observations,
+  `IllegalStateException`, and `pendingStagePresent=false`. Treat it as a
+  cleaned probe failure, not device NO_GO. Probe-suite 0.1.11 / S04.4 changes
+  the owner marker from extensionless `.s04-owner` to MIME-aligned
+  `.s04-owner.json`, retains legacy marker reads, and exports the exact prepare
+  `exceptionStage`. All 26 S04 tests pass after forced recompilation. The
+  v2-signed APK is 22,731,767 bytes, SHA-256
+  `7E6E4FD0119750EC6F2E64F7642EA002E062591C7D54E3BA17E8535D98A31753`.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action
 
-1. Run only the current-target S04 four-cutoff flow with probe-suite 0.1.10,
+1. Run only the current-target S04 four-cutoff flow with probe-suite 0.1.11,
    then resolve the remaining required device
    rows, or approve a formal ADR changing those release gates.
 2. Do not begin full F05, N01, I01, or I02 until aggregate device GO.

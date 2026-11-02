@@ -15,6 +15,29 @@ enum class S04PendingPhase { PREPARING, READY, OBSERVED }
 
 enum class S04SingleDeviceOutcome { PASS, PENDING, FAIL }
 
+enum class S04PrepareStage {
+    PERSIST_PENDING,
+    RESOLVE_ROOT,
+    CREATE_PROBE_ROOT,
+    PERSIST_PROBE_ROOT,
+    VERIFY_PROBE_ROOT_NAME,
+    VERIFY_PROBE_ROOT_EMPTY,
+    CREATE_OWNER_MARKER,
+    CREATE_FINAL,
+    CREATE_TMP,
+    RENAME_FINAL_TO_BACKUP,
+    RENAME_TMP_TO_FINAL,
+    PERSIST_READY,
+}
+
+object S04OwnerMarkerPolicy {
+    const val WRITE_NAME = ".s04-owner.json"
+    private const val LEGACY_NAME = ".s04-owner"
+    val readableNames = listOf(WRITE_NAME, LEGACY_NAME)
+
+    fun isReadableName(name: String): Boolean = name in readableNames
+}
+
 sealed interface S04GuideAction {
     data class Prepare(val stage: AtomicInterruption) : S04GuideAction
     data object ForceStopAndReopen : S04GuideAction
@@ -195,7 +218,7 @@ data class S04ProbeProvenance(
 
     companion object {
         const val SCHEMA_VERSION = 1
-        const val PROBE_VERSION = "S04.3"
+        const val PROBE_VERSION = "S04.4"
 
         fun fromRawFingerprint(
             model: String,
@@ -292,6 +315,7 @@ data class S04ProbeResult(
     val observations: Map<AtomicInterruption, StageObservation>,
     val providerOverwriteBehavior: String,
     val exceptionClass: String? = null,
+    val exceptionStage: S04PrepareStage? = null,
     val pendingStagePresent: Boolean = false,
     val runId: String? = null,
     val treeUriSha256: String? = null,
@@ -349,6 +373,7 @@ data class S04ProbeResult(
         return """{"stageObservations":$stages,"providerOverwriteBehavior":""" +
             """"$providerOverwriteBehavior","exceptionClass":""" +
             (exceptionClass?.let { "\"$it\"" } ?: "null") +
+            ""","exceptionStage":${exceptionStage?.let { "\"$it\"" } ?: "null"}""" +
             ""","pendingStagePresent":$pendingStagePresent""" +
             ""","runId":${runId?.jsonString() ?: "null"}""" +
             ""","treeUriSha256":${treeUriSha256?.jsonString() ?: "null"}""" +

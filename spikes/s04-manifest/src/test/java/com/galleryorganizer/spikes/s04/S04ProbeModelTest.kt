@@ -7,6 +7,31 @@ import kotlin.test.assertTrue
 
 class S04ProbeModelTest {
     @Test
+    fun `prepare failure exports its exact operation stage`() {
+        val failed = S04ProbeResult(
+            observations = emptyMap(),
+            providerOverwriteBehavior = "NOT_RUN",
+            exceptionClass = "IllegalStateException",
+            exceptionStage = S04PrepareStage.CREATE_OWNER_MARKER,
+        )
+
+        assertEquals(S04SingleDeviceOutcome.FAIL, failed.outcome)
+        assertTrue(
+            failed.toJson().contains(
+                """"exceptionStage":"CREATE_OWNER_MARKER"""",
+            ),
+        )
+    }
+
+    @Test
+    fun `owner marker name matches json mime while legacy name remains readable`() {
+        assertEquals(".s04-owner.json", S04OwnerMarkerPolicy.WRITE_NAME)
+        assertTrue(S04OwnerMarkerPolicy.isReadableName(".s04-owner.json"))
+        assertTrue(S04OwnerMarkerPolicy.isReadableName(".s04-owner"))
+        assertFalse(S04OwnerMarkerPolicy.isReadableName(".s04-owner.json.json"))
+    }
+
+    @Test
     fun `guide starts with the first missing cutoff`() {
         val result = S04ProbeResult(
             observations = emptyMap(),
