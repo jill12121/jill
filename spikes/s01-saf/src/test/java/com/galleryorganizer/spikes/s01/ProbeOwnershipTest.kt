@@ -132,6 +132,26 @@ class ProbeOwnershipTest {
     }
 
     @Test
+    fun `renamed item replaces stale uri in cleanup order`() {
+        val ledger = CleanupLedger<String>()
+        ledger.register("before-rename")
+
+        ledger.replace("before-rename", "after-rename")
+
+        assertEquals(listOf("after-rename"), ledger.cleanupOrder())
+    }
+
+    @Test
+    fun `explicitly deleted item is removed from cleanup order`() {
+        val ledger = CleanupLedger<String>()
+        ledger.register("deleted")
+
+        ledger.markDeleted("deleted")
+
+        assertEquals(emptyList<String>(), ledger.cleanupOrder())
+    }
+
+    @Test
     fun `creation rollback deletes every item in reverse order on failure`() {
         val ledger = CleanupLedger<String>()
         val attempted = mutableListOf<String>()

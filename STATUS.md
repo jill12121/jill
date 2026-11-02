@@ -409,6 +409,25 @@
   `93F2A5B1FE78380D94BDFFBBB161AF59EF726CB89B647B23A46B5D04DC663D03`;
   helper 0.1.2 is 10,638,448 bytes with SHA-256
   `82CADE3CC9ABDB6CAF535DF1988B1D62347C4D27CDF551C4BE90EF374D1232AD`.
+- Third offline device triage: probe-suite 0.1.3 completed the main S01 flow
+  on vivo V2304A/API 36. Binary part metadata was `EXACT`; WebP part metadata
+  was `NAME_APPENDED_EXTENSION`. Write/readback, rename/final readback,
+  collision characterization, seek, enumeration, and reinstall read/write all
+  ran. Force-stop and reboot retries were not run. `cleanupSucceeded=false`
+  and `reinstallAdoptionDelete=false` were traced to probe ledger defects:
+  renamed URIs remained registered after replacement, and an explicitly
+  deleted adoption candidate remained registered for cleanup. Probe-suite
+  0.1.4 fixes those false negatives and adds two regression tests; the real
+  WebP metadata limitation still fails closed. Helper 0.1.2 still rendered
+  blank with no usable button, so helper 0.1.3 creates the fixture and copies
+  its token automatically on first launch; the button remains a retry path.
+  The supplied S04 payload contained no observations and remains PENDING; it
+  is not device evidence and S04 should not be rerun yet. All five guards and
+  the full `check lint assembleDebug` gate pass. Both new APKs are v2-signed.
+  Probe-suite 0.1.4 is 22,698,995 bytes with SHA-256
+  `DBD521649FED42FD5BFA0BBF0EB52A103A4026140D6E4FC0DC2E2A8BFCF71E88`;
+  helper 0.1.3 is 10,639,712 bytes with SHA-256
+  `B8E50C2A53D64992A4F6C380A232D3107A31D2E3A7153838C9224156682687E3`.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
@@ -423,11 +442,11 @@
 
 ## Next Exact Action
 
-- Install probe-suite `0.1.3` and fixture-helper `0.1.2` on the same vivo
-  device without ADB. Rerun S01 and return its JSON, including
-  `binaryPartMetadataClass` and `webpPartMetadataClass`. For S02, create the
-  fixture and copy its token in the helper, open Probe Suite > S02, paste the
-  token, run the probe, and return its copied JSON.
+- Install probe-suite `0.1.4` and fixture-helper `0.1.3` on the same vivo
+  device without ADB. Rerun S01 to confirm corrected cleanup/adoption-delete
+  evidence, then complete its force-stop and reboot retries. For S02, open the
+  helper once and wait for the token-copied Toast even if its screen is blank;
+  then open Probe Suite > S02, paste the token, run, and return its JSON.
 - Do not rerun S04 until the S01/S02 retry has been reviewed.
 - Record evidence and aggregate decisions; copied device JSON, not CI or
   desktop tests, is required for device GO.
@@ -438,10 +457,12 @@
 
 - F06: COMPLETE; golden manifest fixtures and the progressive pure-domain E2E
   are delivered. Storage executors stay outside F06 and remain gated.
-- S01: DEVICE_EVIDENCE_RETRY_REQUIRED; the 0.1.2 result identifies a provider
-  metadata difference but requires the 0.1.3 full-flow classification.
-- S02: DEVICE_EVIDENCE_RETRY_REQUIRED; direct cross-APK launch also produced
-  no response, so helper 0.1.2 uses clipboard token handoff.
+- S01: DEVICE_EVIDENCE_RETRY_REQUIRED; the 0.1.3 full flow identifies a real
+  WebP part-name limitation and two probe cleanup-ledger false negatives.
+  Probe-suite 0.1.4 must confirm corrected deletion evidence and restart
+  checks before any aggregate decision.
+- S02: DEVICE_EVIDENCE_RETRY_REQUIRED; helper 0.1.2 remained blank, so helper
+  0.1.3 performs clipboard handoff automatically on first launch.
 - S04: DEVICE_DEFERRED_BY_USER; durable recovery, overwrite, and provenance
   hardening are independently reviewed and CI-green.
 - S05: ANDROID_HARNESS_COMPLETE / DEVICE_EVIDENCE_PARTIAL; S05.1/S05.2a remain
@@ -495,10 +516,10 @@
 
 ## Known Issues
 
-- S01/S02 current-target retries are required with probe-suite 0.1.3 and
-  fixture-helper 0.1.2. The 0.1.2 S01 result stopped before full evidence, and
-  the direct-launch S02 flow produced no result. Other required rows remain
-  deferred.
+- S01/S02 current-target retries are required with probe-suite 0.1.4 and
+  fixture-helper 0.1.3. The 0.1.3 S01 result exposed probe ledger false
+  negatives and a real WebP metadata limitation; force-stop/reboot remain
+  incomplete. S02 still has no result. Other required rows remain deferred.
 - S05 has one accepted `target` row and three deferred rows; the recorded
   budget values remain provisional until the matrix completes.
 - J1/J2/J3 and all production workspace/Manifest/cleanup execution are blocked

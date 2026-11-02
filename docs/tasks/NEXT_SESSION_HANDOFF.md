@@ -308,13 +308,26 @@ guard and APK v2 verification pass. The debug APK is 25,888,787 bytes with
   `93F2A5B1FE78380D94BDFFBBB161AF59EF726CB89B647B23A46B5D04DC663D03`;
   helper SHA-256 is
   `82CADE3CC9ABDB6CAF535DF1988B1D62347C4D27CDF551C4BE90EF374D1232AD`.
+- Third current-target offline run: S01 0.1.3 completed its main flow on vivo
+  V2304A/API 36. Binary metadata was `EXACT`; WebP part metadata was
+  `NAME_APPENDED_EXTENSION`. The cleanup and adoption-delete failures were
+  probe ledger false negatives, now fixed in probe-suite 0.1.4 by replacing
+  stale renamed URIs and removing explicitly deleted candidates. The WebP
+  metadata limitation remains real. Force-stop/reboot remain untested. Helper
+  0.1.2 was still blank, so helper 0.1.3 auto-creates and copies the fixture
+  token on first launch. The empty S04 PENDING payload is not evidence.
+  Probe-suite 0.1.4 SHA-256 is
+  `DBD521649FED42FD5BFA0BBF0EB52A103A4026140D6E4FC0DC2E2A8BFCF71E88`;
+  helper 0.1.3 SHA-256 is
+  `B8E50C2A53D64992A4F6C380A232D3107A31D2E3A7153838C9224156682687E3`.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action
 
-1. Install probe-suite 0.1.3 and fixture-helper 0.1.2 without ADB.
-2. Rerun S01 and return its JSON. In the helper, create the fixture and copy
-   the token; open Probe Suite > S02, paste the token, run, and return its JSON.
+1. Install probe-suite 0.1.4 and fixture-helper 0.1.3 without ADB.
+2. Rerun S01, including force-stop and reboot retries, and return its JSON.
+   Open the helper once and wait for the copied-token Toast even if the UI is
+   blank; open Probe Suite > S02, paste the token, run, and return its JSON.
 3. Review those retries before asking for S04 or recording a device decision.
 4. Record device evidence and aggregate decisions. CI and desktop tests are
    not device GO.

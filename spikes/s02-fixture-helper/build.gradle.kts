@@ -10,8 +10,8 @@ android {
         applicationId = "com.galleryorganizer.spikes.s02.fixturehelper"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 3
-        versionName = "0.1.2"
+        versionCode = 4
+        versionName = "0.1.3"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -23,4 +23,5 @@ android {
 dependencies {
     implementation(project(":spikes:s02-fixture-contract"))
     implementation(libs.androidx.activity.compose)
+    testImplementation(libs.junit4)
 }

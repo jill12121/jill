@@ -8,6 +8,7 @@ import android.provider.MediaStore
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
 import com.galleryorganizer.spikes.s02.fixture.ExternalFixtureContract
@@ -31,7 +32,8 @@ class ExternalFixtureHelperActivity : ComponentActivity() {
                 addView(create)
             },
         )
-        create.setOnClickListener {
+        fun createAndCopyFixture() {
+            if (!create.isEnabled) return
             create.isEnabled = false
             status.text = "Creating helper-owned fixture..."
             lifecycleScope.launch {
@@ -40,13 +42,34 @@ class ExternalFixtureHelperActivity : ComponentActivity() {
                         if (copyToken(token)) {
                             status.text =
                                 "Fixture created. Token copied. Open Probe Suite > S02 and paste it."
+                            Toast.makeText(
+                                this@ExternalFixtureHelperActivity,
+                                "S02 fixture token copied",
+                                Toast.LENGTH_LONG,
+                            ).show()
                         } else {
                             status.text = "Fixture created, but clipboard copy failed. Token: $token"
+                            Toast.makeText(
+                                this@ExternalFixtureHelperActivity,
+                                "Clipboard copy failed",
+                                Toast.LENGTH_LONG,
+                            ).show()
                         }
                     }
-                    .onFailure { status.text = "Fixture creation failed: ${it.javaClass.simpleName}" }
+                    .onFailure {
+                        status.text = "Fixture creation failed: ${it.javaClass.simpleName}"
+                        Toast.makeText(
+                            this@ExternalFixtureHelperActivity,
+                            status.text,
+                            Toast.LENGTH_LONG,
+                        ).show()
+                    }
                 create.isEnabled = true
             }
+        }
+        create.setOnClickListener { createAndCopyFixture() }
+        if (FixtureLaunchPolicy.shouldCreateFixture(savedInstanceState != null)) {
+            createAndCopyFixture()
         }
     }
 

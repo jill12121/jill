@@ -85,6 +85,15 @@ class CleanupLedger<T> {
 
     fun register(value: T): T = value.also(created::add)
 
+    fun replace(previous: T, replacement: T): T = replacement.also {
+        created.removeAll { candidate -> candidate == previous }
+        created.add(replacement)
+    }
+
+    fun markDeleted(value: T) {
+        created.removeAll { candidate -> candidate == value }
+    }
+
     fun cleanupOrder(): List<T> = created.asReversed().distinct()
 
     fun cleanup(delete: (T) -> Boolean): Boolean {

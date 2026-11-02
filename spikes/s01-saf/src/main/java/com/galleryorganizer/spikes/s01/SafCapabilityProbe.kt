@@ -163,7 +163,8 @@ class SafCapabilityProbe(private val context: Context) {
         setStage("${stagePrefix}_PART_READ")
         val partReadback = read(part).contentEquals(bytes)
         setStage("${stagePrefix}_RENAME")
-        val final = created.register(
+        val final = created.replace(
+            part,
             requireNotNull(DocumentsContract.renameDocument(resolver, part, finalName)),
         )
         setStage("${stagePrefix}_FINAL_METADATA")
@@ -242,6 +243,7 @@ class SafCapabilityProbe(private val context: Context) {
             write(candidate, ownedRoot.ownership.sampleBytes)
             check(read(candidate).contentEquals(ownedRoot.ownership.sampleBytes))
             check(DocumentsContract.deleteDocument(resolver, candidate))
+            created.markDeleted(candidate)
         }.isSuccess
         val cleanupSucceeded = created.cleanup(::deleteConfirmed)
         val orphanDelete = deleteOperationSucceeded && cleanupSucceeded
@@ -300,8 +302,10 @@ class SafCapabilityProbe(private val context: Context) {
         val source = created.register(
             requireNotNull(create(parent, "application/octet-stream", ".s01-source-$token.bin")),
         )
-        val renamed = requireNotNull(DocumentsContract.renameDocument(resolver, source, targetName))
-            .also(created::register)
+        val renamed = created.replace(
+            source,
+            requireNotNull(DocumentsContract.renameDocument(resolver, source, targetName)),
+        )
         classifyCreated(target, renamed, targetName)
     }.getOrElse { "ERROR_${it.javaClass.simpleName}" }
 
