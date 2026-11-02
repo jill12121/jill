@@ -480,6 +480,20 @@
   `check lint assembleDebug` gate pass. The v2-signed helper APK is 10,648,876
   bytes with SHA-256
   `A8710555F5B221842B0EE1CA9B97A619A152206D3106DD52E4597DA1D62BC854`.
+- First complete S02 device result: vivo/API 36 reports `FULL` permission but
+  zero visible rows, no pages, cleanup request failure, and
+  `IllegalStateException`. The S02 query has no row filter; the helper fixture
+  used a dot-prefixed display name, which is consistent with OEM MediaStore
+  hiding the row from another UID. Treat this as a probe-fixture defect, not
+  device NO_GO. S02.5 changes the shared contract to a visible
+  `s02-external-<token>.png` name. Probe-suite 0.1.7 and helper 0.1.5 must be
+  installed together; helper validation rejects the previously hidden row and
+  creates a new visible fixture. Contract, S02 model, and helper tests pass,
+  as do all five guards and the full `check lint assembleDebug` gate. Both APKs
+  are v2-signed: suite is 22,715,383 bytes with SHA-256
+  `D9735668E9B8B7730A3E6E0411AE5E52712FE86BA6C4611BE37C7BCEAD460169`;
+  helper is 10,648,876 bytes with SHA-256
+  `033F27934887681FFD1B967CE9E0BE1E759C2DDE608CB74661755ACFB49D356F`.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
@@ -494,7 +508,8 @@
 
 ## Next Exact Action
 
-- Install fixture-helper 0.1.4. Open it once and wait for the token-copied
+- Install probe-suite 0.1.7 and fixture-helper 0.1.5. Open the Helper once and
+  wait for the token-copied
   Toast even if the screen is blank, then immediately open Probe Suite > S02,
   paste the token, run the probe, approve the bounded cleanup request, and
   return the copied S02 JSON.
@@ -512,8 +527,9 @@
   restart, and reinstall checks pass on vivo/API 36. Aggregate decision remains
   pending the other required devices and mandatory S02/S04 evidence.
 - S02: DEVICE_EVIDENCE_RETRY_REQUIRED; helper 0.1.3 clipboard handoff is
-  blocked by clipboard overwrite. Helper 0.1.4 can restore a verified saved
-  fixture token, but the token has not yet been run through the S02 probe.
+  blocked by clipboard overwrite. The first full run then exposed a
+  dot-prefixed fixture visibility defect. S02.5 with the paired 0.1.7/0.1.5
+  APKs is ready for the corrected non-hidden fixture retry.
 - S04: DEVICE_DEFERRED_BY_USER; durable recovery, overwrite, and provenance
   hardening are independently reviewed and CI-green.
 - S05: ANDROID_HARNESS_COMPLETE / DEVICE_EVIDENCE_PARTIAL; S05.1/S05.2a remain

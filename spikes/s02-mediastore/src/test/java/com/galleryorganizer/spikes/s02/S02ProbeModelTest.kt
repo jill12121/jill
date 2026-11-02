@@ -49,7 +49,7 @@ class S02ProbeModelTest {
 
         assertTrue(provenance.isValid)
         assertEquals(2, provenance.schemaVersion)
-        assertEquals("S02.4", provenance.probeVersion)
+        assertEquals("S02.5", provenance.probeVersion)
         assertEquals(64, provenance.fingerprintSha256.length)
         assertFalse(provenance.toJson().contains("raw-fingerprint"))
         assertTrue(provenance.toJson().contains("run-123"))
@@ -134,7 +134,7 @@ class S02ProbeModelTest {
         val token = "123e4567-e89b-42d3-a456-426614174000"
 
         assertTrue(ExternalFixtureContract.isValidToken(token))
-        assertEquals(".s02-external-$token.png", ExternalFixtureContract.displayName(token))
+        assertEquals("s02-external-$token.png", ExternalFixtureContract.displayName(token))
         assertFalse(ExternalFixtureContract.isValidToken("../escape"))
         assertFalse(ExternalFixtureContract.isValidToken(token.uppercase()))
     }

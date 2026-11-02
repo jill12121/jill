@@ -353,12 +353,22 @@ guard and APK v2 verification pass. The debug APK is 25,888,787 bytes with
   without relying on the blank Helper UI. All four helper policy tests pass.
   Helper 0.1.4 is v2-signed, 10,648,876 bytes, SHA-256
   `A8710555F5B221842B0EE1CA9B97A619A152206D3106DD52E4597DA1D62BC854`.
+- First complete S02 JSON on vivo/API 36 has FULL permission but zero rows,
+  no pages, `REQUEST_FAILED`, and `IllegalStateException`. The unfiltered
+  MediaStore query plus a dot-prefixed fixture name strongly indicates a probe
+  fixture visibility defect, not device NO_GO. S02.5 uses visible
+  `s02-external-<token>.png`; probe-suite 0.1.7 and helper 0.1.5 must be
+  installed together, and the helper will replace its old hidden fixture.
+  Both are v2-signed: suite is 22,715,383 bytes, SHA-256
+  `D9735668E9B8B7730A3E6E0411AE5E52712FE86BA6C4611BE37C7BCEAD460169`;
+  helper is 10,648,876 bytes, SHA-256
+  `033F27934887681FFD1B967CE9E0BE1E759C2DDE608CB74661755ACFB49D356F`.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action
 
-1. Install fixture-helper 0.1.4, open it once, and wait for the token-copied
-   Toast even if the UI is blank.
+1. Install probe-suite 0.1.7 and fixture-helper 0.1.5. Open the Helper once and
+   wait for the token-copied Toast even if the UI is blank.
 2. Immediately open Probe Suite > S02, paste the copied token, run the
    probe, approve its bounded cleanup request, and return the S02 JSON.
 3. Review those retries before asking for S04 or recording a device decision.

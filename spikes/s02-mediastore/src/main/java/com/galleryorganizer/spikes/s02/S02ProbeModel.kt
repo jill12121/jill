@@ -74,7 +74,7 @@ data class S02ProbeProvenance(
 
     companion object {
         const val SCHEMA_VERSION = 2
-        const val PROBE_VERSION = "S02.4"
+        const val PROBE_VERSION = "S02.5"
 
         fun fromRawFingerprint(
             runId: String,

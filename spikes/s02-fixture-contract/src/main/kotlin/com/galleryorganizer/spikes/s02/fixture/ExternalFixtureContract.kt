@@ -16,7 +16,7 @@ object ExternalFixtureContract {
     )
 
     fun isValidToken(token: String): Boolean = tokenPattern.matches(token)
-    fun displayName(token: String): String = ".s02-external-$token.png"
+    fun displayName(token: String): String = "s02-external-$token.png"
     fun payload(token: String): ByteArray {
         require(isValidToken(token))
         return png + "\nS02_EXTERNAL_FIXTURE:$token".toByteArray(Charsets.UTF_8)

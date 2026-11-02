@@ -3,6 +3,7 @@ package com.galleryorganizer.spikes.s02.fixture
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class ExternalFixtureContractTest {
@@ -11,7 +12,8 @@ class ExternalFixtureContractTest {
         val token = "123e4567-e89b-12d3-a456-426614174000"
 
         assertTrue(ExternalFixtureContract.isValidToken(token))
-        assertEquals(".s02-external-$token.png", ExternalFixtureContract.displayName(token))
+        assertEquals("s02-external-$token.png", ExternalFixtureContract.displayName(token))
+        assertFalse(ExternalFixtureContract.displayName(token).startsWith("."))
         assertContains(
             ExternalFixtureContract.payload(token).decodeToString(),
             "S02_EXTERNAL_FIXTURE:$token",
