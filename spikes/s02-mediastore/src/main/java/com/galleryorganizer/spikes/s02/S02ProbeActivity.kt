@@ -303,7 +303,7 @@ class MediaStoreProbe(private val context: Context) {
                     token = token,
                     tokenMarkerMatches = false,
                 )
-                if (evidence.copy(tokenMarkerMatches = true).isValid) {
+                if (evidence.isPayloadCandidate) {
                     evidence = evidence.copy(tokenMarkerMatches = payloadMatches(uri, token))
                 }
                 matches += uri to evidence
@@ -470,7 +470,9 @@ class S02ProbeActivity : ComponentActivity() {
                         ) { Text(if (running) "Running..." else "Run S02 probe") }
                         OutlinedButton(
                             onClick = {
-                                val json = probeState.run?.result?.toJson() ?: return@OutlinedButton
+                                val json =
+                                    probeState.run?.result?.toCompactJson()
+                                        ?: return@OutlinedButton
                                 copyStatus = if (
                                     ResultClipboard(this@S02ProbeActivity).copy(json)
                                 ) {

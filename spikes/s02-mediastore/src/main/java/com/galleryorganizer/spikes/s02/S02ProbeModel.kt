@@ -22,6 +22,7 @@ enum class CleanupAuthorizationState {
 
 enum class S02SingleDeviceOutcome { PASS, PARTIAL, PENDING, FAIL }
 enum class S02ProbeStage { QUERY_PAGES, FIXTURE_LOOKUP, DELETE_REQUEST }
+enum class ExternalFixtureOwnerClass { EXACT_HELPER, REDACTED, OTHER }
 
 data class ExternalFixtureEvidence(
     val ownerPackageName: String,
@@ -31,13 +32,23 @@ data class ExternalFixtureEvidence(
     val token: String,
     val tokenMarkerMatches: Boolean,
 ) {
-    val isValid: Boolean
+    val ownerClass: ExternalFixtureOwnerClass
+        get() = when (ownerPackageName) {
+            ExternalFixtureContract.HELPER_PACKAGE ->
+                ExternalFixtureOwnerClass.EXACT_HELPER
+            "" -> ExternalFixtureOwnerClass.REDACTED
+            else -> ExternalFixtureOwnerClass.OTHER
+        }
+
+    val isPayloadCandidate: Boolean
         get() = ExternalFixtureContract.isValidToken(token) &&
-            ownerPackageName == ExternalFixtureContract.HELPER_PACKAGE &&
+            ownerClass != ExternalFixtureOwnerClass.OTHER &&
             relativePath == ExternalFixtureContract.RELATIVE_PATH &&
             mimeType == ExternalFixtureContract.MIME_TYPE &&
-            displayName == ExternalFixtureContract.displayName(token) &&
-            tokenMarkerMatches
+            displayName == ExternalFixtureContract.displayName(token)
+
+    val isValid: Boolean
+        get() = isPayloadCandidate && tokenMarkerMatches
 }
 
 data class S02ProbeProvenance(
@@ -75,7 +86,7 @@ data class S02ProbeProvenance(
 
     companion object {
         const val SCHEMA_VERSION = 2
-        const val PROBE_VERSION = "S02.6"
+        const val PROBE_VERSION = "S02.7"
 
         fun fromRawFingerprint(
             runId: String,
@@ -113,6 +124,28 @@ data class PageEvidence(
     val strictlyIncreasing: Boolean = false,
     val queryArgsHonored: Boolean = false,
 )
+
+data class PaginationSummary(
+    val pageCount: Int,
+    val firstId: Long,
+    val lastId: Long,
+    val maxPageMillis: Long,
+    val duplicateCount: Int,
+    val strictlyIncreasing: Boolean,
+    val queryArgsHonored: Boolean,
+) {
+    companion object {
+        fun from(pages: List<PageEvidence>) = PaginationSummary(
+            pageCount = pages.size,
+            firstId = pages.firstOrNull()?.firstId ?: 0,
+            lastId = pages.lastOrNull()?.lastId ?: 0,
+            maxPageMillis = pages.maxOfOrNull(PageEvidence::pageMillis) ?: 0,
+            duplicateCount = pages.sumOf(PageEvidence::duplicateCount),
+            strictlyIncreasing = pages.all(PageEvidence::strictlyIncreasing),
+            queryArgsHonored = pages.all(PageEvidence::queryArgsHonored),
+        )
+    }
+}
 
 object PaginationEvidenceValidator {
     const val PAGE_SIZE = 500
@@ -208,6 +241,7 @@ data class S02ProbeResult(
         append(
             cleanupFixtureEvidence?.let {
                 """{"ownerPackageName":${it.ownerPackageName.jsonString()},""" +
+                    """"ownerClass":"${it.ownerClass}",""" +
                     """"relativePath":${it.relativePath.jsonString()},""" +
                     """"mimeType":${it.mimeType.jsonString()},""" +
                     """"displayName":${it.displayName.jsonString()},""" +
@@ -219,6 +253,38 @@ data class S02ProbeResult(
         append(""","exceptionClass":${exceptionClass?.let { "\"$it\"" } ?: "null"}""")
         append(""","exceptionStage":${exceptionStage?.let { "\"$it\"" } ?: "null"}""")
         append(""","decisionS02SingleDevice":"$outcome"}""")
+    }
+
+    fun toCompactJson(): String {
+        val summary = PaginationSummary.from(pages)
+        return buildString {
+            append("""{"permissionState":"$permissionState","totalVisibleRows":$totalVisibleRows""")
+            append(""","pageSummary":{"pageCount":${summary.pageCount},""")
+            append(""""firstId":${summary.firstId},"lastId":${summary.lastId},""")
+            append(""""maxPageMillis":${summary.maxPageMillis},""")
+            append(""""duplicateCount":${summary.duplicateCount},""")
+            append(""""strictlyIncreasing":${summary.strictlyIncreasing},""")
+            append(""""queryArgsHonored":${summary.queryArgsHonored}}""")
+            append(""","cleanupState":"$cleanupState","authorizationBatchSizes":[""")
+            append(authorizationBatchSizes.joinToString(","))
+            append("]")
+            append(""","cleanupFixtureEvidence":""")
+            append(
+                cleanupFixtureEvidence?.let {
+                    """{"ownerPackageName":${it.ownerPackageName.jsonString()},""" +
+                        """"ownerClass":"${it.ownerClass}",""" +
+                        """"relativePath":${it.relativePath.jsonString()},""" +
+                        """"mimeType":${it.mimeType.jsonString()},""" +
+                        """"displayName":${it.displayName.jsonString()},""" +
+                        """"token":${it.token.jsonString()},""" +
+                        """"tokenMarkerMatches":${it.tokenMarkerMatches}}"""
+                } ?: "null",
+            )
+            append(""","provenance":${provenance.toJson()}""")
+            append(""","exceptionClass":${exceptionClass?.let { "\"$it\"" } ?: "null"}""")
+            append(""","exceptionStage":${exceptionStage?.let { "\"$it\"" } ?: "null"}""")
+            append(""","decisionS02SingleDevice":"$outcome"}""")
+        }
     }
 }
 

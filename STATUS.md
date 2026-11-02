@@ -507,6 +507,19 @@
   `check lint assembleDebug` gate pass. The v2-signed suite APK is 22,715,383
   bytes with SHA-256
   `DE71F298EDA143F3DCE1E21A44127F9E533CBABC718D9EA1C4EB23ABACC462F2`.
+- S02.6 preserves the actual device evidence: 142,997 visible rows across 286
+  bounded pages; the final page has 497 rows; IDs are strictly increasing,
+  duplicate count is zero, and all query args are honored. Pagination therefore
+  passes. The visible fixture is found with exact path, MIME, token-bound name,
+  and a blank `OWNER_PACKAGE_NAME`; payload checking was skipped only because
+  the owner column was redacted. S02.7 permits a redacted owner to enter payload
+  validation, but accepts it only when the random token, path, MIME, display
+  name, and full payload all match. Any other non-empty owner remains rejected.
+  Probe-suite 0.1.9 also copies a compact page summary instead of hundreds of
+  page records. Helper 0.1.5 remains paired. Redacted-owner and compact-output
+  tests, all five guards, and the full `check lint assembleDebug` gate pass.
+  The v2-signed suite APK is 22,715,383 bytes with SHA-256
+  `21895D8F4776767BAACEF538E92BF69E735C6BDE5C04FF7883B29675DC6EE1CB`.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
@@ -521,7 +534,7 @@
 
 ## Next Exact Action
 
-- Install probe-suite 0.1.8 and fixture-helper 0.1.5. Open the Helper once and
+- Install probe-suite 0.1.9 and fixture-helper 0.1.5. Open the Helper once and
   wait for the token-copied
   Toast even if the screen is blank, then immediately open Probe Suite > S02,
   paste the token, run the probe, approve the bounded cleanup request, and
@@ -542,7 +555,8 @@
 - S02: DEVICE_EVIDENCE_RETRY_REQUIRED; helper 0.1.3 clipboard handoff is
   blocked by clipboard overwrite. The first full run then exposed a
   dot-prefixed fixture visibility defect; S02.5 then exposed evidence loss on
-  exception. S02.6 / suite 0.1.8 is the final staged diagnostic retry.
+  exception. S02.6 confirms pagination PASS and owner-column redaction.
+  S02.7 / suite 0.1.9 is ready for the token-bound payload and cleanup check.
 - S04: DEVICE_DEFERRED_BY_USER; durable recovery, overwrite, and provenance
   hardening are independently reviewed and CI-green.
 - S05: ANDROID_HARNESS_COMPLETE / DEVICE_EVIDENCE_PARTIAL; S05.1/S05.2a remain

@@ -372,11 +372,19 @@ guard and APK v2 verification pass. The debug APK is 25,888,787 bytes with
   the previously completed same-device restart evidence.
   Probe-suite 0.1.8 is v2-signed, 22,715,383 bytes, SHA-256
   `DE71F298EDA143F3DCE1E21A44127F9E533CBABC718D9EA1C4EB23ABACC462F2`.
+- S02.6 confirms 142,997 rows over 286 bounded, honored, monotonic,
+  duplicate-free pages. Fixture path/MIME/token name match, but vivo redacts
+  `OWNER_PACKAGE_NAME`, causing payload validation to be skipped. S02.7 accepts
+  only exact-helper or empty/redacted owner candidates and still requires the
+  full token-bound payload. Other non-empty owners fail. Probe-suite 0.1.9 also
+  copies a compact page summary; helper 0.1.5 is unchanged. The suite APK is
+  v2-signed, 22,715,383 bytes, SHA-256
+  `21895D8F4776767BAACEF538E92BF69E735C6BDE5C04FF7883B29675DC6EE1CB`.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action
 
-1. Install probe-suite 0.1.8 and fixture-helper 0.1.5. Open the Helper once and
+1. Install probe-suite 0.1.9 and fixture-helper 0.1.5. Open the Helper once and
    wait for the token-copied Toast even if the UI is blank.
 2. Immediately open Probe Suite > S02, paste the copied token, run the
    probe, approve its bounded cleanup request, and return the S02 JSON.

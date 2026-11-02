@@ -49,7 +49,7 @@ class S02ProbeModelTest {
 
         assertTrue(provenance.isValid)
         assertEquals(2, provenance.schemaVersion)
-        assertEquals("S02.6", provenance.probeVersion)
+        assertEquals("S02.7", provenance.probeVersion)
         assertEquals(64, provenance.fingerprintSha256.length)
         assertFalse(provenance.toJson().contains("raw-fingerprint"))
         assertTrue(provenance.toJson().contains("run-123"))
@@ -133,15 +133,30 @@ class S02ProbeModelTest {
     }
 
     @Test
-    fun `external fixture requires exact helper provenance and token marker`() {
+    fun `external fixture accepts exact or redacted owner only with token payload`() {
         val valid = externalEvidence()
+        val redacted = valid.copy(ownerPackageName = "")
 
         assertTrue(valid.isValid)
+        assertEquals(ExternalFixtureOwnerClass.EXACT_HELPER, valid.ownerClass)
+        assertEquals(ExternalFixtureOwnerClass.REDACTED, redacted.ownerClass)
+        assertTrue(redacted.isPayloadCandidate)
+        assertTrue(redacted.isValid)
+        assertFalse(redacted.copy(tokenMarkerMatches = false).isValid)
+        assertEquals(
+            ExternalFixtureOwnerClass.OTHER,
+            valid.copy(ownerPackageName = "com.example.other").ownerClass,
+        )
         assertFalse(valid.copy(ownerPackageName = "com.example.other").isValid)
         assertFalse(valid.copy(relativePath = "Pictures/Other/").isValid)
         assertFalse(valid.copy(mimeType = "text/html").isValid)
         assertFalse(valid.copy(displayName = ".s02-external-other.png").isValid)
         assertFalse(valid.copy(tokenMarkerMatches = false).isValid)
+        assertTrue(
+            passingResult().copy(
+                cleanupFixtureEvidence = redacted,
+            ).toJson().contains("\"ownerClass\":\"REDACTED\""),
+        )
         assertTrue(
             passingResult().copy(
                 cleanupFixtureEvidence = valid.copy(relativePath = "Pictures/Observed/"),
@@ -214,6 +229,19 @@ class S02ProbeModelTest {
                 ),
             ),
         )
+    }
+
+    @Test
+    fun `compact result summarizes pages without exporting the full page array`() {
+        val compact = passingResult().toCompactJson()
+
+        assertFalse(compact.contains("\"pages\""))
+        assertTrue(compact.contains("\"pageCount\":2"))
+        assertTrue(compact.contains("\"firstId\":1"))
+        assertTrue(compact.contains("\"lastId\":501"))
+        assertTrue(compact.contains("\"strictlyIncreasing\":true"))
+        assertTrue(compact.contains("\"queryArgsHonored\":true"))
+        assertTrue(compact.contains("\"decisionS02SingleDevice\":\"PASS\""))
     }
 
     @Test
