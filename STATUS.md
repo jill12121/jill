@@ -428,6 +428,18 @@
   `DBD521649FED42FD5BFA0BBF0EB52A103A4026140D6E4FC0DC2E2A8BFCF71E88`;
   helper 0.1.3 is 10,639,712 bytes with SHA-256
   `B8E50C2A53D64992A4F6C380A232D3107A31D2E3A7153838C9224156682687E3`.
+- Fourth offline device triage: probe-suite 0.1.4 on vivo V2304A/API 36
+  confirms the cleanup-ledger fix. Main-flow cleanup and reinstall adoption
+  read/write/delete all pass, with orphan classification `READ_WRITE_DELETE`;
+  no exception occurred. Final WebP rename/readback, seek, collisions, and
+  performance evidence remain successful. WebP part metadata is again
+  `NAME_APPENDED_EXTENSION`, confirming a provider limitation rather than a
+  probe defect. The current WebP `.part` strategy therefore remains FAIL and
+  requires a separately tested safe fallback before LIMITED_GO is possible.
+  Force-stop and reboot retries are still pending. Helper 0.1.3 successfully
+  copied a valid S02 token on-device, but no S02 probe JSON has been returned.
+  The repeated empty S04 payload remains PENDING and is not evidence. Remote
+  Verify `41377003379` for commit `9ab7840` passed.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
@@ -442,11 +454,10 @@
 
 ## Next Exact Action
 
-- Install probe-suite `0.1.4` and fixture-helper `0.1.3` on the same vivo
-  device without ADB. Rerun S01 to confirm corrected cleanup/adoption-delete
-  evidence, then complete its force-stop and reboot retries. For S02, open the
-  helper once and wait for the token-copied Toast even if its screen is blank;
-  then open Probe Suite > S02, paste the token, run, and return its JSON.
+- Complete the S01 force-stop and reboot retry actions, then copy the updated
+  S01 JSON. The S02 helper token is already available: open Probe Suite > S02,
+  paste it, run the probe, approve the bounded cleanup request, and return the
+  copied S02 JSON.
 - Do not rerun S04 until the S01/S02 retry has been reviewed.
 - Record evidence and aggregate decisions; copied device JSON, not CI or
   desktop tests, is required for device GO.
@@ -457,12 +468,11 @@
 
 - F06: COMPLETE; golden manifest fixtures and the progressive pure-domain E2E
   are delivered. Storage executors stay outside F06 and remain gated.
-- S01: DEVICE_EVIDENCE_RETRY_REQUIRED; the 0.1.3 full flow identifies a real
-  WebP part-name limitation and two probe cleanup-ledger false negatives.
-  Probe-suite 0.1.4 must confirm corrected deletion evidence and restart
-  checks before any aggregate decision.
-- S02: DEVICE_EVIDENCE_RETRY_REQUIRED; helper 0.1.2 remained blank, so helper
-  0.1.3 performs clipboard handoff automatically on first launch.
+- S01: DEVICE_EVIDENCE_PARTIAL / FALLBACK_REQUIRED; probe-suite 0.1.4 confirms
+  cleanup and reinstall read/write/delete, while the WebP part-name limitation
+  reproduces. Force-stop/reboot and a tested safe fallback remain required.
+- S02: DEVICE_EVIDENCE_RETRY_REQUIRED; helper 0.1.3 clipboard handoff is
+  confirmed, but the token has not yet been run through the S02 probe.
 - S04: DEVICE_DEFERRED_BY_USER; durable recovery, overwrite, and provenance
   hardening are independently reviewed and CI-green.
 - S05: ANDROID_HARNESS_COMPLETE / DEVICE_EVIDENCE_PARTIAL; S05.1/S05.2a remain
@@ -516,10 +526,10 @@
 
 ## Known Issues
 
-- S01/S02 current-target retries are required with probe-suite 0.1.4 and
-  fixture-helper 0.1.3. The 0.1.3 S01 result exposed probe ledger false
-  negatives and a real WebP metadata limitation; force-stop/reboot remain
-  incomplete. S02 still has no result. Other required rows remain deferred.
+- S01 force-stop/reboot and safe-fallback evidence remain required. The 0.1.4
+  result confirms cleanup and reinstall deletion while reproducing the real
+  WebP metadata limitation. S02 token creation works, but S02 still has no
+  probe result. Other required rows remain deferred.
 - S05 has one accepted `target` row and three deferred rows; the recorded
   budget values remain provisional until the matrix completes.
 - J1/J2/J3 and all production workspace/Manifest/cleanup execution are blocked

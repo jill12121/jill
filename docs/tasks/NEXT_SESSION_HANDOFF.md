@@ -320,14 +320,21 @@ guard and APK v2 verification pass. The debug APK is 25,888,787 bytes with
   `DBD521649FED42FD5BFA0BBF0EB52A103A4026140D6E4FC0DC2E2A8BFCF71E88`;
   helper 0.1.3 SHA-256 is
   `B8E50C2A53D64992A4F6C380A232D3107A31D2E3A7153838C9224156682687E3`.
+- Fourth current-target offline run: S01 0.1.4 confirms cleanup and reinstall
+  adoption read/write/delete all pass on vivo V2304A/API 36, with no exception
+  and `READ_WRITE_DELETE`. WebP part metadata again reports
+  `NAME_APPENDED_EXTENSION`, confirming a real provider limitation; the
+  current strategy remains FAIL and requires a tested safe fallback.
+  Force-stop/reboot remain pending. Helper 0.1.3 copied a valid S02 token, but
+  no S02 probe JSON was returned. The empty S04 payload remains non-evidence.
+  Remote Verify `41377003379` for `9ab7840` passed.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action
 
-1. Install probe-suite 0.1.4 and fixture-helper 0.1.3 without ADB.
-2. Rerun S01, including force-stop and reboot retries, and return its JSON.
-   Open the helper once and wait for the copied-token Toast even if the UI is
-   blank; open Probe Suite > S02, paste the token, run, and return its JSON.
+1. Complete S01 force-stop and reboot retries, then return the updated JSON.
+2. Open Probe Suite > S02, paste the already copied helper token, run the
+   probe, approve its bounded cleanup request, and return the S02 JSON.
 3. Review those retries before asking for S04 or recording a device decision.
 4. Record device evidence and aggregate decisions. CI and desktop tests are
    not device GO.
