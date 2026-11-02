@@ -128,10 +128,12 @@ class MediaStoreProbe(private val context: Context) {
             return@withContext S02ProbeRun(emptyResult(permission, provenance))
         }
 
+        var stage = S02ProbeStage.QUERY_PAGES
+        var result = emptyResult(permission, provenance)
         try {
             val pages = queryPages()
             val totalRows = pages.sumOf(PageEvidence::rowCount)
-            var result = S02ProbeResult(
+            result = S02ProbeResult(
                 permission,
                 totalRows,
                 pages,
@@ -143,19 +145,25 @@ class MediaStoreProbe(private val context: Context) {
                 return@withContext S02ProbeRun(result)
             }
 
+            stage = S02ProbeStage.FIXTURE_LOOKUP
             val fixture = findExternalFixture(externalToken)
+            result = result.copy(cleanupFixtureEvidence = fixture.second)
+            if (!fixture.second.isValid) {
+                return@withContext S02ProbeRun(result)
+            }
+            stage = S02ProbeStage.DELETE_REQUEST
             val request = MediaStore.createDeleteRequest(resolver, listOf(fixture.first))
             result = result.copy(
                 cleanupState = CleanupAuthorizationState.PENDING,
                 authorizationBatchSizes = listOf(1),
-                cleanupFixtureEvidence = fixture.second,
             )
             S02ProbeRun(result, CleanupAuthorization(request, fixture.first))
         } catch (caught: Exception) {
             S02ProbeRun(
-                emptyResult(permission, provenance).copy(
-                    cleanupState = CleanupAuthorizationState.REQUEST_FAILED,
-                    exceptionClass = caught.javaClass.simpleName,
+                S02FailureRecorder.record(
+                    result,
+                    stage,
+                    caught.javaClass.simpleName,
                 ),
             )
         }
@@ -302,7 +310,6 @@ class MediaStoreProbe(private val context: Context) {
             }
         }
         val fixture = matches.singleOrNull() ?: error("FIXTURE_NOT_UNIQUE")
-        require(fixture.second.isValid) { "FIXTURE_PROVENANCE_INVALID" }
         return fixture
     }
 

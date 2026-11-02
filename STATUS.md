@@ -494,6 +494,19 @@
   `D9735668E9B8B7730A3E6E0411AE5E52712FE86BA6C4611BE37C7BCEAD460169`;
   helper is 10,648,876 bytes with SHA-256
   `033F27934887681FFD1B967CE9E0BE1E759C2DDE608CB74661755ACFB49D356F`.
+- S02.5 retry still reports `FULL`, `REQUEST_FAILED`, and
+  `IllegalArgumentException`, but its zero-row output is not reliable: the
+  catch path replaced all partial evidence with a new empty result. S02.6
+  fixes this diagnostic defect. It retains completed pagination and observed
+  fixture provenance, returns invalid fixture fields directly, and exports
+  `exceptionStage` as `QUERY_PAGES`, `FIXTURE_LOOKUP`, or `DELETE_REQUEST`.
+  Probe-suite 0.1.8 is the final S02 audit build; helper 0.1.5 remains paired.
+  The new S01 run with restart fields false does not invalidate the prior
+  completed restart evidence, which remains recorded for the same device/root.
+  All staged-failure tests, all five guards, and the full
+  `check lint assembleDebug` gate pass. The v2-signed suite APK is 22,715,383
+  bytes with SHA-256
+  `DE71F298EDA143F3DCE1E21A44127F9E533CBABC718D9EA1C4EB23ABACC462F2`.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
@@ -508,7 +521,7 @@
 
 ## Next Exact Action
 
-- Install probe-suite 0.1.7 and fixture-helper 0.1.5. Open the Helper once and
+- Install probe-suite 0.1.8 and fixture-helper 0.1.5. Open the Helper once and
   wait for the token-copied
   Toast even if the screen is blank, then immediately open Probe Suite > S02,
   paste the token, run the probe, approve the bounded cleanup request, and
@@ -528,8 +541,8 @@
   pending the other required devices and mandatory S02/S04 evidence.
 - S02: DEVICE_EVIDENCE_RETRY_REQUIRED; helper 0.1.3 clipboard handoff is
   blocked by clipboard overwrite. The first full run then exposed a
-  dot-prefixed fixture visibility defect. S02.5 with the paired 0.1.7/0.1.5
-  APKs is ready for the corrected non-hidden fixture retry.
+  dot-prefixed fixture visibility defect; S02.5 then exposed evidence loss on
+  exception. S02.6 / suite 0.1.8 is the final staged diagnostic retry.
 - S04: DEVICE_DEFERRED_BY_USER; durable recovery, overwrite, and provenance
   hardening are independently reviewed and CI-green.
 - S05: ANDROID_HARNESS_COMPLETE / DEVICE_EVIDENCE_PARTIAL; S05.1/S05.2a remain

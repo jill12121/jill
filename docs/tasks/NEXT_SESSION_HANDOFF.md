@@ -363,11 +363,20 @@ guard and APK v2 verification pass. The debug APK is 25,888,787 bytes with
   `D9735668E9B8B7730A3E6E0411AE5E52712FE86BA6C4611BE37C7BCEAD460169`;
   helper is 10,648,876 bytes, SHA-256
   `033F27934887681FFD1B967CE9E0BE1E759C2DDE608CB74661755ACFB49D356F`.
+- S02.5 returned `IllegalArgumentException`, but its zero-row result cannot
+  identify the failing operation because the catch path discarded all partial
+  evidence. S02.6 retains pages and observed fixture provenance and exports
+  `exceptionStage` (`QUERY_PAGES`, `FIXTURE_LOOKUP`, or `DELETE_REQUEST`).
+  Probe-suite 0.1.8 is the final current-device diagnostic; helper 0.1.5 is
+  unchanged. The newer S01 result with retry flags false does not invalidate
+  the previously completed same-device restart evidence.
+  Probe-suite 0.1.8 is v2-signed, 22,715,383 bytes, SHA-256
+  `DE71F298EDA143F3DCE1E21A44127F9E533CBABC718D9EA1C4EB23ABACC462F2`.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action
 
-1. Install probe-suite 0.1.7 and fixture-helper 0.1.5. Open the Helper once and
+1. Install probe-suite 0.1.8 and fixture-helper 0.1.5. Open the Helper once and
    wait for the token-copied Toast even if the UI is blank.
 2. Immediately open Probe Suite > S02, paste the copied token, run the
    probe, approve its bounded cleanup request, and return the S02 JSON.

@@ -49,7 +49,7 @@ class S02ProbeModelTest {
 
         assertTrue(provenance.isValid)
         assertEquals(2, provenance.schemaVersion)
-        assertEquals("S02.5", provenance.probeVersion)
+        assertEquals("S02.6", provenance.probeVersion)
         assertEquals(64, provenance.fingerprintSha256.length)
         assertFalse(provenance.toJson().contains("raw-fingerprint"))
         assertTrue(provenance.toJson().contains("run-123"))
@@ -70,6 +70,27 @@ class S02ProbeModelTest {
         assertTrue(CleanupCompletionGuard.isCurrent("run-1", "run-1"))
         assertFalse(CleanupCompletionGuard.isCurrent("run-2", "run-1"))
         assertFalse(CleanupCompletionGuard.isCurrent(null, "run-1"))
+    }
+
+    @Test
+    fun `stage failure preserves completed pagination and fixture evidence`() {
+        val partial = passingResult().copy(
+            cleanupState = CleanupAuthorizationState.NOT_RUN,
+        )
+
+        val failed = S02FailureRecorder.record(
+            partial,
+            S02ProbeStage.DELETE_REQUEST,
+            "IllegalArgumentException",
+        )
+
+        assertEquals(partial.totalVisibleRows, failed.totalVisibleRows)
+        assertEquals(partial.pages, failed.pages)
+        assertEquals(partial.cleanupFixtureEvidence, failed.cleanupFixtureEvidence)
+        assertEquals(S02ProbeStage.DELETE_REQUEST, failed.exceptionStage)
+        assertEquals("IllegalArgumentException", failed.exceptionClass)
+        assertTrue(failed.toJson().contains("\"exceptionStage\":\"DELETE_REQUEST\""))
+        assertEquals(S02SingleDeviceOutcome.FAIL, failed.outcome)
     }
 
     @Test
@@ -121,6 +142,11 @@ class S02ProbeModelTest {
         assertFalse(valid.copy(mimeType = "text/html").isValid)
         assertFalse(valid.copy(displayName = ".s02-external-other.png").isValid)
         assertFalse(valid.copy(tokenMarkerMatches = false).isValid)
+        assertTrue(
+            passingResult().copy(
+                cleanupFixtureEvidence = valid.copy(relativePath = "Pictures/Observed/"),
+            ).toJson().contains("Pictures/Observed/"),
+        )
         assertEquals(
             S02SingleDeviceOutcome.FAIL,
             passingResult().copy(

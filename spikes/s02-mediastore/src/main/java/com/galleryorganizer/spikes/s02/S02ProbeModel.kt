@@ -21,6 +21,7 @@ enum class CleanupAuthorizationState {
 }
 
 enum class S02SingleDeviceOutcome { PASS, PARTIAL, PENDING, FAIL }
+enum class S02ProbeStage { QUERY_PAGES, FIXTURE_LOOKUP, DELETE_REQUEST }
 
 data class ExternalFixtureEvidence(
     val ownerPackageName: String,
@@ -74,7 +75,7 @@ data class S02ProbeProvenance(
 
     companion object {
         const val SCHEMA_VERSION = 2
-        const val PROBE_VERSION = "S02.5"
+        const val PROBE_VERSION = "S02.6"
 
         fun fromRawFingerprint(
             runId: String,
@@ -152,6 +153,7 @@ data class S02ProbeResult(
     val cleanupFixtureEvidence: ExternalFixtureEvidence? = null,
     val provenance: S02ProbeProvenance,
     val exceptionClass: String? = null,
+    val exceptionStage: S02ProbeStage? = null,
 ) {
     val outcome: S02SingleDeviceOutcome
         get() = when {
@@ -215,8 +217,21 @@ data class S02ProbeResult(
         )
         append(""","provenance":${provenance.toJson()}""")
         append(""","exceptionClass":${exceptionClass?.let { "\"$it\"" } ?: "null"}""")
+        append(""","exceptionStage":${exceptionStage?.let { "\"$it\"" } ?: "null"}""")
         append(""","decisionS02SingleDevice":"$outcome"}""")
     }
+}
+
+object S02FailureRecorder {
+    fun record(
+        partial: S02ProbeResult,
+        stage: S02ProbeStage,
+        exceptionClass: String,
+    ): S02ProbeResult = partial.copy(
+        cleanupState = CleanupAuthorizationState.REQUEST_FAILED,
+        exceptionClass = exceptionClass,
+        exceptionStage = stage,
+    )
 }
 
 private fun String.jsonString(): String = buildString {
