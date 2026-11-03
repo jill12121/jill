@@ -416,13 +416,18 @@ guard and APK v2 verification pass. The debug APK is 25,888,787 bytes with
   Select `Start new run` once after updating because provenance changed. The
   v2-signed APK is 22,731,771 bytes, SHA-256
   `DC87765B7140E2014FC29E3F3202528BBFA96859BBAEF3083808C19FF9C728A6`.
+- S04.6 passed on the current vivo V2304A/API 36 target. All four cutoff
+  observations share run `33d9507d-494a-476c-a672-bcdd2af1809e`; restart and
+  cleanup are true throughout, recovery selected `FINAL`, `FINAL`, `TMP`, and
+  `FINAL`, and provider overwrite is `AUTO_RENAMED`. No exception or pending
+  stage remains. Evidence is archived at
+  `docs/spikes/S04/results/target.json`.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action
 
-1. Run only the current-target S04 four-cutoff flow with probe-suite 0.1.13,
-   then resolve the remaining required device
-   rows, or approve a formal ADR changing those release gates.
+1. Do not rerun current-target S01, S02, or S04. Resolve the remaining required
+   device rows, or approve a formal ADR changing those release gates.
 2. Do not begin full F05, N01, I01, or I02 until aggregate device GO.
 3. Resume full F05 only after the required GO, then proceed to N01 and its
    downstream I01/I02 path. Do not add more F05.1 preview features.

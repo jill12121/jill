@@ -1,0 +1,54 @@
+{
+  "stageObservations": {
+    "BEFORE_PROCESS_KILL": {
+      "processRestartObserved": true,
+      "parseableCandidateCount": 1,
+      "recoveryCandidate": "FINAL",
+      "cleanupSucceeded": true,
+      "runId": "33d9507d-494a-476c-a672-bcdd2af1809e",
+      "treeUriSha256": "d7fcd8225c59798f6c73325d384d6cb5bc04d945a68c86b682a4f7446c15bf79"
+    },
+    "AFTER_PROCESS_KILL": {
+      "processRestartObserved": true,
+      "parseableCandidateCount": 2,
+      "recoveryCandidate": "FINAL",
+      "cleanupSucceeded": true,
+      "runId": "33d9507d-494a-476c-a672-bcdd2af1809e",
+      "treeUriSha256": "d7fcd8225c59798f6c73325d384d6cb5bc04d945a68c86b682a4f7446c15bf79"
+    },
+    "BEFORE_RENAME": {
+      "processRestartObserved": true,
+      "parseableCandidateCount": 2,
+      "recoveryCandidate": "TMP",
+      "cleanupSucceeded": true,
+      "runId": "33d9507d-494a-476c-a672-bcdd2af1809e",
+      "treeUriSha256": "d7fcd8225c59798f6c73325d384d6cb5bc04d945a68c86b682a4f7446c15bf79"
+    },
+    "AFTER_RENAME": {
+      "processRestartObserved": true,
+      "parseableCandidateCount": 2,
+      "recoveryCandidate": "FINAL",
+      "cleanupSucceeded": true,
+      "runId": "33d9507d-494a-476c-a672-bcdd2af1809e",
+      "treeUriSha256": "d7fcd8225c59798f6c73325d384d6cb5bc04d945a68c86b682a4f7446c15bf79"
+    }
+  },
+  "providerOverwriteBehavior": "AUTO_RENAMED",
+  "exceptionClass": null,
+  "exceptionStage": null,
+  "pendingStagePresent": false,
+  "runId": "33d9507d-494a-476c-a672-bcdd2af1809e",
+  "treeUriSha256": "d7fcd8225c59798f6c73325d384d6cb5bc04d945a68c86b682a4f7446c15bf79",
+  "provenance": {
+    "schemaVersion": 1,
+    "probeVersion": "S04.6",
+    "model": "V2304A",
+    "sdkInt": 36,
+    "manufacturer": "vivo",
+    "securityPatch": "2026-08-01",
+    "appVersionName": "0.1.13",
+    "appVersionCode": 14,
+    "fingerprintSha256": "26822dd6478fbd177a15168733aac92dbab3a6389b9e2b8811d0bf4576fe7b2e"
+  },
+  "decisionS04SingleDevice": "PASS"
+}

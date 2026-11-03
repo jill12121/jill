@@ -565,6 +565,13 @@
   provenance change requires one `Start new run` before retry. The v2-signed
   APK is 22,731,771 bytes with SHA-256
   `DC87765B7140E2014FC29E3F3202528BBFA96859BBAEF3083808C19FF9C728A6`.
+- S04.6 current-target result: PASS on vivo V2304A/API 36. All four cutoff
+  observations share run `33d9507d-494a-476c-a672-bcdd2af1809e` and one tree
+  hash; restart and cleanup are true throughout. Recovery selected `FINAL`,
+  `FINAL`, `TMP`, and `FINAL`, provider overwrite is `AUTO_RENAMED`, and no
+  exception or pending stage remains. Evidence is archived at
+  `docs/spikes/S04/results/target.json`. This closes current-target S04 only;
+  the remaining required device rows still block aggregate device GO.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
@@ -580,9 +587,8 @@
 ## Next Exact Action
 
 - S02 current-target evidence is complete and requires no further retry.
-- Run S04 only on the current target with probe-suite 0.1.13, then resolve the
-  remaining required device
-  matrix, or approve a formal ADR that changes those release gates.
+- Resolve the remaining required device matrix, or approve a formal ADR that
+  changes those release gates. Current-target S04 must not be rerun.
 - Only after the required device GO may work resume on full F05, followed by
   N01 and its downstream I01/I02 path. Do not add more F05.1 preview features.
 
@@ -596,9 +602,9 @@
 - S02: CURRENT_TARGET_PASS; pagination, redacted-owner token payload
   provenance, bounded cleanup authorization, and confirmed removal all pass on
   vivo/API 36. Aggregate matrix coverage remains incomplete.
-- S04: CURRENT_TARGET_DEVICE_READY; durable recovery, overwrite, provenance,
-  guided four-cutoff execution, MIME-aligned marker naming, and staged prepare
-  diagnostics are reviewed and locally green. Device evidence remains pending.
+- S04: CURRENT_TARGET_PASS; all four cutoff observations, restart detection,
+  candidate recovery, cleanup, provenance, and closed provider overwrite
+  behavior pass on vivo/API 36. Aggregate matrix coverage remains incomplete.
 - S05: ANDROID_HARNESS_COMPLETE / DEVICE_EVIDENCE_PARTIAL; S05.1/S05.2a remain
   pure and CI-green, S05.2b is isolated from production, and S05.2c binds each
   result to one device with a reviewed guard. The `target` row is PASS; three
