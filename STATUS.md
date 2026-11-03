@@ -556,6 +556,15 @@
   overwrite evidence is sticky, so device retry requires `Start new run`. The
   v2-signed APK is 22,731,771 bytes with SHA-256
   `A9B2B6494249AF4A7F4C7D11F5AAB1B73C78CF0676ADA9CBDFB4ADBE70DB5EC9`.
+- S04.5 on vivo/API 36 confirms first-cutoff recovery and overwrite
+  `AUTO_RENAMED`, then fails the second cutoff exactly at `CREATE_TMP`.
+  `manifest.json.tmp` repeated the provider-sensitive JSON MIME/non-JSON
+  suffix mismatch. Probe-suite 0.1.13 / S04.6 now writes
+  `manifest.tmp.json` and `manifest.bak.json`; recovery retains both legacy
+  names. All 29 S04 tests pass after forced recompilation. The app-version
+  provenance change requires one `Start new run` before retry. The v2-signed
+  APK is 22,731,771 bytes with SHA-256
+  `DC87765B7140E2014FC29E3F3202528BBFA96859BBAEF3083808C19FF9C728A6`.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
@@ -571,7 +580,7 @@
 ## Next Exact Action
 
 - S02 current-target evidence is complete and requires no further retry.
-- Run S04 only on the current target with probe-suite 0.1.12, then resolve the
+- Run S04 only on the current target with probe-suite 0.1.13, then resolve the
   remaining required device
   matrix, or approve a formal ADR that changes those release gates.
 - Only after the required device GO may work resume on full F05, followed by

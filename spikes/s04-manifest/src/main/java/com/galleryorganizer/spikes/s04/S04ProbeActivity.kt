@@ -94,19 +94,35 @@ class ManifestAtomicProbe(private val context: Context) {
                 operationStage = S04PrepareStage.CREATE_OWNER_MARKER
                 create(createdRoot, S04OwnerMarkerPolicy.WRITE_NAME, marker(token))
                 operationStage = S04PrepareStage.CREATE_FINAL
-                val final = create(createdRoot, FINAL_NAME, """{"generation":1}""")
+                val final = create(
+                    createdRoot,
+                    S04ManifestNamePolicy.FINAL_NAME,
+                    """{"generation":1}""",
+                )
                 if (stage != AtomicInterruption.BEFORE_PROCESS_KILL) {
                     operationStage = S04PrepareStage.CREATE_TMP
-                    val tmp = create(createdRoot, TMP_NAME, """{"generation":2}""")
+                    val tmp = create(
+                        createdRoot,
+                        S04ManifestNamePolicy.TMP_WRITE_NAME,
+                        """{"generation":2}""",
+                    )
                     if (stage != AtomicInterruption.AFTER_PROCESS_KILL) {
                         operationStage = S04PrepareStage.RENAME_FINAL_TO_BACKUP
                         requireNotNull(
-                            DocumentsContract.renameDocument(resolver, final, BAK_NAME),
+                            DocumentsContract.renameDocument(
+                                resolver,
+                                final,
+                                S04ManifestNamePolicy.BAK_WRITE_NAME,
+                            ),
                         )
                         if (stage == AtomicInterruption.AFTER_RENAME) {
                             operationStage = S04PrepareStage.RENAME_TMP_TO_FINAL
                             requireNotNull(
-                                DocumentsContract.renameDocument(resolver, tmp, FINAL_NAME),
+                                DocumentsContract.renameDocument(
+                                    resolver,
+                                    tmp,
+                                    S04ManifestNamePolicy.FINAL_NAME,
+                                ),
                             )
                         }
                     }
@@ -168,9 +184,21 @@ class ManifestAtomicProbe(private val context: Context) {
         }
 
         val parseable = linkedSetOf<RecoveryCandidate>()
-        candidate(root, FINAL_NAME, RecoveryCandidate.FINAL)?.let(parseable::add)
-        candidate(root, TMP_NAME, RecoveryCandidate.TMP)?.let(parseable::add)
-        candidate(root, BAK_NAME, RecoveryCandidate.BAK)?.let(parseable::add)
+        candidate(
+            root,
+            S04ManifestNamePolicy.finalReadableNames,
+            RecoveryCandidate.FINAL,
+        )?.let(parseable::add)
+        candidate(
+            root,
+            S04ManifestNamePolicy.tmpReadableNames,
+            RecoveryCandidate.TMP,
+        )?.let(parseable::add)
+        candidate(
+            root,
+            S04ManifestNamePolicy.bakReadableNames,
+            RecoveryCandidate.BAK,
+        )?.let(parseable::add)
         val overwrite = overwriteProbe(root)
         val accumulatedOverwrite = OverwriteEvidencePolicy.accumulate(
             preferences.getString(OVERWRITE, "NOT_RUN") ?: "NOT_RUN",
@@ -539,12 +567,15 @@ class ManifestAtomicProbe(private val context: Context) {
 
     private fun candidate(
         root: Uri,
-        name: String,
+        names: List<String>,
         type: RecoveryCandidate,
     ): RecoveryCandidate? {
-        val uri = findChild(root, name) ?: return null
-        val content = runCatching { read(uri) }.getOrElse { throw ChildQueryFailure() }
-        return if (runCatching { JSONObject(content) }.isSuccess) type else null
+        names.forEach { name ->
+            val uri = findChild(root, name) ?: return@forEach
+            val content = runCatching { read(uri) }.getOrElse { throw ChildQueryFailure() }
+            if (runCatching { JSONObject(content) }.isSuccess) return type
+        }
+        return null
     }
 
     private fun overwriteProbe(root: Uri): String {
@@ -889,9 +920,6 @@ class ManifestAtomicProbe(private val context: Context) {
 
     private companion object {
         const val ROOT_PREFIX = ".s04-probe-"
-        const val FINAL_NAME = "manifest.json"
-        const val TMP_NAME = "manifest.json.tmp"
-        const val BAK_NAME = "manifest.json.bak"
         const val PENDING_TREE = "pendingTree"
         const val PENDING_STAGE = "pendingStage"
         const val PENDING_TOKEN = "pendingToken"

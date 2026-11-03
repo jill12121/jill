@@ -408,11 +408,19 @@ guard and APK v2 verification pass. The debug APK is 25,888,787 bytes with
   overwrite evidence is sticky, select `Start new run` once before retrying.
   The v2-signed APK is 22,731,771 bytes, SHA-256
   `A9B2B6494249AF4A7F4C7D11F5AAB1B73C78CF0676ADA9CBDFB4ADBE70DB5EC9`.
+- S04.5 then proved first-cutoff recovery and overwrite `AUTO_RENAMED`, but
+  failed the second cutoff exactly at `CREATE_TMP`; `manifest.json.tmp`
+  repeated the JSON MIME/non-JSON suffix defect. Probe-suite 0.1.13 / S04.6
+  writes `manifest.tmp.json` and `manifest.bak.json` while retaining both
+  legacy names for recovery. All 29 S04 tests pass after forced recompilation.
+  Select `Start new run` once after updating because provenance changed. The
+  v2-signed APK is 22,731,771 bytes, SHA-256
+  `DC87765B7140E2014FC29E3F3202528BBFA96859BBAEF3083808C19FF9C728A6`.
 - F05/I01/I02/J1/J2/J3 and production storage execution: BLOCKED.
 
 ## Next Exact Action
 
-1. Run only the current-target S04 four-cutoff flow with probe-suite 0.1.12,
+1. Run only the current-target S04 four-cutoff flow with probe-suite 0.1.13,
    then resolve the remaining required device
    rows, or approve a formal ADR changing those release gates.
 2. Do not begin full F05, N01, I01, or I02 until aggregate device GO.

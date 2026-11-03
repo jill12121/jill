@@ -38,6 +38,17 @@ object S04OwnerMarkerPolicy {
     fun isReadableName(name: String): Boolean = name in readableNames
 }
 
+object S04ManifestNamePolicy {
+    const val FINAL_NAME = "manifest.json"
+    const val TMP_WRITE_NAME = "manifest.tmp.json"
+    const val BAK_WRITE_NAME = "manifest.bak.json"
+    private const val LEGACY_TMP_NAME = "manifest.json.tmp"
+    private const val LEGACY_BAK_NAME = "manifest.json.bak"
+    val finalReadableNames = listOf(FINAL_NAME)
+    val tmpReadableNames = listOf(TMP_WRITE_NAME, LEGACY_TMP_NAME)
+    val bakReadableNames = listOf(BAK_WRITE_NAME, LEGACY_BAK_NAME)
+}
+
 sealed interface S04GuideAction {
     data class Prepare(val stage: AtomicInterruption) : S04GuideAction
     data object ForceStopAndReopen : S04GuideAction
@@ -218,7 +229,7 @@ data class S04ProbeProvenance(
 
     companion object {
         const val SCHEMA_VERSION = 1
-        const val PROBE_VERSION = "S04.5"
+        const val PROBE_VERSION = "S04.6"
 
         fun fromRawFingerprint(
             model: String,

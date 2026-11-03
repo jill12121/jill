@@ -32,6 +32,21 @@ class S04ProbeModelTest {
     }
 
     @Test
+    fun `manifest working names end with json and legacy names remain readable`() {
+        assertEquals("manifest.json", S04ManifestNamePolicy.FINAL_NAME)
+        assertEquals("manifest.tmp.json", S04ManifestNamePolicy.TMP_WRITE_NAME)
+        assertEquals("manifest.bak.json", S04ManifestNamePolicy.BAK_WRITE_NAME)
+        assertEquals(
+            listOf("manifest.tmp.json", "manifest.json.tmp"),
+            S04ManifestNamePolicy.tmpReadableNames,
+        )
+        assertEquals(
+            listOf("manifest.bak.json", "manifest.json.bak"),
+            S04ManifestNamePolicy.bakReadableNames,
+        )
+    }
+
+    @Test
     fun `overwrite temporary name ends with json and legacy name remains owned`() {
         assertEquals(
             ".s04-overwrite.tmp.json",
