@@ -218,7 +218,7 @@ data class S04ProbeProvenance(
 
     companion object {
         const val SCHEMA_VERSION = 1
-        const val PROBE_VERSION = "S04.4"
+        const val PROBE_VERSION = "S04.5"
 
         fun fromRawFingerprint(
             model: String,
@@ -278,6 +278,7 @@ object ProviderOverwriteClassifier {
     }
 
     const val OVERWRITE_NAME = ".s04-overwrite.json"
+    const val OVERWRITE_TMP_NAME = ".s04-overwrite.tmp.json"
 
     fun isClosed(value: String): Boolean = value in CLOSED_BEHAVIORS
 
@@ -286,6 +287,21 @@ object ProviderOverwriteClassifier {
         "DUPLICATE_EXACT",
         "AUTO_RENAMED",
     )
+}
+
+enum class S04OverwriteStage {
+    CLEAN_OWNED,
+    CREATE_BASE,
+    CREATE_CANDIDATE,
+    RENAME_CANDIDATE,
+    QUERY_EXACT,
+    READ_RENAMED_NAME,
+    READ_RENAMED_GENERATION,
+}
+
+object OverwriteFailure {
+    fun describe(stage: S04OverwriteStage, exceptionClass: String): String =
+        "ERROR_${stage}_$exceptionClass"
 }
 
 object OverwriteEvidencePolicy {
@@ -307,6 +323,7 @@ object OverwriteFixtureOwnership {
         marker == MARKER ||
             (
                 displayName == ProviderOverwriteClassifier.OVERWRITE_NAME ||
+                    displayName == ProviderOverwriteClassifier.OVERWRITE_TMP_NAME ||
                     displayName == "${ProviderOverwriteClassifier.OVERWRITE_NAME}.tmp"
                 ) && generation in 1..2
 }

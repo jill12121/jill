@@ -546,6 +546,16 @@
   after forced recompilation. The v2-signed APK is 22,731,767 bytes with
   SHA-256
   `7E6E4FD0119750EC6F2E64F7642EA002E062591C7D54E3BA17E8535D98A31753`.
+- The first S04.4 restart observation on vivo/API 36 successfully recovered
+  `FINAL`, found one parseable candidate, and cleaned its sandbox. The run
+  failed only because the overwrite candidate `.s04-overwrite.json.tmp` used
+  JSON MIME with a non-JSON suffix and triggered `ERROR_IllegalStateException`.
+  Probe-suite 0.1.12 / S04.5 uses `.s04-overwrite.tmp.json`, retains legacy
+  cleanup ownership, and scopes future overwrite failures to an exact
+  operation. All 28 S04 tests pass after forced recompilation. The failed
+  overwrite evidence is sticky, so device retry requires `Start new run`. The
+  v2-signed APK is 22,731,771 bytes with SHA-256
+  `A9B2B6494249AF4A7F4C7D11F5AAB1B73C78CF0676ADA9CBDFB4ADBE70DB5EC9`.
 - F06: pure algorithm/fixture baseline committed as `71fc9ef`; Remote Verify
   `39934313216` passed. Identity invariant hardening commit `6585754` passed
   Remote Verify `40437932838`. Subgroup path and case-insensitive ID collision
@@ -561,7 +571,7 @@
 ## Next Exact Action
 
 - S02 current-target evidence is complete and requires no further retry.
-- Run S04 only on the current target with probe-suite 0.1.11, then resolve the
+- Run S04 only on the current target with probe-suite 0.1.12, then resolve the
   remaining required device
   matrix, or approve a formal ADR that changes those release gates.
 - Only after the required device GO may work resume on full F05, followed by

@@ -548,36 +548,45 @@ class ManifestAtomicProbe(private val context: Context) {
     }
 
     private fun overwriteProbe(root: Uri): String {
+        var operationStage = S04OverwriteStage.CLEAN_OWNED
         return runCatching {
             clearOwnedOverwriteFixtures(root)
+            operationStage = S04OverwriteStage.CREATE_BASE
             create(
                 root,
                 ProviderOverwriteClassifier.OVERWRITE_NAME,
                 overwriteFixture(1),
             )
+            operationStage = S04OverwriteStage.CREATE_CANDIDATE
             val candidate = create(
                 root,
-                "${ProviderOverwriteClassifier.OVERWRITE_NAME}.tmp",
+                ProviderOverwriteClassifier.OVERWRITE_TMP_NAME,
                 overwriteFixture(2),
             )
+            operationStage = S04OverwriteStage.RENAME_CANDIDATE
             val renamed = DocumentsContract.renameDocument(
                 resolver,
                 candidate,
                 ProviderOverwriteClassifier.OVERWRITE_NAME,
             )
                 ?: return@runCatching "RETURNED_NULL"
+            operationStage = S04OverwriteStage.QUERY_EXACT
             val exact = findChildren(root, ProviderOverwriteClassifier.OVERWRITE_NAME)
             if (exact.status == ChildQueryStatus.QUERY_FAILED) throw ChildQueryFailure()
             val exactGenerations = exact.matches.mapNotNull(::generation)
             if (exactGenerations.size != exact.matches.size) return@runCatching "INCONCLUSIVE"
+            operationStage = S04OverwriteStage.READ_RENAMED_NAME
+            val renamedDisplayName = displayName(renamed)
+            operationStage = S04OverwriteStage.READ_RENAMED_GENERATION
+            val renamedGeneration = generation(renamed)
             ProviderOverwriteClassifier.classify(
                 exactGenerations,
-                displayName(renamed),
-                generation(renamed),
+                renamedDisplayName,
+                renamedGeneration,
             )
         }.getOrElse {
             if (it is ChildQueryFailure) throw it
-            "ERROR_${it.javaClass.simpleName}"
+            OverwriteFailure.describe(operationStage, it.javaClass.simpleName)
         }
     }
 

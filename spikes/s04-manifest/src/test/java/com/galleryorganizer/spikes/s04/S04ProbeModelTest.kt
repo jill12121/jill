@@ -32,6 +32,39 @@ class S04ProbeModelTest {
     }
 
     @Test
+    fun `overwrite temporary name ends with json and legacy name remains owned`() {
+        assertEquals(
+            ".s04-overwrite.tmp.json",
+            ProviderOverwriteClassifier.OVERWRITE_TMP_NAME,
+        )
+        assertTrue(
+            OverwriteFixtureOwnership.isOwned(
+                ProviderOverwriteClassifier.OVERWRITE_TMP_NAME,
+                marker = null,
+                generation = 2,
+            ),
+        )
+        assertTrue(
+            OverwriteFixtureOwnership.isOwned(
+                ".s04-overwrite.json.tmp",
+                marker = null,
+                generation = 2,
+            ),
+        )
+    }
+
+    @Test
+    fun `overwrite failure includes its exact operation stage`() {
+        assertEquals(
+            "ERROR_CREATE_CANDIDATE_IllegalStateException",
+            OverwriteFailure.describe(
+                S04OverwriteStage.CREATE_CANDIDATE,
+                "IllegalStateException",
+            ),
+        )
+    }
+
+    @Test
     fun `guide starts with the first missing cutoff`() {
         val result = S04ProbeResult(
             observations = emptyMap(),
