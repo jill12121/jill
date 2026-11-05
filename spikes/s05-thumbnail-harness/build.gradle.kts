@@ -21,6 +21,14 @@ android {
     testOptions { unitTests.isIncludeAndroidResources = true }
 }
 
+tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+    val robolectricHome = layout.buildDirectory.dir("robolectric-home").get().asFile
+    doFirst {
+        robolectricHome.mkdirs()
+    }
+    systemProperty("user.home", robolectricHome.absolutePath)
+}
+
 dependencies {
     implementation(project(":spikes:s05-thumbnail"))
     testImplementation(libs.androidx.test.core)

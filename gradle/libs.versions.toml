@@ -13,6 +13,7 @@ composeBom = "2024.12.01"
 androidxTestCore = "1.6.1"
 junit4 = "4.13.2"
 robolectric = "4.14.1"
+mlkitTextRecognition = "16.0.1"
 
 [libraries]
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
@@ -30,6 +31,7 @@ room-testing = { module = "androidx.room:room-testing", version.ref = "room" }
 androidx-test-core = { module = "androidx.test:core", version.ref = "androidxTestCore" }
 junit4 = { module = "junit:junit", version.ref = "junit4" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
+mlkit-text-recognition = { module = "com.google.mlkit:text-recognition", version.ref = "mlkitTextRecognition" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version = "1.9.0" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version = "1.9.0" }
 

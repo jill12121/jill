@@ -34,7 +34,9 @@ android {
 }
 
 dependencies {
+    implementation(project(":core:contract"))
     implementation(project(":data"))
+    implementation(project(":domain"))
     implementation(project(":presentation"))
 
     implementation(platform(libs.androidx.compose.bom))

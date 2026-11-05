@@ -6,8 +6,8 @@ import com.galleryorganizer.contract.SourceReader
 import com.galleryorganizer.contract.WorkspaceGateway
 
 /**
- * Data adapters remain declarations until their corresponding storage or
- * device capability is approved. No Android or filesystem API is used here.
+ * File execution adapters remain declarations. F05.2 permits only the
+ * separate SAF root-selection adapter; these mutation ports stay unbound.
  */
 data class AdapterBindings(
     val sourceReader: SourceReader,

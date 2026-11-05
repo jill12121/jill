@@ -3,9 +3,114 @@ package com.galleryorganizer.presentation
 import com.galleryorganizer.domain.SourceDecisionValue
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class InboxUiStateTest {
+    @Test
+    fun `production inbox starts empty and storage idle`() {
+        val state = InboxUiState.production()
+
+        assertEquals(InboxLoadState.IDLE, state.loadState)
+        assertTrue(state.batches.isEmpty())
+        assertTrue(state.previewItems.isEmpty())
+        assertNull(state.selectedBatchKey)
+        assertFalse(state.hasNextPage)
+    }
+
+    @Test
+    fun `selecting a known batch resets prior page and starts loading`() {
+        val batches = listOf(InboxBatchItem("batch-a", "Batch A", 2))
+        val available = InboxReducer.reduce(
+            InboxUiState.production(),
+            InboxEvent.BatchesLoaded(batches),
+        )
+        val selected = InboxReducer.reduce(available, InboxEvent.SelectBatch("batch-a"))
+        val ignored = InboxReducer.reduce(selected, InboxEvent.SelectBatch("missing"))
+
+        assertEquals("batch-a", selected.selectedBatchKey)
+        assertEquals(InboxLoadState.LOADING, selected.loadState)
+        assertTrue(selected.previewItems.isEmpty())
+        assertEquals(selected, ignored)
+    }
+
+    @Test
+    fun `paged sources append without duplicates and preserve persisted decisions`() {
+        val selected = InboxReducer.reduce(
+            InboxReducer.reduce(
+                InboxUiState.production(),
+                InboxEvent.BatchesLoaded(listOf(InboxBatchItem("batch-a", "Batch A", 3))),
+            ),
+            InboxEvent.SelectBatch("batch-a"),
+        )
+        val first = InboxReducer.reduce(
+            selected,
+            InboxEvent.PageLoaded(
+                batchKey = "batch-a",
+                items = listOf(source("1", SourceDecisionValue.REVIEW), source("2")),
+                nextCursorFileId = "2",
+                append = false,
+            ),
+        )
+        val edited = InboxReducer.reduce(
+            first,
+            InboxEvent.SetDecision("1", SourceDecisionValue.KEEP),
+        )
+        val appended = InboxReducer.reduce(
+            edited,
+            InboxEvent.PageLoaded(
+                batchKey = "batch-a",
+                items = listOf(source("2"), source("3")),
+                nextCursorFileId = null,
+                append = true,
+            ),
+        )
+
+        assertEquals(listOf("1", "2", "3"), appended.previewItems.map { it.sourceId })
+        assertEquals(SourceDecisionValue.KEEP, appended.decisionsBySourceId["1"])
+        assertEquals(InboxLoadState.READY, appended.loadState)
+        assertFalse(appended.hasNextPage)
+    }
+
+    @Test
+    fun `paged sources retain only the most recent bounded window`() {
+        val selected = InboxReducer.reduce(
+            InboxReducer.reduce(
+                InboxUiState.production(),
+                InboxEvent.BatchesLoaded(listOf(InboxBatchItem("batch-a", "Batch A", 120))),
+            ),
+            InboxEvent.SelectBatch("batch-a"),
+        )
+        val first = InboxReducer.reduce(
+            selected,
+            InboxEvent.PageLoaded(
+                batchKey = "batch-a",
+                items = (1..72).map { source(it.toString()) },
+                nextCursorFileId = "72",
+                append = false,
+            ),
+        )
+        val decided = InboxReducer.reduce(
+            first,
+            InboxEvent.SetDecision("1", SourceDecisionValue.KEEP),
+        )
+        val appended = InboxReducer.reduce(
+            decided,
+            InboxEvent.PageLoaded(
+                batchKey = "batch-a",
+                items = (73..120).map { source(it.toString()) },
+                nextCursorFileId = null,
+                append = true,
+            ),
+        )
+
+        assertEquals(InboxReducer.MAX_LOADED_SOURCE_ITEMS, appended.previewItems.size)
+        assertEquals("25", appended.previewItems.first().sourceId)
+        assertEquals("120", appended.previewItems.last().sourceId)
+        assertFalse("1" in appended.decisionsBySourceId)
+    }
+
     @Test
     fun `initial inbox contains preview items with no source decisions`() {
         val state = InboxUiState.initial()
@@ -143,4 +248,15 @@ class InboxUiStateTest {
             ).decisionReviewItems.isEmpty(),
         )
     }
+
+    private fun source(
+        id: String,
+        decision: SourceDecisionValue? = null,
+    ) = InboxPreviewItem(
+        sourceId = id,
+        sourceKey = "source:$id",
+        label = "$id.jpg",
+        detail = "100 bytes",
+        persistedDecision = decision,
+    )
 }

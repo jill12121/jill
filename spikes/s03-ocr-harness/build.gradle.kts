@@ -1,0 +1,38 @@
+plugins {
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
+}
+
+android {
+    namespace = "com.galleryorganizer.spikes.s03.harness"
+    compileSdk = libs.versions.compileSdk.get().toInt()
+    defaultConfig {
+        applicationId = "com.galleryorganizer.spikes.s03.harness"
+        minSdk = libs.versions.minSdk.get().toInt()
+        targetSdk = libs.versions.targetSdk.get().toInt()
+        versionCode = 4
+        versionName = "0.1.3"
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = "17" }
+    testOptions { unitTests.isIncludeAndroidResources = true }
+}
+
+tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+    val robolectricHome = layout.buildDirectory.dir("robolectric-home").get().asFile
+    doFirst {
+        robolectricHome.mkdirs()
+    }
+    systemProperty("user.home", robolectricHome.absolutePath)
+}
+
+dependencies {
+    implementation(project(":spikes:s03-ocr"))
+    implementation(libs.mlkit.text.recognition)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.junit4)
+    testImplementation(libs.robolectric)
+}

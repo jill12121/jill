@@ -1,6 +1,7 @@
 package com.galleryorganizer.presentation
 
 import com.galleryorganizer.domain.ImportStrategy
+import com.galleryorganizer.domain.ScanCoverage
 
 enum class SetupDestination {
     ONBOARDING,
@@ -20,9 +21,13 @@ enum class SetupDestination {
 }
 enum class SetupMode { NEW, ADOPT }
 enum class RootSelection { NONE, NEW_REQUESTED, EXISTING_REQUESTED }
-enum class RootCapability { DEVICE_GATE_PENDING }
-enum class RootAdoptionState { NOT_REQUESTED, NOT_APPLICABLE, DEVICE_GATE_PENDING }
+enum class RootCapability { UNSELECTED, SELECTING, READY, FAILED }
+enum class RootAdoptionState {
+    NOT_REQUESTED, NOT_APPLICABLE, SELECTING, ACCESS_GRANTED, VALIDATING, VERIFIED, FAILED,
+}
 enum class NotificationPermissionState { NOT_REQUESTED }
+enum class MediaAccessState { NOT_REQUESTED, REQUESTING, FULL, PARTIAL, DENIED }
+enum class SourceScanUiState { IDLE, SCANNING, READY, FAILED }
 enum class NotificationPreference(val label: String) {
     OFF("Off"),
     OPERATION_STATUS("Operation status"),
@@ -40,8 +45,17 @@ data class ScanScopeOption(
     val detail: String,
 )
 
+data class DiscoveredBatchOption(
+    val stableKey: String,
+    val label: String,
+    val imageCount: Int,
+    val rootLooseImages: Boolean,
+)
+
 sealed interface SetupNotice {
-    data object DeviceGateDeferred : SetupNotice
+    data object SelectionCancelled : SetupNotice
+    data object RootRejected : SetupNotice
+    data object RootRequired : SetupNotice
 }
 
 data class SetupUiState(
@@ -55,12 +69,23 @@ data class SetupUiState(
     val importStrategy: ImportStrategy,
     val notificationPreference: NotificationPreference,
     val notificationPermission: NotificationPermissionState,
+    val mediaAccess: MediaAccessState,
+    val sourceScanState: SourceScanUiState,
+    val discoveredBatches: List<DiscoveredBatchOption>,
+    val selectedBatchKeys: Set<String>,
     val rootSelection: RootSelection,
     val rootCapability: RootCapability,
     val rootAdoptionState: RootAdoptionState,
+    val selectedRootLabel: String?,
+    val selectedRootRelativePath: String?,
+    val adoptionAlbumCount: Int?,
+    val adoptionImportingCount: Int?,
     val notice: SetupNotice?,
 ) {
-    val canFinish: Boolean = false
+    val canFinish: Boolean =
+        rootCapability == RootCapability.READY &&
+            selectedScopeIds.isNotEmpty() &&
+            (mode == SetupMode.NEW || rootAdoptionState == RootAdoptionState.VERIFIED)
 
     companion object {
         fun initial(): SetupUiState = SetupUiState(
@@ -83,9 +108,17 @@ data class SetupUiState(
             importStrategy = ImportStrategy.COPY_KEEP_SOURCE,
             notificationPreference = NotificationPreference.OFF,
             notificationPermission = NotificationPermissionState.NOT_REQUESTED,
+            mediaAccess = MediaAccessState.NOT_REQUESTED,
+            sourceScanState = SourceScanUiState.IDLE,
+            discoveredBatches = emptyList(),
+            selectedBatchKeys = emptySet(),
             rootSelection = RootSelection.NONE,
-            rootCapability = RootCapability.DEVICE_GATE_PENDING,
+            rootCapability = RootCapability.UNSELECTED,
             rootAdoptionState = RootAdoptionState.NOT_REQUESTED,
+            selectedRootLabel = null,
+            selectedRootRelativePath = null,
+            adoptionAlbumCount = null,
+            adoptionImportingCount = null,
             notice = null,
         )
     }
@@ -99,7 +132,25 @@ sealed interface SetupEvent {
     data class SetNotificationPreference(val preference: NotificationPreference) : SetupEvent
     data object ChooseNewRoot : SetupEvent
     data object ChooseExistingRoot : SetupEvent
-    data object ProbeRoot : SetupEvent
+    data class RootSelectionAccepted(
+        val displayName: String,
+        val mode: SetupMode,
+        val relativePath: String? = null,
+    ) : SetupEvent
+    data object RootSelectionCancelled : SetupEvent
+    data object RootSelectionFailed : SetupEvent
+    data object AdoptionValidationStarted : SetupEvent
+    data class AdoptionValidationSucceeded(
+        val albumCount: Int,
+        val importingCount: Int,
+    ) : SetupEvent
+    data object AdoptionValidationFailed : SetupEvent
+    data object RequestMediaAccess : SetupEvent
+    data class MediaAccessResolved(val coverage: ScanCoverage) : SetupEvent
+    data object SourceScanStarted : SetupEvent
+    data class SourceScanSucceeded(val batches: List<DiscoveredBatchOption>) : SetupEvent
+    data object SourceScanFailed : SetupEvent
+    data class ToggleDiscoveredBatch(val stableKey: String) : SetupEvent
     data object OpenSetupReview : SetupEvent
     data object Finish : SetupEvent
     data object OpenSetup : SetupEvent
@@ -162,6 +213,46 @@ object SetupReducer {
             notificationPreference = event.preference,
             notice = null,
         )
+        SetupEvent.RequestMediaAccess -> state.copy(
+            mediaAccess = MediaAccessState.REQUESTING,
+            sourceScanState = SourceScanUiState.IDLE,
+            discoveredBatches = emptyList(),
+            selectedBatchKeys = emptySet(),
+        )
+        is SetupEvent.MediaAccessResolved -> state.copy(
+            mediaAccess = when (event.coverage) {
+                ScanCoverage.FULL -> MediaAccessState.FULL
+                ScanCoverage.PARTIAL_USER_SELECTED -> MediaAccessState.PARTIAL
+                ScanCoverage.UNKNOWN -> MediaAccessState.DENIED
+            },
+            sourceScanState = SourceScanUiState.IDLE,
+            discoveredBatches = emptyList(),
+            selectedBatchKeys = emptySet(),
+        )
+        SetupEvent.SourceScanStarted ->
+            if (state.mediaAccess == MediaAccessState.FULL ||
+                state.mediaAccess == MediaAccessState.PARTIAL
+            ) {
+                state.copy(sourceScanState = SourceScanUiState.SCANNING)
+            } else state
+        is SetupEvent.SourceScanSucceeded ->
+            if (state.sourceScanState == SourceScanUiState.SCANNING) {
+                state.copy(
+                    sourceScanState = SourceScanUiState.READY,
+                    discoveredBatches = event.batches,
+                    selectedBatchKeys = emptySet(),
+                )
+            } else state
+        SetupEvent.SourceScanFailed ->
+            if (state.sourceScanState == SourceScanUiState.SCANNING) {
+                state.copy(sourceScanState = SourceScanUiState.FAILED)
+            } else state
+        is SetupEvent.ToggleDiscoveredBatch ->
+            if (state.sourceScanState == SourceScanUiState.READY &&
+                state.discoveredBatches.any { it.stableKey == event.stableKey }
+            ) {
+                state.copy(selectedBatchKeys = state.selectedBatchKeys.toggle(event.stableKey))
+            } else state
         SetupEvent.ChooseNewRoot -> state.blockedRootAction(
             mode = SetupMode.NEW,
             selection = RootSelection.NEW_REQUESTED,
@@ -170,19 +261,90 @@ object SetupReducer {
         SetupEvent.ChooseExistingRoot -> state.blockedRootAction(
             mode = SetupMode.ADOPT,
             selection = RootSelection.EXISTING_REQUESTED,
-            adoptionState = RootAdoptionState.DEVICE_GATE_PENDING,
+            adoptionState = RootAdoptionState.SELECTING,
         )
-        SetupEvent.ProbeRoot -> state.copy(notice = SetupNotice.DeviceGateDeferred)
+        is SetupEvent.RootSelectionAccepted -> state.copy(
+            mode = event.mode,
+            rootSelection = if (event.mode == SetupMode.ADOPT) {
+                RootSelection.EXISTING_REQUESTED
+            } else {
+                RootSelection.NEW_REQUESTED
+            },
+            rootCapability = RootCapability.READY,
+            rootAdoptionState = if (event.mode == SetupMode.ADOPT) {
+                RootAdoptionState.ACCESS_GRANTED
+            } else {
+                RootAdoptionState.NOT_APPLICABLE
+            },
+            selectedRootLabel = event.displayName,
+            selectedRootRelativePath = event.relativePath,
+            sourceScanState = SourceScanUiState.IDLE,
+            discoveredBatches = emptyList(),
+            selectedBatchKeys = emptySet(),
+            adoptionAlbumCount = null,
+            adoptionImportingCount = null,
+            notice = null,
+        )
+        SetupEvent.RootSelectionCancelled -> state.copy(
+            rootSelection = RootSelection.NONE,
+            rootCapability = RootCapability.UNSELECTED,
+            rootAdoptionState = RootAdoptionState.NOT_REQUESTED,
+            selectedRootLabel = null,
+            selectedRootRelativePath = null,
+            adoptionAlbumCount = null,
+            adoptionImportingCount = null,
+            notice = SetupNotice.SelectionCancelled,
+        )
+        SetupEvent.RootSelectionFailed -> state.copy(
+            rootCapability = RootCapability.FAILED,
+            rootAdoptionState = if (state.mode == SetupMode.ADOPT) {
+                RootAdoptionState.FAILED
+            } else {
+                RootAdoptionState.NOT_APPLICABLE
+            },
+            selectedRootLabel = null,
+            selectedRootRelativePath = null,
+            adoptionAlbumCount = null,
+            adoptionImportingCount = null,
+            notice = SetupNotice.RootRejected,
+        )
+        SetupEvent.AdoptionValidationStarted ->
+            if (state.mode == SetupMode.ADOPT && state.rootCapability == RootCapability.READY) {
+                state.copy(rootAdoptionState = RootAdoptionState.VALIDATING, notice = null)
+            } else {
+                state
+            }
+        is SetupEvent.AdoptionValidationSucceeded ->
+            if (state.rootAdoptionState == RootAdoptionState.VALIDATING) {
+                state.copy(
+                    rootAdoptionState = RootAdoptionState.VERIFIED,
+                    adoptionAlbumCount = event.albumCount,
+                    adoptionImportingCount = event.importingCount,
+                    notice = null,
+                )
+            } else {
+                state
+            }
+        SetupEvent.AdoptionValidationFailed ->
+            if (state.rootAdoptionState == RootAdoptionState.VALIDATING) {
+                state.copy(
+                    rootAdoptionState = RootAdoptionState.FAILED,
+                    adoptionAlbumCount = null,
+                    adoptionImportingCount = null,
+                    notice = SetupNotice.RootRejected,
+                )
+            } else {
+                state
+            }
         SetupEvent.OpenSetupReview -> state.copy(
             destination = SetupDestination.SETUP_REVIEW,
             workspaceEntered = false,
-            notice = SetupNotice.DeviceGateDeferred,
         )
-        SetupEvent.Finish -> state.copy(
-            destination = SetupDestination.LIBRARY,
-            workspaceEntered = true,
-            notice = SetupNotice.DeviceGateDeferred,
-        )
+        SetupEvent.Finish -> if (state.canFinish) {
+            state.copy(destination = SetupDestination.LIBRARY, workspaceEntered = true, notice = null)
+        } else {
+            state.copy(notice = SetupNotice.RootRequired)
+        }
         SetupEvent.OpenSetup -> state.copy(
             destination = SetupDestination.ONBOARDING,
             workspaceEntered = false,
@@ -239,9 +401,16 @@ object SetupReducer {
         destination = SetupDestination.ARCHIVE_LOCATION,
         mode = mode,
         rootSelection = selection,
-        rootCapability = RootCapability.DEVICE_GATE_PENDING,
+        rootCapability = RootCapability.SELECTING,
         rootAdoptionState = adoptionState,
-        notice = SetupNotice.DeviceGateDeferred,
+        selectedRootLabel = null,
+        selectedRootRelativePath = null,
+        sourceScanState = SourceScanUiState.IDLE,
+        discoveredBatches = emptyList(),
+        selectedBatchKeys = emptySet(),
+        adoptionAlbumCount = null,
+        adoptionImportingCount = null,
+        notice = null,
     )
 
     private fun Set<String>.toggle(value: String): Set<String> =

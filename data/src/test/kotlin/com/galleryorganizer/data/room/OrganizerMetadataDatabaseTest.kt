@@ -4,6 +4,11 @@ import android.content.Context
 import android.database.sqlite.SQLiteConstraintException
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.galleryorganizer.contract.FileFingerprint
+import com.galleryorganizer.contract.RelativePath
+import com.galleryorganizer.contract.SourceFileRef
+import com.galleryorganizer.domain.*
+import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -12,6 +17,7 @@ import org.robolectric.RobolectricTestRunner
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 @RunWith(RobolectricTestRunner::class)
 class OrganizerMetadataDatabaseTest {
@@ -189,6 +195,91 @@ class OrganizerMetadataDatabaseTest {
         assertEquals("ARCHIVED", archived?.state)
         assertNull(archived?.activeKey)
         dao.insertEditingDraft(draft("draft-4", "scope-2"))
+    }
+
+    @Test
+    fun `draft revision atomically replaces actions and stales prior plan`() {
+        dao.createSelectionDraft(
+            draft("draft-selection", "BATCH:batch-1"),
+            listOf(DraftActionEntity("draft-selection", "file-1", "KEEP", 0, false)),
+        )
+        dao.insertPlan(
+            plan().copy(
+                planId = "selection-plan",
+                draftId = "draft-selection",
+                draftRevision = 1,
+            ),
+        )
+
+        assertEquals(
+            true,
+            dao.replaceSelectionDraft(
+                draft("draft-selection", "BATCH:batch-1").copy(revision = 2),
+                expectedRevision = 1,
+                actions = listOf(
+                    DraftActionEntity("draft-selection", "file-2", "REVIEW", null, null),
+                ),
+            ),
+        )
+        assertEquals(listOf("file-2"), dao.findDraftActions("draft-selection").map { it.fileId })
+        assertEquals("STALE", dao.findPlan("selection-plan")?.state)
+        assertEquals(
+            false,
+            dao.replaceSelectionDraft(
+                draft("draft-selection", "BATCH:batch-1").copy(revision = 3),
+                expectedRevision = 1,
+                actions = emptyList(),
+            ),
+        )
+        assertEquals(2, dao.findDraft("draft-selection")?.revision)
+    }
+
+    @Test
+    fun `selection repository freezes created plan once per draft revision`() {
+        runBlocking {
+            val repository = RoomSelectionDraftRepository(dao)
+            val draft = SelectionDraft(
+                "draft-freeze", "directory:set", 1,
+                listOf(DraftSelectionAction("file-1", SourceDecisionValue.KEEP)),
+            )
+            assertEquals(true, repository.create(draft))
+            val plan = PlanBuilder.build(
+            "plan-freeze", PlanType.ORG, PlanSnapshot(7, 1), 10,
+            OrgPayload(
+                "album", RelativePath("Albums/album"),
+                listOf(
+                    PlannedImport(
+                        SourceLocator(
+                            SourceFileRef("file-1"),
+                            FileFingerprint(100, 200, "image/jpeg"),
+                        ),
+                        RelativePath("file-1.jpg"),
+                        ImportStrategy.COPY_KEEP_SOURCE,
+                    ),
+                ),
+            ),
+            listOf(
+                PlanStepType.CREATE_DIR to "album",
+                PlanStepType.WRITE_NOMEDIA to "album",
+                PlanStepType.WRITE_MANIFEST to "album",
+                PlanStepType.COPY_PART to "file-1",
+                PlanStepType.PROMOTE_PART to "file-1",
+                PlanStepType.COMMIT_MANIFEST to "album",
+            ),
+            )
+            val frozen = FrozenSelectionPlan(
+                "draft-freeze",
+                plan,
+                SelectionSnapshot(7, 1, listOf(SelectionCandidate("source-key", "image.jpg"))),
+            )
+
+            assertEquals(true, repository.savePlan(frozen))
+            assertEquals(false, repository.savePlan(frozen.copy(plan = plan.copy(planId = "other"))))
+            val stored = dao.findPlan("plan-freeze")
+            assertEquals("CREATED", stored?.state)
+            assertTrue(stored?.scanSnapshot?.contains("\"sourceKey\":\"source-key\"") == true)
+            assertTrue(stored?.payloadJson?.contains("\"sourceRef\":\"file-1\"") == true)
+        }
     }
 
     @Test

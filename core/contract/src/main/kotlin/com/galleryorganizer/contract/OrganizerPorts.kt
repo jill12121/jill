@@ -60,6 +60,60 @@ data class SourceBatch(
     val nextCursor: ScanCursor?,
 )
 
+data class SourceMediaMetadata(
+    val mediaId: Long,
+    val ref: SourceFileRef,
+    val relativePath: String,
+    val displayName: String,
+    val sizeBytes: Long,
+    val modifiedAtEpochMillis: Long,
+    val mimeType: String?,
+)
+
+data class SourceDiscoveryPage(
+    val media: List<SourceMediaMetadata>,
+    val nextAfterId: Long?,
+)
+
+interface SourceDiscoveryGateway {
+    suspend fun discoverPage(
+        rootRelativePath: String,
+        afterId: Long?,
+        limit: Int,
+    ): FsResult<SourceDiscoveryPage>
+}
+
+data class ThumbnailRequest(
+    val ref: SourceFileRef,
+    val edgePx: Int = 256,
+) {
+    init {
+        require(edgePx in 1..512)
+    }
+}
+
+enum class ThumbnailFailure {
+    INVALID_REFERENCE,
+    ACCESS_DENIED,
+    NOT_FOUND,
+    PROVIDER_FAILURE,
+}
+
+sealed interface ThumbnailResult<out T> {
+    data class Loaded<T>(
+        val value: T,
+        val fromMemoryCache: Boolean,
+    ) : ThumbnailResult<T>
+
+    data class Unavailable(
+        val failure: ThumbnailFailure,
+    ) : ThumbnailResult<Nothing>
+}
+
+interface ThumbnailSource<T> {
+    suspend fun load(request: ThumbnailRequest): ThumbnailResult<T>
+}
+
 data class FileFingerprint(
     val sizeBytes: Long,
     val modifiedAtEpochMillis: Long,
@@ -82,6 +136,38 @@ data class WorkspaceCapabilities(
     val supportsPartRename: Boolean,
     val supportsReadBack: Boolean,
 )
+
+enum class WorkspaceRootMode { NEW, ADOPT_EXISTING }
+
+data class WorkspaceRootSelection(
+    val uri: String,
+    val displayName: String,
+    val relativePath: String?,
+    val mode: WorkspaceRootMode,
+)
+
+data class WorkspaceAdoptionSnapshot(
+    val rootMarkerJson: String?,
+    val albums: List<WorkspaceAlbumEvidence>,
+    val albumsDirectoryPresent: Boolean,
+    val hasWorkspaceConflict: Boolean,
+    val truncated: Boolean,
+)
+
+data class WorkspaceAlbumEvidence(
+    val directoryName: String,
+    val manifestJson: String?,
+)
+
+interface WorkspaceRootGateway {
+    suspend fun persistSelection(
+        uri: String,
+        mode: WorkspaceRootMode,
+    ): FsResult<WorkspaceRootSelection>
+
+    suspend fun loadSelection(): FsResult<WorkspaceRootSelection?>
+    suspend fun inspectSelection(): FsResult<WorkspaceAdoptionSnapshot>
+}
 
 data class PartInfo(
     val path: RelativePath,
@@ -108,8 +194,8 @@ data class RecoveryManifest(
 )
 
 /**
- * Source access is read-only. Android, SAF, and MediaStore adapters stay out
- * of the codebase until their device gates are approved.
+ * Byte-level source access remains unbound. N01 metadata discovery uses the
+ * narrower SourceDiscoveryGateway instead.
  */
 interface SourceReader {
     suspend fun stat(ref: SourceFileRef): FsResult<FileFingerprint>

@@ -1,0 +1,13 @@
+{
+  "version": "real-font-paired-v2",
+  "pairCount": 50,
+  "sampleCount": 100,
+  "width": 480,
+  "height": 128,
+  "fontName": "Noto Sans Regular",
+  "fontLicense": "SIL Open Font License 1.1",
+  "fontSource": "https://raw.githubusercontent.com/google/fonts/2fe1e8c6b137fb13041a7cfca6fdcd8a910ea4dc/ofl/notosans/NotoSans%5Bwdth,wght%5D.ttf",
+  "fontSha256": "bfb7bb691513f12e734dc346c03a03f784912432d7e3fa8e56efcf906fe86b3d",
+  "corpusBytes": 420093,
+  "corpusSha256": "80243d0a8efbe735be2ac244d2f55b25a9f3046a0a3443c8396c734ab78f8a16"
+}

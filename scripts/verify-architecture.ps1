@@ -1,7 +1,7 @@
 param(
     [string]$ProjectRoot = (Split-Path -Parent $PSScriptRoot),
     [ValidateSet("F02", "PostSpike")]
-    [string]$IoPolicyStage = "F02"
+    [string]$IoPolicyStage = "PostSpike"
 )
 
 $ErrorActionPreference = "Stop"
@@ -36,6 +36,8 @@ foreach ($module in @(
     ":presentation",
     ":spikes:s02-fixture-contract",
     ":spikes:s02-fixture-helper",
+    ":spikes:s03-ocr",
+    ":spikes:s03-ocr-harness",
     ":spikes:s05-thumbnail",
     ":spikes:s05-thumbnail-harness"
 )) {
@@ -48,15 +50,50 @@ $appBuild = Get-ProjectFileContent "app/build.gradle.kts"
 if ($appBuild -match 'project\(":spikes:') {
     throw "Production app must not depend on spike modules"
 }
+$appBindings = Get-ProjectFileContent (
+    "app/src/main/java/com/galleryorganizer/app/di/AppBindingsModule.kt"
+)
+if ($appBindings -match '\bManualOcrRecognizer\b') {
+    throw "B04.5 production OCR recognizer must remain unbound"
+}
 foreach ($buildFile in @(
+    "app/build.gradle.kts",
     "core/contract/build.gradle.kts",
     "domain/build.gradle.kts",
     "data/build.gradle.kts",
     "presentation/build.gradle.kts"
 )) {
-    if ((Get-ProjectFileContent $buildFile) -match 'project\(":spikes:') {
+    $buildContent = Get-ProjectFileContent $buildFile
+    if ($buildContent -match 'project\(":spikes:') {
         throw "Production modules must not depend on spike modules"
     }
+}
+$dataBuild = Get-ProjectFileContent "data/build.gradle.kts"
+if ($dataBuild -notmatch 'implementation\(libs\.mlkit\.text\.recognition\)') {
+    throw "B04.5 data adapter must use the reviewed bundled OCR dependency"
+}
+foreach ($buildFile in @(
+    "app/build.gradle.kts",
+    "core/contract/build.gradle.kts",
+    "domain/build.gradle.kts",
+    "presentation/build.gradle.kts"
+)) {
+    $buildContent = Get-ProjectFileContent $buildFile
+    if ($buildContent -match 'mlkit\.text\.recognition|com\.google\.mlkit:text-recognition') {
+        throw "B04.5 OCR dependency is allowed only in the data adapter"
+    }
+}
+$ocrAdapter = Get-ProjectFileContent (
+    "data/src/main/kotlin/com/galleryorganizer/data/ocr/AndroidManualOcrRecognizer.kt"
+)
+if ($ocrAdapter -notmatch 'val enabled:\s*Boolean\s*=\s*false') {
+    throw "B04.5 OCR adapter must remain disabled by default"
+}
+$ocrUiState = Get-ProjectFileContent (
+    "presentation/src/main/kotlin/com/galleryorganizer/presentation/ManualOcrUiState.kt"
+)
+if ($ocrUiState -notmatch 'availability\s*=\s*ManualOcrAvailability\.DISABLED_PENDING_NO_GMS_EVIDENCE') {
+    throw "B04.5 production OCR presentation must remain disabled"
 }
 $probeSuiteBuild = Get-ProjectFileContent "spikes/probe-suite/build.gradle.kts"
 if ($probeSuiteBuild -match 'project\(":spikes:s02-fixture-helper"\)') {
@@ -116,6 +153,39 @@ if (
     $s05Build -match 'project\(":'
 ) {
     throw "S05.1 contract module must remain dependency-free Kotlin/JVM"
+}
+$s03Build = Get-ProjectFileContent "spikes/s03-ocr/build.gradle.kts"
+if (
+    $s03Build -notmatch [regex]::Escape("alias(libs.plugins.kotlin.jvm)") -or
+    $s03Build -match 'alias\(libs\.plugins\.android\.' -or
+    $s03Build -match 'project\(":'
+) {
+    throw "S03.1 contract module must remain dependency-free Kotlin/JVM"
+}
+$s03HarnessBuild = Get-ProjectFileContent "spikes/s03-ocr-harness/build.gradle.kts"
+if (
+    $s03HarnessBuild -notmatch [regex]::Escape("alias(libs.plugins.android.application)") -or
+    $s03HarnessBuild -notmatch 'applicationId\s*=\s*"com\.galleryorganizer\.spikes\.s03\.harness"' -or
+    $s03HarnessBuild -notmatch [regex]::Escape('project(":spikes:s03-ocr")') -or
+    $s03HarnessBuild -match 'project\(":(?!spikes:s03-ocr")' -or
+    $s03HarnessBuild -notmatch [regex]::Escape("implementation(libs.mlkit.text.recognition)") -or
+    $s03HarnessBuild -match 'play-services'
+) {
+    throw "S03 harness must remain isolated and use only the bundled OCR model"
+}
+$s03HarnessManifest = Get-ProjectFileContent (
+    "spikes/s03-ocr-harness/src/main/AndroidManifest.xml"
+)
+$s03PermissionRemovals = [regex]::Matches(
+    $s03HarnessManifest,
+    '<uses-permission[^>]*>'
+)
+if (
+    $s03HarnessManifest -match 'sharedUserId' -or
+    $s03PermissionRemovals.Count -ne 3 -or
+    @($s03PermissionRemovals | Where-Object { $_.Value -notmatch 'tools:node="remove"' }).Count -ne 0
+) {
+    throw "S03 harness must not request permissions or share an Android UID"
 }
 $s05HarnessBuild = Get-ProjectFileContent "spikes/s05-thumbnail-harness/build.gradle.kts"
 if (
@@ -187,11 +257,12 @@ $sourceFiles = foreach ($sourceRoot in $sourceRoots) {
     }
 }
 
-$ioPattern = '(?m)^\s*import\s+(java\.io|java\.nio\.file|android\.provider\.MediaStore|android\.content\.ContentResolver|androidx\.documentfile)|\bjava\.(io|nio\.file)\.|\b(?:android\.provider\.)?MediaStore\.|\b(?:android\.content\.)?ContentResolver\.|\b(?:androidx\.documentfile\.)?DocumentFile\.|\bDocumentsContract\.'
+$ioPattern = '(?m)^\s*import\s+(java\.io|java\.nio\.file|android\.provider\.(?-i:MediaStore)|android\.content\.ContentResolver|androidx\.documentfile)|\bjava\.(io|nio\.file)\.|\b(?:android\.provider\.)?(?-i:MediaStore)\.|\b(?:android\.content\.)?ContentResolver\.|\b(?:androidx\.documentfile\.)?DocumentFile\.|\bDocumentsContract\.'
 $ioAllowedRoots = @{
     F02 = @()
     PostSpike = @(
         "data/src/main/kotlin/com/galleryorganizer/data/mediastore/",
+        "data/src/main/kotlin/com/galleryorganizer/data/ocr/",
         "data/src/main/kotlin/com/galleryorganizer/data/saf/",
         "data/src/main/kotlin/com/galleryorganizer/data/filesystem/",
         "spikes/"
@@ -200,6 +271,19 @@ $ioAllowedRoots = @{
 foreach ($file in $sourceFiles) {
     $content = Get-Content -Raw -LiteralPath $file.FullName
     $relativePath = $file.FullName.Substring($ProjectRoot.Length).TrimStart('\').Replace('\', '/')
+    $isOcrAdapter = $relativePath.StartsWith(
+        "data/src/main/kotlin/com/galleryorganizer/data/ocr/",
+        [System.StringComparison]::OrdinalIgnoreCase
+    )
+    if (-not $isOcrAdapter) {
+        Assert-DoesNotMatch -Content $content `
+            -Pattern '(?m)^\s*import\s+com\.google\.mlkit\.' `
+            -Message "B04.5 ML Kit APIs are allowed only in data/ocr: $relativePath"
+    } else {
+        Assert-DoesNotMatch -Content $content `
+            -Pattern '(?m)^\s*import\s+android\.util\.Log|\b(?:println|print)\s*\(' `
+            -Message "B04.5 OCR adapter must not log recognized content: $relativePath"
+    }
     Assert-DoesNotMatch -Content $content `
         -Pattern '\bFake(SourceReader|WorkspaceGateway|ManifestStore|PermanentDeleter)\b|(?m)^\s*import\s+com\.galleryorganizer\.data\.fake' `
         -Message "Production source must not depend on test fakes: $relativePath"

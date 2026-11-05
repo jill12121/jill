@@ -9,6 +9,41 @@ import kotlin.test.assertTrue
 
 class LibraryUiStateTest {
     @Test
+    fun `production library has no fabricated albums`() {
+        val state = LibraryUiState.production()
+
+        assertEquals(LibraryLoadState.EMPTY, state.loadState)
+        assertTrue(state.previewAlbums.isEmpty())
+        assertTrue(state.visibleAlbums.isEmpty())
+    }
+
+    @Test
+    fun `loaded committed album reorders in memory before metadata plan creation`() {
+        val album = PreviewAlbum(
+            "a", "Album A", "2026-01-01", false,
+            images = listOf(
+                PreviewAlbumImage("one", "one.jpg", 0),
+                PreviewAlbumImage("two", "two.jpg", 1),
+            ),
+        )
+        val loaded = LibraryReducer.reduce(
+            LibraryUiState.production(),
+            LibraryEvent.AlbumsLoaded(listOf(album)),
+        )
+        val selected = LibraryReducer.reduce(loaded, LibraryEvent.ToggleAlbumSelection("a"))
+        val moved = LibraryReducer.reduce(
+            selected,
+            LibraryEvent.MoveImage("a", "two", -1),
+        )
+        val saving = LibraryReducer.reduce(moved, LibraryEvent.CreateMetadataPlan)
+
+        assertEquals(LibraryLoadState.READY, loaded.loadState)
+        assertEquals(listOf("two", "one"), moved.editableAlbum!!.images.map { it.imageId })
+        assertTrue(moved.hasMetadataChanges)
+        assertEquals(MetadataPlanStatus.SAVING, saving.metadataPlanStatus)
+    }
+
+    @Test
     fun `initial library is a bounded memory preview with deferred storage`() {
         val state = LibraryUiState.initial()
 
@@ -289,7 +324,7 @@ class LibraryUiStateTest {
             NotificationPreference.STATUS_AND_CLEANUP,
             snapshot.setupSummary.notificationPreference,
         )
-        assertEquals(RootCapability.DEVICE_GATE_PENDING, snapshot.setupSummary.rootCapability)
+        assertEquals(RootCapability.UNSELECTED, snapshot.setupSummary.rootCapability)
     }
 
     @Test

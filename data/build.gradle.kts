@@ -47,6 +47,8 @@ tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
 dependencies {
     implementation(project(":core:contract"))
     implementation(project(":domain"))
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.mlkit.text.recognition)
     implementation(libs.room.runtime)
     ksp(libs.room.compiler)
     testImplementation(kotlin("test"))

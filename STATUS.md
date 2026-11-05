@@ -2,9 +2,9 @@
 
 ## Current Task
 
-- ID: S01/S02/S04
-- Sub-step: Offline physical-device evidence collection
-- State: READY_FOR_OFFLINE_DEVICE_VALIDATION; DEVICE_RESULTS_PENDING
+- ID: B04.5
+- Sub-step: Default-disabled Android OCR Adapter
+- State: DEFAULT_DISABLED_ADAPTER_COMPLETE_LOCALLY
 
 ## Completed
 
@@ -366,6 +366,13 @@
   `8B5C8B08161C6D793FBD08A60F16B8809B60B65054616E2755603F6DA9621E26`;
   the v2-signed helper APK is 10,639,092 bytes with SHA-256
   `BDCC143E73B90DDA7B7A95A5543C3E13CC1801AD06F10847E4181CC9938C6FD6`.
+- F05.2/F05.3 local completion: ADR-14 permits SAF tree selection and
+  persisted grants; ADR-15 permits bounded read-only adoption validation.
+  Existing roots require schema-1 `root.json`, an `Albums` directory, valid
+  directory-bound F06 manifests, no duplicate identities, and no truncated
+  evidence before Finish is enabled. IMPORTING manifests are counted but not
+  recovered. All file mutation, scanning, Room import, and Journal execution
+  remain disabled.
 - Offline device export: probe-suite `0.1.1` adds a tested, permission-free
   `Copy result JSON` action and explicit success/failure feedback to S01, S02,
   and S04. S02 and S04 are scrollable on bounded phone screens. S01 has 21,
@@ -583,19 +590,162 @@
   (`5a3abff`, check `122036651621`), and manifest factory plus progressive
   pure-domain E2E (`881f023`, check `122047757478`) all passed Remote Verify.
   F06 is COMPLETE within its pure-domain scope.
+- I07 bounded ImageViewer: Inbox preview items open a full-screen viewer backed
+  by the existing I04 `ThumbnailSource` at 512 px. Navigation is bounded to the
+  loaded Inbox snapshot, fit/2x state resets per item, and source-ID checks
+  reject stale asynchronous results. Four reducer tests, the full forced
+  Gradle gate, all policy guards, and APK v2 verification pass. The debug APK
+  is 26,101,073 bytes with SHA-256
+  `65D52DA318158776FEFD9F9BB4D176790D1BE35A3850C1ADCB6E418BFCAC2498`.
+  ADR-22 does not authorize original-byte access or external mutation.
+- S03.1 offline OCR benchmark contract: dependency-free Kotlin/JVM metrics and
+  classification now fail closed unless model delivery is bundled and no
+  Internet permission is declared. Precision/recall use integer permille
+  arithmetic; incomplete evidence stays PENDING and impossible values are
+  INVALID. Six tests, architecture guards, the full forced Gradle gate, and all
+  policy scripts pass. No OCR library or production feature is enabled.
+- S03.2a measurement core: Unicode NFKC and `Locale.ROOT` token matching uses
+  multiset intersection, while a synchronized recorder aggregates only token
+  counts, failures, and nearest-rank P95 latency. It rejects late writes,
+  bounds each sample to 4,096 tokens, uses checked integer accumulation, and
+  never retains raw OCR text. Seven new tests include 8-thread recording; all
+  13 S03 tests, the forced full Gradle gate, and policy scripts pass.
+- S03.2b isolated Android harness: a separate
+  `com.galleryorganizer.spikes.s03.harness` APK uses bundled ML Kit Latin OCR
+  `16.0.1`, generates 100 versioned deterministic PNG fixtures in `filesDir`,
+  runs them sequentially, and exports aggregate evidence only. Final
+  APK inspection reports no requested permissions after removing transitive
+  network capabilities, while the bundled OCR native pipeline is present.
+  Sixteen S03 tests, architecture negative tests, and APK v2 verification pass
+  locally. This is not physical-device evidence or production OCR enablement.
+- S03.2c evidence guard: harness `0.1.1` schema 2 adds Android release,
+  security patch, and machine-verifiable GMS Core presence without adding a
+  permission. The verifier uses a strict field whitelist, recomputes rates and
+  classifier output, rejects raw OCR/fingerprint data and duplicate devices,
+  and requires distinct GMS middle-tier and no-GMS rows. Negative guard tests
+  run in CI. An empty matrix reports `PENDING (0/2)` rather than GO.
+  The full 764-task Gradle gate and release isolation pass. Harness `0.1.1`
+  is v2-signed with SHA-256
+  `F9C91D4B68416D0709287D860034B8EB5016C73E08C18F4298D897A1E88D3E76`.
+- S03.3 middle-tier evidence: vivo V2304A/API 36 completed all 100 bundled,
+  permission-free samples with zero recognition failures and P95 54 ms, but
+  only 100/200 expected tokens matched among 201 recognized tokens. Precision
+  497 and recall 500 fail both provisional 950 budgets. The verifier now gives
+  measured FAIL precedence over missing rows and reports
+  `FAIL (1/2 rows; missing: no-gms)`. Production OCR remains disabled.
+- S03.3a aggregate diagnostics: harness `0.1.2` schema 3 records label and
+  numeric matches plus both/label-only/numeric-only/neither sample counts.
+  Global precision/recall and budgets are unchanged; no raw OCR text is
+  exported. The verifier preserves schema-2 history and prefers
+  `middle-tier-schema3.json`. All 18 S03 tests and evidence negative tests pass
+  locally. The full 764-task gate and release isolation pass; the permission-free
+  v2-signed APK has SHA-256
+  `523E66D618AE7FF9B1D123331B2B649F04DB6CB81F9D34B34D26F0D9CC2F4B64`.
+  The same-device rerun is recorded by S03.3b.
+- S03.3b diagnostic evidence: the same vivo/API 36 device reports label
+  100/100, numeric 0/100, and 100 label-only samples on the identical corpus.
+  This confirms the measured failure is isolated to the zero-padded numeric
+  token family. Schema-3 evidence SHA-256 is
+  `E86923DD8FEFF8F33BF1BEB05FC36A4918F401F7745655BDDBEE3148289A873C`.
+- S03.3c representative corpus: harness `0.1.3` schema 4 packages 50
+  plain/padded Noto Sans numeric pairs as immutable APK assets. Runtime
+  preparation verifies the 420093-byte corpus SHA-256
+  `80243D0A8EFBE735BE2AC244D2F55B25A9F3046A0A3443C8396C734AB78F8A16`.
+  Evidence adds plain/padded and four-way pair aggregates without raw text;
+  schema 2/3 remain accepted. All 18 S03 tests, architecture/evidence guards,
+  the 764-task full gate, and release isolation pass. The permission-free,
+  v2-signed APK SHA-256 is
+  `115203326C9C4A1BC9CABD31A958B534EA676B4C019A7BBE5B182F10ABFA1877`.
+- S03.3d real-font middle-tier evidence: the same vivo/API 36 device passes
+  schema 4 with precision/recall 995, P95 36 ms, and zero sample failures.
+  Plain numeric fixtures match 50/50 and padded fixtures 49/50; 49 pairs match
+  both and one is plain-only. This isolates the prior numeric collapse to the
+  5x7 corpus rather than a systematic leading-zero failure. Evidence SHA-256
+  is `B0FDA7695689167F354E661E40F566D87D95EE536906F1E3B66493EE776DDDAD`.
+  The matrix is `PENDING (1/2 rows; missing: no-gms)`.
+- ADR-23/B04.1 manual OCR boundary: the owner deferred the no-GMS row and
+  authorized independent P0b development without aggregate S03 GO. Pure
+  domain contracts now require explicit user initiation, cap sessions at 100
+  unique content keys, enforce immutable progress transitions, and generate
+  stable masked Evidence drafts from structured rule hits without any raw OCR
+  text field. Four focused tests and architecture guards pass.
+- B04.2 test orchestration: a production domain port returns only bounded
+  structured hits or failure, while the deterministic recognizer Fake remains
+  test-only. The runner preserves request order, deduplicates stable masked
+  Evidence, stops on adapter failure, and rejects cross-content results
+  without progress. Three focused tests pass. All 66 domain tests, policy
+  guards, and the full 764-task Gradle gate pass.
+- B04.3 presentation boundary: production availability remains disabled
+  pending no-GMS evidence. The pure reducer requires explicit confirmation,
+  correlates terminal results to the active session/request, exposes only
+  progress, masked Evidence count, and enum failure state, ignores stale
+  sessions, and fails closed on foreign content. ADR-24 keeps the Android
+  adapter design-only, while architecture guards reject production ML Kit OCR
+  dependencies and imports.
+- B04.4 failure containment: ordinary recognizer exceptions now become masked
+  `RECOGNIZER_FAILURE` results without invoking later subjects, while
+  `CancellationException` remains cooperative. Two new tests bring the domain
+  total to 68, and a negative architecture guard keeps the recognizer unbound
+  from app composition. ADR-25 still blocks the Android adapter, source bytes,
+  model dependency, UI, persistence, and enablement. S03/S05 Robolectric
+  tests now use module-local writable homes. All policy guards and the
+  764-task Gradle gate pass. The v2-signed debug APK is 26,150,225 bytes with
+  SHA-256
+  `FE30009C603F6C2801B7B018D106CE0D8E4308A567C5DC99D20BE77CF9A9CCFA`.
+- B04.5 default-disabled Android adapter: ADR-26 records the owner's explicit
+  release-risk decision. The internal `data/ocr` adapter bounds authorized
+  MediaStore decode to 20 MiB/40 MP input and 2048 px/4 MP output, limits
+  recognition to 10 seconds, keeps raw text inside an injected rule boundary,
+  and releases Bitmap/model resources on every exit path. Five adapter tests
+  pass per variant; all 120 data test results are green. Architecture, app,
+  release, baseline, S03, and S05 guards pass, as do the complete 764-task
+  `check lint assembleDebug` graph and actual release artifact policy.
+  Production remains disabled and unbound. The bundled model increases the
+  v2-signed debug APK to 77,679,936 bytes; SHA-256 is
+  `04906E7E8E5FA964A3A3300D7FBDDAF5E51CCBA79F70A79EE8131DD193F4C370`.
 
 ## Next Exact Action
 
-- S02 current-target evidence is complete and requires no further retry.
-- Resolve the remaining required device matrix, or approve a formal ADR that
-  changes those release gates. Current-target S04 must not be rerun.
-- Only after the required device GO may work resume on full F05, followed by
-  N01 and its downstream I01/I02 path. Do not add more F05.1 preview features.
+- Keep the B04.5 Android OCR adapter internal, default-disabled, and absent
+  from app composition. Production rules, persistence, UI wiring, background
+  execution, feature enablement, and release remain blocked.
+- Keep the missing no-GMS row release-blocking and preserve all S03 evidence.
+- Keep the OCR production build flag disabled. Do not claim bundled/no-GMS
+  success until the isolated harness and physical-device evidence exist.
+- Do not start I06d: J2/J3 and I06b remain blocked. No further P0a
+  implementation item is currently unblocked.
+- Do not rerun current-target S01, S02, S04, or S05.
+- Keep Android 11, OEM family A, and OEM family B as
+  OWNER_ACCEPTED_DEFERRED. They still block release and aggregate device GO.
+- Do not start workspace mutation, I02, or J1/J2/J3.
 
 ## Active Gates
 
 - F06: COMPLETE; golden manifest fixtures and the progressive pure-domain E2E
   are delivered. Storage executors stay outside F06 and remain gated.
+- N01: COMPLETE_LOCALLY; metadata discovery is read-only and bounded to 500
+  rows per monotonic keyset page. No permission UI or source bytes are wired.
+- I01: COMPLETE_LOCALLY / DEVICE_REGRESSION_PENDING; permission requests are
+  user-triggered, scanner aggregation is bounded and fail-closed, and Download
+  batches are selectable in memory. Android 14 partial-access interaction has
+  not yet been rerun on the target device.
+- I03: COMPLETE_LOCALLY; app-private Room v1 now persists source metadata and
+  resolves exact SourceDecision/ImportRecord state without source-byte access.
+- I05: COMPLETE_LOCALLY; Room v1 persists revision-bound Draft actions and
+  CREATED selection Plans. No executor or external write is enabled.
+- I04: COMPLETE_LOCALLY; Room v1 provides bounded `fileId` keyset pages and the
+  read-only MediaStore thumbnail adapter uses 256 px requests with a successful
+  Bitmap-only cache capped at min(heap 5%, 64 MiB).
+- I06c.1: COMPLETE_LOCALLY; production Inbox uses Room batch summaries,
+  24-item keyset pages, persisted decisions, and read-only thumbnails. The
+  presentation window and thumbnail references are bounded to 96 items.
+  Production Library contains no fake albums.
+- I06c.2: COMPLETE_LOCALLY; validated SAF manifests provide a bounded album
+  catalog and committed albums can create deterministic, app-private
+  `METADATA/CREATED` image-order plans. No plan executes or writes a manifest.
+- I07: COMPLETE_LOCALLY; a 512 px read-only viewer provides bounded navigation
+  over the loaded Inbox window and ignores stale preview results. It does not
+  read original bytes or persist another cache.
 - S01: CURRENT_TARGET_LIMITED_GO_CANDIDATE; direct-final fallback, cleanup,
   restart, and reinstall checks pass on vivo/API 36. Aggregate decision remains
   pending the other required devices and mandatory S04 evidence.
@@ -608,10 +758,12 @@
 - S05: ANDROID_HARNESS_COMPLETE / DEVICE_EVIDENCE_PARTIAL; S05.1/S05.2a remain
   pure and CI-green, S05.2b is isolated from production, and S05.2c binds each
   result to one device with a reviewed guard. The `target` row is PASS; three
-  required rows are missing, so final budgets are not frozen and I04 remains
-  blocked.
-- J1/J2/J3 and production storage execution remain BLOCKED until required
-  device decisions are recorded.
+  required rows are missing, so final budgets are not frozen and release
+  remains blocked. ADR-20 allows provisional I04 development only.
+- F05.2/F05.3, N01, I01, I03, I04, I05, I06c, and I07 are
+  DEVELOPMENT_ALLOWED by ADR-14 through ADR-22. I02, J1/J2/J3, source-byte
+  access beyond thumbnails, external file mutation, and release remain
+  BLOCKED.
 
 ## Device Matrix Ownership
 
@@ -624,7 +776,8 @@
 
 - Use Kotlin, Android Gradle Plugin, and Jetpack Compose only as the app UI
   baseline. No network-related dependency is permitted.
-- Keep application storage behavior disabled until S01/S02/S04 device GO.
+- Keep external file mutation disabled until aggregate S01/S02/S04 device GO;
+  ADR-14/ADR-15 permit only F05.2 selection/grants and F05.3 bounded reads.
 - F02 creates only contracts and dependency bindings; it does not enable
   business persistence, source cleanup, or filesystem behavior.
 - F02.1 uses Hilt/KSP for composition; bindings remain empty until F04 defines

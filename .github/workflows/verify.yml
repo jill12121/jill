@@ -30,6 +30,9 @@ jobs:
       - name: Verify S05 evidence guards
         shell: pwsh
         run: ./scripts/test-s05-evidence.ps1
+      - name: Verify S03 evidence guards
+        shell: pwsh
+        run: ./scripts/test-s03-evidence.ps1
       - name: Check, lint, and assemble debug APK
         run: ./gradlew check lint assembleDebug
       - name: Verify S01 APK signature

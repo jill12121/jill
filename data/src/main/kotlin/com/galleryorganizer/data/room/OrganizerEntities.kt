@@ -107,6 +107,22 @@ data class EvidenceEntity(
 @Entity(tableName = "batch_members", primaryKeys = ["batchId", "fileId"])
 data class BatchMemberEntity(val batchId: String, val fileId: String)
 
+data class BatchFileFactRow(
+    val batchId: String,
+    val fileId: String,
+    val relativePath: String,
+    val displayName: String,
+    val sizeBytes: Long,
+    val mtimeNormalized: Long,
+    val scanGeneration: Long,
+    val mimeType: String?,
+)
+
+data class BatchSummaryRow(
+    val batchKey: String,
+    val imageCount: Int,
+)
+
 @Entity(
     tableName = "drafts",
     primaryKeys = ["draftId"],

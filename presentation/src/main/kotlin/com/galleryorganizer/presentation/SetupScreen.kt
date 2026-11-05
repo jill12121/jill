@@ -26,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.galleryorganizer.domain.ImportStrategy
@@ -39,11 +40,25 @@ fun SetupScreen(
     state: SetupUiState,
     libraryState: LibraryUiState,
     inboxState: InboxUiState,
+    imageViewerState: ImageViewerUiState,
     onEvent: (SetupEvent) -> Unit,
     onLibraryEvent: (LibraryEvent) -> Unit,
     onInboxEvent: (InboxEvent) -> Unit,
+    onOpenImageViewer: (String) -> Unit,
+    onImageViewerEvent: (ImageViewerEvent) -> Unit,
+    inboxThumbnails: Map<String, ImageBitmap> = emptyMap(),
+    imageViewerPreview: ImageBitmap? = null,
     modifier: Modifier = Modifier,
 ) {
+    if (imageViewerState.isOpen) {
+        ImageViewerScreen(
+            state = imageViewerState,
+            preview = imageViewerPreview,
+            onEvent = onImageViewerEvent,
+            modifier = modifier,
+        )
+        return
+    }
     Surface(modifier = modifier.fillMaxSize(), color = AppBackground) {
         Column(
             modifier = Modifier
@@ -80,6 +95,8 @@ fun SetupScreen(
                         libraryState = libraryState,
                         onSetupEvent = onEvent,
                         onInboxEvent = onInboxEvent,
+                        onOpenImageViewer = onOpenImageViewer,
+                        thumbnails = inboxThumbnails,
                     )
                     SetupDestination.TRASH -> TrashContent(onEvent)
                     SetupDestination.RECOVERY -> RecoveryContent(onEvent)
@@ -192,6 +209,7 @@ private fun OnboardingContent(
                 onClick = { onEvent(SetupEvent.ToggleScope(option.id)) },
             )
         }
+        MediaDiscoverySection(state, onEvent)
         Spacer(modifier = Modifier.height(24.dp))
         Text(
             text = "Archive location",
@@ -199,7 +217,7 @@ private fun OnboardingContent(
             fontWeight = FontWeight.SemiBold,
         )
         Text(
-            text = "Configure the intended archive path. Device access remains paused.",
+            text = "Choose a folder that Gallery Organizer can access.",
             modifier = Modifier.padding(top = 4.dp, bottom = 12.dp),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -212,7 +230,7 @@ private fun OnboardingContent(
                 Text("Use existing")
             }
         }
-        GateNotice(state.rootSelection)
+        RootStatusNotice(state)
         Spacer(modifier = Modifier.height(28.dp))
         Button(
             onClick = { onEvent(SetupEvent.OpenSetupReview) },
@@ -252,9 +270,10 @@ private fun SetupReviewContent(
         StatusValueLine("Trash retention", state.trashRetention.label)
         StatusValueLine("Import strategy", state.importStrategy.label())
         StatusValueLine("Notifications", state.notificationPreference.label)
-        GateNotice(state.rootSelection)
+        RootStatusNotice(state)
         Button(
             onClick = { onEvent(SetupEvent.Finish) },
+            enabled = state.canFinish,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 20.dp),
@@ -272,7 +291,7 @@ private fun SettingsContent(
     Column(modifier = Modifier.padding(top = 24.dp)) {
         PageTitle(
             title = "Settings",
-            detail = "Changes are kept in memory while storage validation is deferred.",
+            detail = "Setup preferences and archive access stay on this device.",
         )
         SettingLine(
             "Scan scopes",
@@ -296,7 +315,7 @@ private fun SettingsContent(
         ) { onEvent(SetupEvent.OpenImportStrategy) }
         SettingLine(
             "Storage status",
-            "Checks deferred",
+            state.rootCapability.label(),
         ) { onEvent(SetupEvent.OpenStorageStatus) }
         SettingLine(
             "Trash",
@@ -330,6 +349,55 @@ private fun ScanScopesContent(
             onClick = { onEvent(SetupEvent.ToggleScope(option.id)) },
         )
     }
+    MediaDiscoverySection(state, onEvent)
+}
+
+@Composable
+private fun MediaDiscoverySection(
+    state: SetupUiState,
+    onEvent: (SetupEvent) -> Unit,
+) {
+    Spacer(modifier = Modifier.height(20.dp))
+    Text(
+        text = "Download batches",
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.SemiBold,
+    )
+    val status = when (state.sourceScanState) {
+        SourceScanUiState.SCANNING -> "Scanning..."
+        SourceScanUiState.FAILED -> "Scan failed"
+        SourceScanUiState.READY -> "${state.discoveredBatches.size} batches found"
+        SourceScanUiState.IDLE -> when (state.mediaAccess) {
+            MediaAccessState.PARTIAL -> "Selected photos only"
+            MediaAccessState.DENIED -> "Photo access denied"
+            MediaAccessState.FULL -> "Photo access granted"
+            MediaAccessState.REQUESTING -> "Waiting for permission"
+            MediaAccessState.NOT_REQUESTED -> "Photo access not requested"
+        }
+    }
+    Text(
+        text = status,
+        modifier = Modifier.padding(top = 4.dp, bottom = 10.dp),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    OutlinedButton(
+        onClick = { onEvent(SetupEvent.RequestMediaAccess) },
+        enabled = state.rootCapability == RootCapability.READY &&
+            state.selectedRootRelativePath != null &&
+            state.mediaAccess != MediaAccessState.REQUESTING &&
+            state.sourceScanState != SourceScanUiState.SCANNING,
+    ) {
+        Text(if (state.sourceScanState == SourceScanUiState.FAILED) "Try again" else "Scan downloads")
+    }
+    state.discoveredBatches.forEach { batch ->
+        ToggleRow(
+            label = batch.label,
+            detail = "${batch.imageCount} images",
+            checked = batch.stableKey in state.selectedBatchKeys,
+            onClick = { onEvent(SetupEvent.ToggleDiscoveredBatch(batch.stableKey)) },
+        )
+    }
 }
 
 @Composable
@@ -338,7 +406,7 @@ private fun ArchiveLocationContent(
     onEvent: (SetupEvent) -> Unit,
 ) = DetailPage(
     title = "Archive location",
-    detail = "Choose the intended setup mode. No folder is opened or written yet.",
+    detail = "Choose a folder and grant persistent access.",
     onBack = { onEvent(SetupEvent.BackToSettings) },
 ) {
     ChoiceRow(
@@ -355,8 +423,13 @@ private fun ArchiveLocationContent(
     )
     if (state.rootSelection == RootSelection.EXISTING_REQUESTED) {
         AdoptionChecklist(state.rootAdoptionState)
+        state.adoptionAlbumCount?.let { StatusValueLine("Albums found", it.toString()) }
+        state.adoptionImportingCount?.let {
+            StatusValueLine("Recovery needed", it.toString())
+        }
     }
-    GateNotice(state.rootSelection)
+    state.selectedRootLabel?.let { StatusValueLine("Selected folder", it) }
+    RootStatusNotice(state)
 }
 
 @Composable
@@ -410,15 +483,16 @@ private fun StorageStatusContent(
     onEvent: (SetupEvent) -> Unit,
 ) = DetailPage(
     title = "Storage status",
-    detail = "Physical-device validation was deferred. Production storage remains disabled.",
+    detail = "Review the selected archive folder and access state.",
     onBack = { onEvent(SetupEvent.BackToSettings) },
 ) {
-    SettingLine("Capability", "Pending") { onEvent(SetupEvent.ProbeRoot) }
+    StatusValueLine("Capability", state.rootCapability.label())
     SettingLine("Archive mode", state.rootSelection.label()) {
         onEvent(SetupEvent.OpenArchiveLocation)
     }
     StatusValueLine("Adoption checks", state.rootAdoptionState.label())
-    GateNotice(state.rootSelection)
+    state.selectedRootLabel?.let { StatusValueLine("Selected folder", it) }
+    RootStatusNotice(state)
 }
 
 @Composable
@@ -667,14 +741,18 @@ private fun StatusValueLine(label: String, value: String) {
 }
 
 @Composable
-private fun GateNotice(rootSelection: RootSelection) {
-    val message = when (rootSelection) {
-        RootSelection.NEW_REQUESTED ->
-            "New archive mode saved in memory. Folder access awaits device validation."
-        RootSelection.EXISTING_REQUESTED ->
-            "Existing archive mode saved in memory. Adoption checks remain paused."
-        RootSelection.NONE ->
-            "Device validation is deferred. Storage actions remain paused."
+private fun RootStatusNotice(state: SetupUiState) {
+    val message = when (state.notice) {
+        SetupNotice.SelectionCancelled -> "Folder selection was cancelled."
+        SetupNotice.RootRejected ->
+            "Archive access is unavailable or failed validation. Choose another folder."
+        SetupNotice.RootRequired -> "Select an archive folder before finishing setup."
+        null -> when (state.rootCapability) {
+            RootCapability.UNSELECTED -> "No archive folder selected."
+            RootCapability.SELECTING -> "Waiting for folder selection."
+            RootCapability.READY -> "Persistent folder access is ready."
+            RootCapability.FAILED -> "Folder access is unavailable."
+        }
     }
     Text(
         text = message,
@@ -697,13 +775,28 @@ private fun RootSelection.label(): String = when (this) {
 private fun RootAdoptionState.label(): String = when (this) {
     RootAdoptionState.NOT_REQUESTED -> "Not selected"
     RootAdoptionState.NOT_APPLICABLE -> "Not applicable"
-    RootAdoptionState.DEVICE_GATE_PENDING -> "Deferred"
+    RootAdoptionState.SELECTING -> "Selecting"
+    RootAdoptionState.ACCESS_GRANTED -> "Access granted; checks pending"
+    RootAdoptionState.VALIDATING -> "Validating"
+    RootAdoptionState.VERIFIED -> "Verified"
+    RootAdoptionState.FAILED -> "Access failed"
 }
 
 private fun RootAdoptionState.checkLabel(): String = when (this) {
-    RootAdoptionState.DEVICE_GATE_PENDING -> "Not checked"
+    RootAdoptionState.SELECTING -> "Waiting"
+    RootAdoptionState.ACCESS_GRANTED -> "Not checked"
+    RootAdoptionState.VALIDATING -> "Checking"
+    RootAdoptionState.VERIFIED -> "Verified"
+    RootAdoptionState.FAILED -> "Unavailable"
     RootAdoptionState.NOT_REQUESTED -> "Not selected"
     RootAdoptionState.NOT_APPLICABLE -> "Not applicable"
+}
+
+private fun RootCapability.label(): String = when (this) {
+    RootCapability.UNSELECTED -> "Not selected"
+    RootCapability.SELECTING -> "Selecting"
+    RootCapability.READY -> "Ready"
+    RootCapability.FAILED -> "Unavailable"
 }
 
 private fun NotificationPreference.detail(): String = when (this) {

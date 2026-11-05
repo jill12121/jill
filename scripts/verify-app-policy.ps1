@@ -24,6 +24,7 @@ foreach ($path in @(
 
 [xml]$manifest = Get-Content -Raw -LiteralPath $manifestPath
 $androidNamespace = "http://schemas.android.com/apk/res/android"
+$toolsNamespace = "http://schemas.android.com/tools"
 $namespaceManager = New-Object System.Xml.XmlNamespaceManager($manifest.NameTable)
 $namespaceManager.AddNamespace("android", $androidNamespace)
 
@@ -32,14 +33,14 @@ $forbiddenPermissions = @(
     "android.permission.MANAGE_EXTERNAL_STORAGE"
 )
 
-$permissions = @(
-    $manifest.SelectNodes("/manifest/uses-permission", $namespaceManager) |
-        ForEach-Object { $_.GetAttribute("name", $androidNamespace) }
-)
-
-$foundPermission = $permissions | Where-Object { $_ -in $forbiddenPermissions } | Select-Object -First 1
+$foundPermission = $manifest.SelectNodes("/manifest/uses-permission", $namespaceManager) |
+    Where-Object {
+        $_.GetAttribute("name", $androidNamespace) -in $forbiddenPermissions -and
+        $_.GetAttribute("node", $toolsNamespace) -ne "remove"
+    } |
+    Select-Object -First 1
 if ($foundPermission) {
-    throw "Forbidden manifest permission: $foundPermission"
+    throw "Forbidden manifest permission: $($foundPermission.GetAttribute('name', $androidNamespace))"
 }
 
 $application = $manifest.SelectSingleNode("/manifest/application")

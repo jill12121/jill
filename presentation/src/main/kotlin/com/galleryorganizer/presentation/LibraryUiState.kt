@@ -1,6 +1,7 @@
 package com.galleryorganizer.presentation
 
 import com.galleryorganizer.domain.ImportStrategy
+import com.galleryorganizer.domain.AlbumState
 import com.galleryorganizer.domain.SourceDecisionValue
 
 enum class LibraryFilter(val label: String) {
@@ -16,13 +17,21 @@ enum class LibrarySort(val label: String) {
 
 enum class LibraryLoadState {
     STORAGE_DEFERRED,
+    READY,
+    EMPTY,
 }
+
+enum class MetadataPlanStatus { IDLE, SAVING, CREATED, ERROR }
+
+data class PreviewAlbumImage(val imageId: String, val fileName: String, val originalOrder: Int)
 
 data class PreviewAlbum(
     val albumId: String,
     val title: String,
     val dateLabel: String,
     val needsReview: Boolean,
+    val state: AlbumState = AlbumState.COMMITTED,
+    val images: List<PreviewAlbumImage> = emptyList(),
 )
 
 data class LibrarySelectionSummary(
@@ -42,6 +51,7 @@ data class LibraryUiState(
     val selectedAlbumIds: Set<String>,
     val loadState: LibraryLoadState,
     val previewAlbums: List<PreviewAlbum>,
+    val metadataPlanStatus: MetadataPlanStatus,
 ) {
     val selectionSummary: LibrarySelectionSummary
         get() = LibrarySelectionSummary(
@@ -55,6 +65,16 @@ data class LibraryUiState(
 
     val selectionCount: Int
         get() = selectionSummary.selectionCount
+
+    val editableAlbum: PreviewAlbum?
+        get() = selectedPreviewAlbums.singleOrNull()
+
+    val hasMetadataChanges: Boolean
+        get() = editableAlbum?.let { album ->
+            album.images.map(PreviewAlbumImage::imageId) !=
+                album.images.sortedBy(PreviewAlbumImage::originalOrder)
+                    .map(PreviewAlbumImage::imageId)
+        } == true
 
     val visibleAlbums: List<PreviewAlbum>
         get() {
@@ -72,6 +92,16 @@ data class LibraryUiState(
         }
 
     companion object {
+        fun production(): LibraryUiState = LibraryUiState(
+            searchQuery = "",
+            filter = LibraryFilter.ALL,
+            sort = LibrarySort.NEWEST_FIRST,
+            selectedAlbumIds = emptySet(),
+            loadState = LibraryLoadState.EMPTY,
+            previewAlbums = emptyList(),
+            metadataPlanStatus = MetadataPlanStatus.IDLE,
+        )
+
         fun initial(): LibraryUiState = LibraryUiState(
             searchQuery = "",
             filter = LibraryFilter.ALL,
@@ -98,15 +128,21 @@ data class LibraryUiState(
                     needsReview = false,
                 ),
             ),
+            metadataPlanStatus = MetadataPlanStatus.IDLE,
         )
     }
 }
 
 sealed interface LibraryEvent {
+    data class AlbumsLoaded(val albums: List<PreviewAlbum>) : LibraryEvent
     data class SearchChanged(val query: String) : LibraryEvent
     data class FilterChanged(val filter: LibraryFilter) : LibraryEvent
     data class SortChanged(val sort: LibrarySort) : LibraryEvent
     data class ToggleAlbumSelection(val albumId: String) : LibraryEvent
+    data class MoveImage(val albumId: String, val imageId: String, val offset: Int) : LibraryEvent
+    data object CreateMetadataPlan : LibraryEvent
+    data object MetadataPlanCreated : LibraryEvent
+    data object MetadataPlanFailed : LibraryEvent
     data object ClearSearch : LibraryEvent
     data object ClearSelection : LibraryEvent
 }
@@ -272,6 +308,12 @@ object LibraryReducer {
     private const val MAX_SEARCH_LENGTH = 80
 
     fun reduce(state: LibraryUiState, event: LibraryEvent): LibraryUiState = when (event) {
+        is LibraryEvent.AlbumsLoaded -> state.copy(
+            previewAlbums = event.albums.distinctBy(PreviewAlbum::albumId).take(256),
+            selectedAlbumIds = emptySet(),
+            loadState = if (event.albums.isEmpty()) LibraryLoadState.EMPTY else LibraryLoadState.READY,
+            metadataPlanStatus = MetadataPlanStatus.IDLE,
+        )
         is LibraryEvent.SearchChanged ->
             state.copy(searchQuery = event.query.take(MAX_SEARCH_LENGTH))
         is LibraryEvent.FilterChanged -> state.copy(filter = event.filter)
@@ -283,10 +325,38 @@ object LibraryReducer {
                 state.copy(selectedAlbumIds = state.selectedAlbumIds.toggle(event.albumId))
             }
         }
+        is LibraryEvent.MoveImage -> state.moveImage(event)
+        LibraryEvent.CreateMetadataPlan -> if (state.hasMetadataChanges &&
+            state.editableAlbum?.state == AlbumState.COMMITTED &&
+            state.metadataPlanStatus in setOf(MetadataPlanStatus.IDLE, MetadataPlanStatus.ERROR)
+        ) {
+            state.copy(metadataPlanStatus = MetadataPlanStatus.SAVING)
+        } else {
+            state
+        }
+        LibraryEvent.MetadataPlanCreated ->
+            state.copy(metadataPlanStatus = MetadataPlanStatus.CREATED)
+        LibraryEvent.MetadataPlanFailed ->
+            state.copy(metadataPlanStatus = MetadataPlanStatus.ERROR)
         LibraryEvent.ClearSearch -> state.copy(searchQuery = "")
         LibraryEvent.ClearSelection -> state.copy(selectedAlbumIds = emptySet())
     }
 
     private fun Set<String>.toggle(value: String): Set<String> =
         if (value in this) this - value else this + value
+
+    private fun LibraryUiState.moveImage(event: LibraryEvent.MoveImage): LibraryUiState {
+        val album = editableAlbum ?: return this
+        if (event.offset !in setOf(-1, 1) || album.albumId != event.albumId) return this
+        val from = album.images.indexOfFirst { it.imageId == event.imageId }
+        val to = from + event.offset
+        if (from < 0 || to !in album.images.indices) return this
+        val reordered = album.images.toMutableList().apply { add(to, removeAt(from)) }
+        return copy(
+            previewAlbums = previewAlbums.map {
+                if (it.albumId == album.albumId) it.copy(images = reordered) else it
+            },
+            metadataPlanStatus = MetadataPlanStatus.IDLE,
+        )
+    }
 }

@@ -1,6 +1,9 @@
 package com.galleryorganizer.presentation
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,6 +12,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
@@ -24,7 +30,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.galleryorganizer.domain.ImportStrategy
@@ -78,7 +87,7 @@ internal fun AlbumLibraryContent(
         LibrarySortMenu(libraryState.sort, onLibraryEvent)
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "Memory preview · ${libraryState.visibleAlbums.size} albums",
+            text = "${libraryState.visibleAlbums.size} albums",
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -100,6 +109,20 @@ internal fun AlbumLibraryContent(
                 },
             )
         }
+        if (libraryState.loadState == LibraryLoadState.EMPTY) {
+            Text(
+                text = "No archived albums",
+                modifier = Modifier.padding(top = 24.dp),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = "Albums will appear after an archive plan completes.",
+                modifier = Modifier.padding(top = 4.dp),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         if (selectionSummary.hasSelection) {
             TextButton(
                 onClick = { onLibraryEvent(LibraryEvent.ClearSelection) },
@@ -109,33 +132,77 @@ internal fun AlbumLibraryContent(
             }
             HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
             Text(
-                text = "Selection preview",
+                text = "Album details",
                 modifier = Modifier.padding(top = 12.dp),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
-            Text(
-                text = "These selected examples are memory-only and cannot create an archive plan.",
-                modifier = Modifier.padding(top = 4.dp, bottom = 6.dp),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
             selectionSummary.selectedAlbums.forEach { album ->
                 WorkspaceStatusLine(
                     album.title,
-                    album.dateLabel +
-                        if (album.needsReview) " · Needs review" else " · Ready",
+                    "${album.images.size} images · ${album.state.name}",
                 )
+            }
+            libraryState.editableAlbum?.let { album ->
+                Text(
+                    text = "Metadata order",
+                    modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                album.images.forEachIndexed { index, image ->
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            image.fileName,
+                            modifier = Modifier.weight(1f).padding(vertical = 12.dp),
+                        )
+                        TextButton(
+                            onClick = {
+                                onLibraryEvent(
+                                    LibraryEvent.MoveImage(album.albumId, image.imageId, -1),
+                                )
+                            },
+                            enabled = index > 0,
+                        ) { Text("Up") }
+                        TextButton(
+                            onClick = {
+                                onLibraryEvent(
+                                    LibraryEvent.MoveImage(album.albumId, image.imageId, 1),
+                                )
+                            },
+                            enabled = index < album.images.lastIndex,
+                        ) { Text("Down") }
+                    }
+                    HorizontalDivider()
+                }
+                OutlinedButton(
+                    onClick = { onLibraryEvent(LibraryEvent.CreateMetadataPlan) },
+                    enabled = libraryState.hasMetadataChanges &&
+                        libraryState.metadataPlanStatus in setOf(
+                            MetadataPlanStatus.IDLE,
+                            MetadataPlanStatus.ERROR,
+                        ),
+                    modifier = Modifier.padding(top = 12.dp),
+                ) {
+                    Text(
+                        if (libraryState.metadataPlanStatus == MetadataPlanStatus.SAVING) {
+                            "Saving..."
+                        } else {
+                            "Create metadata plan"
+                        },
+                    )
+                }
+                if (libraryState.metadataPlanStatus != MetadataPlanStatus.IDLE) {
+                    Text(
+                        text = libraryState.metadataPlanStatus.name.lowercase(),
+                        modifier = Modifier.padding(top = 6.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
         WorkspaceReviewSnapshotSection(workspaceReview)
-        Text(
-            text = "These examples are not scanned albums.",
-            modifier = Modifier.padding(top = 6.dp),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        WorkspaceGateNotice()
+        WorkspaceGateNotice(setupState.rootCapability)
         OutlinedButton(
             onClick = { onSetupEvent(SetupEvent.OpenSettings) },
             modifier = Modifier.padding(top = 16.dp),
@@ -196,6 +263,8 @@ internal fun InboxContent(
     libraryState: LibraryUiState,
     onSetupEvent: (SetupEvent) -> Unit,
     onInboxEvent: (InboxEvent) -> Unit,
+    onOpenImageViewer: (String) -> Unit,
+    thumbnails: Map<String, ImageBitmap>,
 ) {
     val decisionSummary = inboxState.decisionSummary
     val workspaceReview = WorkspaceReviewSnapshot.from(setupState, libraryState, inboxState)
@@ -205,22 +274,47 @@ internal fun InboxContent(
             title = "Inbox",
             detail = "Review source batches before creating an archive plan.",
         )
-        WorkspaceStatusLine("Coverage", "Not scanned")
-        WorkspaceStatusLine("Scan scopes", "${setupState.selectedScopeIds.size} selected")
-        WorkspaceStatusLine("Pending batches", "0")
-        WorkspaceGateNotice()
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            inboxState.batches.forEach { batch ->
+                FilterChip(
+                    selected = inboxState.selectedBatchKey == batch.batchKey,
+                    onClick = { onInboxEvent(InboxEvent.SelectBatch(batch.batchKey)) },
+                    label = { Text("${batch.label} (${batch.imageCount})") },
+                )
+            }
+        }
         Text(
-            text = "Decision preview",
+            text = "Source images",
             modifier = Modifier.padding(top = 24.dp),
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.SemiBold,
         )
-        Text(
-            text = "Try source decisions with example items. This draft is memory-only and cannot create or run a plan.",
-            modifier = Modifier.padding(top = 6.dp, bottom = 8.dp),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        when (inboxState.loadState) {
+            InboxLoadState.IDLE -> InboxStatus("Select a source batch.")
+            InboxLoadState.LOADING -> InboxStatus("Loading images...")
+            InboxLoadState.EMPTY -> InboxStatus(
+                if (inboxState.batches.isEmpty()) {
+                    "No scanned source batches."
+                } else {
+                    "This batch has no images."
+                },
+            )
+            InboxLoadState.ERROR -> {
+                InboxStatus("Images could not be loaded.")
+                TextButton(onClick = { onInboxEvent(InboxEvent.RetryPage) }) {
+                    Text("Retry")
+                }
+            }
+            InboxLoadState.STORAGE_DEFERRED,
+            InboxLoadState.READY,
+            InboxLoadState.APPENDING,
+            -> Unit
+        }
         WorkspaceStatusLine(
             "Decision summary",
             "Keep ${decisionSummary.keepCount} · " +
@@ -238,38 +332,30 @@ internal fun InboxContent(
             InboxPreviewRow(
                 item = item,
                 selected = inboxState.decisionsBySourceId[item.sourceId],
+                thumbnail = thumbnails[item.sourceId],
                 onEvent = onInboxEvent,
+                onOpen = { onOpenImageViewer(item.sourceId) },
             )
         }
-        if (inboxState.decisionsBySourceId.isNotEmpty()) {
+        if (inboxState.hasNextPage ||
+            inboxState.loadState == InboxLoadState.APPENDING
+        ) {
             TextButton(
-                onClick = { onInboxEvent(InboxEvent.ClearDraft) },
-                modifier = Modifier.padding(top = 4.dp),
+                onClick = { onInboxEvent(InboxEvent.LoadNextPage) },
+                enabled = inboxState.loadState != InboxLoadState.APPENDING,
             ) {
-                Text("Clear preview decisions")
-            }
-            HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
-            Text(
-                text = "Decision review",
-                modifier = Modifier.padding(top = 12.dp),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                text = "These decisions are memory-only and cannot create an archive plan.",
-                modifier = Modifier.padding(top = 4.dp, bottom = 6.dp),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            inboxState.decisionReviewItems.forEach { reviewItem ->
-                WorkspaceStatusLine(
-                    reviewItem.item.label,
-                    "${reviewItem.decision.label()} · " +
-                        reviewItem.item.detail,
+                Text(
+                    if (inboxState.loadState == InboxLoadState.APPENDING) {
+                        "Loading..."
+                    } else {
+                        "Load more"
+                    },
                 )
             }
         }
-        WorkspaceReviewSnapshotSection(workspaceReview)
+        if (inboxState.previewItems.isNotEmpty()) {
+            WorkspaceReviewSnapshotSection(workspaceReview)
+        }
         OutlinedButton(
             onClick = { onSetupEvent(SetupEvent.OpenScanScopes) },
             modifier = Modifier.padding(top = 16.dp),
@@ -283,37 +369,67 @@ internal fun InboxContent(
 private fun InboxPreviewRow(
     item: InboxPreviewItem,
     selected: SourceDecisionValue?,
+    thumbnail: ImageBitmap?,
     onEvent: (InboxEvent) -> Unit,
+    onOpen: () -> Unit,
 ) {
-    Column(
+    val previewModifier = Modifier
+        .size(72.dp)
+        .clip(RoundedCornerShape(4.dp))
+        .clickable(onClick = onOpen)
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(item.label, style = MaterialTheme.typography.titleMedium)
-        Text(
-            text = item.detail,
-            modifier = Modifier.padding(top = 2.dp, bottom = 8.dp),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            SourceDecisionValue.entries.forEach { decision ->
-                FilterChip(
-                    selected = selected == decision,
-                    onClick = {
-                        if (selected == decision) {
-                            onEvent(InboxEvent.ClearDecision(item.sourceId))
-                        } else {
+        if (thumbnail == null) {
+            Box(
+                modifier = previewModifier
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+            )
+        } else {
+            Image(
+                bitmap = thumbnail,
+                contentDescription = "Open ${item.label}",
+                modifier = previewModifier,
+                contentScale = ContentScale.Crop,
+            )
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(item.label, style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = item.detail,
+                modifier = Modifier.padding(top = 2.dp, bottom = 6.dp),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                SourceDecisionValue.entries.forEach { decision ->
+                    FilterChip(
+                        selected = selected == decision,
+                        onClick = {
+                            if (selected != decision) {
                             onEvent(InboxEvent.SetDecision(item.sourceId, decision))
-                        }
-                    },
-                    label = { Text(decision.label()) },
-                )
+                            }
+                        },
+                        label = { Text(decision.label()) },
+                    )
+                }
             }
         }
     }
     HorizontalDivider()
+}
+
+@Composable
+private fun InboxStatus(message: String) {
+    Text(
+        text = message,
+        modifier = Modifier.padding(top = 8.dp, bottom = 12.dp),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 @Composable
@@ -463,9 +579,13 @@ private fun WorkspaceStatusLine(label: String, value: String) {
 }
 
 @Composable
-private fun WorkspaceGateNotice() {
+private fun WorkspaceGateNotice(rootCapability: RootCapability) {
     Text(
-        text = "Device validation is deferred. Scanning and storage remain unavailable.",
+        text = if (rootCapability == RootCapability.READY) {
+            "Archive access is ready. Scanning and file changes are not enabled."
+        } else {
+            "Archive access is unavailable. Scanning and file changes are not enabled."
+        },
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 18.dp)

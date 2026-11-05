@@ -38,6 +38,9 @@ try {
         Get-Item -LiteralPath (Join-Path $projectRoot "spikes/s02-fixture-helper/build.gradle.kts")
         Get-Item -LiteralPath (Join-Path $projectRoot "spikes/s02-fixture-helper/src/main/AndroidManifest.xml")
         Get-Item -LiteralPath (Join-Path $projectRoot "spikes/s02-mediastore/src/main/AndroidManifest.xml")
+        Get-Item -LiteralPath (Join-Path $projectRoot "spikes/s03-ocr/build.gradle.kts")
+        Get-Item -LiteralPath (Join-Path $projectRoot "spikes/s03-ocr-harness/build.gradle.kts")
+        Get-Item -LiteralPath (Join-Path $projectRoot "spikes/s03-ocr-harness/src/main/AndroidManifest.xml")
         Get-Item -LiteralPath (Join-Path $projectRoot "spikes/s05-thumbnail/build.gradle.kts")
         Get-Item -LiteralPath (Join-Path $projectRoot "spikes/s05-thumbnail-harness/build.gradle.kts")
         Get-Item -LiteralPath (Join-Path $projectRoot "spikes/s05-thumbnail-harness/src/main/AndroidManifest.xml")
@@ -59,7 +62,7 @@ try {
         (Join-Path $projectRoot "domain/src/main/kotlin/com/galleryorganizer/domain/OrganizerUseCases.kt") `
         -Destination $domainPath
     Add-Content -LiteralPath $domainPath -Value "`nval unsafe = java.io.File(`"unsafe`")"
-    Assert-VerificationFails -ExpectedMessage "F02 must not contain real file I/O"
+    Assert-VerificationFails -ExpectedMessage "PostSpike must not contain real file I/O"
 
     Copy-Item -Force -LiteralPath `
         (Join-Path $projectRoot "domain/src/main/kotlin/com/galleryorganizer/domain/OrganizerUseCases.kt") `
@@ -94,6 +97,14 @@ try {
         (Join-Path $projectRoot "app/src/main/java/com/galleryorganizer/app/di/AppBindingsModule.kt") `
         -Destination $appBindingsPath
 
+    Add-Content -LiteralPath $appBindingsPath `
+        -Value "`nval forbiddenOcrBinding: ManualOcrRecognizer? = null"
+    Assert-VerificationFails `
+        -ExpectedMessage "B04.5 production OCR recognizer must remain unbound"
+    Copy-Item -Force -LiteralPath `
+        (Join-Path $projectRoot "app/src/main/java/com/galleryorganizer/app/di/AppBindingsModule.kt") `
+        -Destination $appBindingsPath
+
     $appBuildPath = Join-Path $fixtureRoot "app/build.gradle.kts"
     Add-Content -LiteralPath $appBuildPath `
         -Value "`ndependencies { implementation(project(`":spikes:s02-fixture-helper`")) }"
@@ -107,6 +118,13 @@ try {
     Assert-VerificationFails -ExpectedMessage "Production modules must not depend on spike modules"
     Copy-Item -Force -LiteralPath (Join-Path $projectRoot "data/build.gradle.kts") `
         -Destination $dataBuildPath
+
+    Add-Content -LiteralPath $appBuildPath `
+        -Value "`ndependencies { implementation(libs.mlkit.text.recognition) }"
+    Assert-VerificationFails `
+        -ExpectedMessage "B04.5 OCR dependency is allowed only in the data adapter"
+    Copy-Item -Force -LiteralPath (Join-Path $projectRoot "app/build.gradle.kts") `
+        -Destination $appBuildPath
 
     $helperApplicationId = "com.galleryorganizer.spikes.s02.fixturehelper"
     $probeSuiteBuildPath = Join-Path $fixtureRoot "spikes/probe-suite/build.gradle.kts"
@@ -166,6 +184,29 @@ try {
     Copy-Item -Force -LiteralPath `
         (Join-Path $projectRoot "spikes/s05-thumbnail/build.gradle.kts") `
         -Destination $s05BuildPath
+
+    $s03BuildPath = Join-Path $fixtureRoot "spikes/s03-ocr/build.gradle.kts"
+    Add-Content -LiteralPath $s03BuildPath `
+        -Value "`ndependencies { implementation(project(`":domain`")) }"
+    Assert-VerificationFails `
+        -ExpectedMessage "S03.1 contract module must remain dependency-free Kotlin/JVM"
+    Copy-Item -Force -LiteralPath `
+        (Join-Path $projectRoot "spikes/s03-ocr/build.gradle.kts") `
+        -Destination $s03BuildPath
+
+    $s03HarnessManifestPath = Join-Path $fixtureRoot (
+        "spikes/s03-ocr-harness/src/main/AndroidManifest.xml"
+    )
+    $s03HarnessManifest = Get-Content -Raw -LiteralPath $s03HarnessManifestPath
+    $s03HarnessManifest = $s03HarnessManifest -replace `
+        '<application', `
+        '<uses-permission android:name="android.permission.INTERNET" /><application'
+    Set-Content -NoNewline -LiteralPath $s03HarnessManifestPath -Value $s03HarnessManifest
+    Assert-VerificationFails `
+        -ExpectedMessage "S03 harness must not request permissions or share an Android UID"
+    Copy-Item -Force -LiteralPath `
+        (Join-Path $projectRoot "spikes/s03-ocr-harness/src/main/AndroidManifest.xml") `
+        -Destination $s03HarnessManifestPath
 
     $s05HarnessManifestPath = Join-Path $fixtureRoot (
         "spikes/s05-thumbnail-harness/src/main/AndroidManifest.xml"

@@ -1,6 +1,7 @@
 package com.galleryorganizer.presentation
 
 import com.galleryorganizer.domain.ImportStrategy
+import com.galleryorganizer.domain.ScanCoverage
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -14,12 +15,82 @@ class SetupUiStateTest {
 
         assertEquals(setOf("dcim", "pictures"), state.selectedScopeIds)
         assertFalse("organizer-root" in state.selectedScopeIds)
-        assertEquals(RootCapability.DEVICE_GATE_PENDING, state.rootCapability)
+        assertEquals(RootCapability.UNSELECTED, state.rootCapability)
         assertEquals(RootAdoptionState.NOT_REQUESTED, state.rootAdoptionState)
         assertEquals(NotificationPreference.OFF, state.notificationPreference)
         assertEquals(NotificationPermissionState.NOT_REQUESTED, state.notificationPermission)
+        assertEquals(MediaAccessState.NOT_REQUESTED, state.mediaAccess)
+        assertEquals(SourceScanUiState.IDLE, state.sourceScanState)
+        assertEquals(emptyList(), state.discoveredBatches)
         assertEquals(ImportStrategy.COPY_KEEP_SOURCE, state.importStrategy)
         assertFalse(state.canFinish)
+    }
+
+    @Test
+    fun `media permission and scan states fail closed`() {
+        val requesting = SetupReducer.reduce(
+            SetupUiState.initial(),
+            SetupEvent.RequestMediaAccess,
+        )
+        val denied = SetupReducer.reduce(
+            requesting,
+            SetupEvent.MediaAccessResolved(ScanCoverage.UNKNOWN),
+        )
+
+        assertEquals(MediaAccessState.REQUESTING, requesting.mediaAccess)
+        assertEquals(MediaAccessState.DENIED, denied.mediaAccess)
+        assertEquals(SourceScanUiState.IDLE, denied.sourceScanState)
+        assertEquals(emptyList(), denied.discoveredBatches)
+    }
+
+    @Test
+    fun `completed discovery exposes selectable first level batches`() {
+        val scanning = SetupReducer.reduce(
+            SetupReducer.reduce(
+                SetupUiState.initial(),
+                SetupEvent.MediaAccessResolved(ScanCoverage.FULL),
+            ),
+            SetupEvent.SourceScanStarted,
+        )
+        val ready = SetupReducer.reduce(
+            scanning,
+            SetupEvent.SourceScanSucceeded(
+                listOf(
+                    DiscoveredBatchOption("directory:trip", "Trip", 3, false),
+                    DiscoveredBatchOption("virtual:loose", "Loose images", 1, true),
+                ),
+            ),
+        )
+        val selected = SetupReducer.reduce(
+            ready,
+            SetupEvent.ToggleDiscoveredBatch("directory:trip"),
+        )
+
+        assertEquals(MediaAccessState.FULL, ready.mediaAccess)
+        assertEquals(SourceScanUiState.READY, ready.sourceScanState)
+        assertEquals(2, ready.discoveredBatches.size)
+        assertEquals(setOf("directory:trip"), selected.selectedBatchKeys)
+    }
+
+    @Test
+    fun `new root invalidates stale discovered batches`() {
+        val ready = SetupReducer.reduce(
+            SetupReducer.reduce(
+                SetupReducer.reduce(
+                    SetupUiState.initial(),
+                    SetupEvent.MediaAccessResolved(ScanCoverage.FULL),
+                ),
+                SetupEvent.SourceScanStarted,
+            ),
+            SetupEvent.SourceScanSucceeded(
+                listOf(DiscoveredBatchOption("directory:trip", "Trip", 3, false)),
+            ),
+        )
+        val selecting = SetupReducer.reduce(ready, SetupEvent.ChooseNewRoot)
+
+        assertEquals(SourceScanUiState.IDLE, selecting.sourceScanState)
+        assertEquals(emptyList(), selecting.discoveredBatches)
+        assertEquals(emptySet(), selecting.selectedBatchKeys)
     }
 
     @Test
@@ -35,17 +106,42 @@ class SetupUiStateTest {
     }
 
     @Test
-    fun `archive choices update the in memory draft while device evidence is deferred`() {
+    fun `archive choice enters selecting state`() {
         val initial = SetupUiState.initial()
 
         val result = SetupReducer.reduce(initial, SetupEvent.ChooseExistingRoot)
 
         assertEquals(SetupMode.ADOPT, result.mode)
         assertEquals(RootSelection.EXISTING_REQUESTED, result.rootSelection)
-        assertEquals(RootCapability.DEVICE_GATE_PENDING, result.rootCapability)
-        assertEquals(RootAdoptionState.DEVICE_GATE_PENDING, result.rootAdoptionState)
-        assertIs<SetupNotice.DeviceGateDeferred>(result.notice)
+        assertEquals(RootCapability.SELECTING, result.rootCapability)
+        assertEquals(RootAdoptionState.SELECTING, result.rootAdoptionState)
+        assertEquals(null, result.notice)
         assertFalse(result.canFinish)
+
+        val accepted = SetupReducer.reduce(
+            result,
+            SetupEvent.RootSelectionAccepted("Existing archive", SetupMode.ADOPT),
+        )
+        assertEquals(RootAdoptionState.ACCESS_GRANTED, accepted.rootAdoptionState)
+        assertFalse(accepted.canFinish)
+
+        val validating = SetupReducer.reduce(accepted, SetupEvent.AdoptionValidationStarted)
+        val verified = SetupReducer.reduce(
+            validating,
+            SetupEvent.AdoptionValidationSucceeded(albumCount = 3, importingCount = 1),
+        )
+        assertEquals(RootAdoptionState.VALIDATING, validating.rootAdoptionState)
+        assertEquals(RootAdoptionState.VERIFIED, verified.rootAdoptionState)
+        assertEquals(3, verified.adoptionAlbumCount)
+        assertEquals(1, verified.adoptionImportingCount)
+        assertTrue(verified.canFinish)
+
+        val switched = SetupReducer.reduce(validating, SetupEvent.ChooseNewRoot)
+        val stale = SetupReducer.reduce(
+            switched,
+            SetupEvent.AdoptionValidationSucceeded(9, 9),
+        )
+        assertEquals(switched, stale)
     }
 
     @Test
@@ -55,24 +151,33 @@ class SetupUiStateTest {
             SetupEvent.ChooseExistingRoot,
         )
         val newRoot = SetupReducer.reduce(existing, SetupEvent.ChooseNewRoot)
-        val probed = SetupReducer.reduce(newRoot, SetupEvent.ProbeRoot)
 
         assertEquals(SetupMode.NEW, newRoot.mode)
         assertEquals(RootSelection.NEW_REQUESTED, newRoot.rootSelection)
         assertEquals(RootAdoptionState.NOT_APPLICABLE, newRoot.rootAdoptionState)
-        assertEquals(RootAdoptionState.NOT_APPLICABLE, probed.rootAdoptionState)
-        assertEquals(RootCapability.DEVICE_GATE_PENDING, probed.rootCapability)
-        assertIs<SetupNotice.DeviceGateDeferred>(probed.notice)
+        assertEquals(RootCapability.SELECTING, newRoot.rootCapability)
     }
 
     @Test
-    fun `finish opens the library shell without enabling storage capabilities`() {
-        val result = SetupReducer.reduce(SetupUiState.initial(), SetupEvent.Finish)
+    fun `accepted root enables finish while cancellation and failure remain blocked`() {
+        val selecting = SetupReducer.reduce(SetupUiState.initial(), SetupEvent.ChooseNewRoot)
+        val cancelled = SetupReducer.reduce(selecting, SetupEvent.RootSelectionCancelled)
+        val failed = SetupReducer.reduce(selecting, SetupEvent.RootSelectionFailed)
+        val ready = SetupReducer.reduce(
+            selecting,
+            SetupEvent.RootSelectionAccepted("GalleryOrganizer", SetupMode.NEW),
+        )
+        val result = SetupReducer.reduce(ready, SetupEvent.Finish)
 
+        assertEquals(RootCapability.UNSELECTED, cancelled.rootCapability)
+        assertIs<SetupNotice.SelectionCancelled>(cancelled.notice)
+        assertEquals(RootCapability.FAILED, failed.rootCapability)
+        assertIs<SetupNotice.RootRejected>(failed.notice)
+        assertEquals("GalleryOrganizer", ready.selectedRootLabel)
+        assertTrue(ready.canFinish)
         assertEquals(SetupDestination.LIBRARY, result.destination)
         assertTrue(result.workspaceEntered)
-        assertIs<SetupNotice.DeviceGateDeferred>(result.notice)
-        assertFalse(result.canFinish)
+        assertTrue(result.canFinish)
     }
 
     @Test
@@ -88,9 +193,9 @@ class SetupUiStateTest {
         assertFalse(reviewed.workspaceEntered)
         assertEquals(scoped.selectedScopeIds, reviewed.selectedScopeIds)
         assertEquals(RootSelection.EXISTING_REQUESTED, reviewed.rootSelection)
-        assertEquals(RootAdoptionState.DEVICE_GATE_PENDING, reviewed.rootAdoptionState)
-        assertEquals(RootCapability.DEVICE_GATE_PENDING, reviewed.rootCapability)
-        assertIs<SetupNotice.DeviceGateDeferred>(reviewed.notice)
+        assertEquals(RootAdoptionState.SELECTING, reviewed.rootAdoptionState)
+        assertEquals(RootCapability.SELECTING, reviewed.rootCapability)
+        assertEquals(null, reviewed.notice)
         assertFalse(reviewed.canFinish)
     }
 
@@ -183,19 +288,19 @@ class SetupUiStateTest {
 
     @Test
     fun `workspace navigation opens inbox and returns to library`() {
-        val finished = SetupReducer.reduce(SetupUiState.initial(), SetupEvent.Finish)
+        val finished = readyState()
         val inbox = SetupReducer.reduce(finished, SetupEvent.OpenInbox)
         val library = SetupReducer.reduce(inbox, SetupEvent.OpenLibrary)
 
         assertEquals(SetupDestination.INBOX, inbox.destination)
         assertTrue(inbox.workspaceEntered)
         assertEquals(SetupDestination.LIBRARY, library.destination)
-        assertEquals(RootCapability.DEVICE_GATE_PENDING, library.rootCapability)
+        assertEquals(RootCapability.READY, library.rootCapability)
     }
 
     @Test
     fun `trash and recovery shells preserve workspace state without enabling capabilities`() {
-        val finished = SetupReducer.reduce(SetupUiState.initial(), SetupEvent.Finish)
+        val finished = readyState()
         val trash = SetupReducer.reduce(finished, SetupEvent.OpenTrash)
         val recovery = SetupReducer.reduce(trash, SetupEvent.OpenRecovery)
 
@@ -203,8 +308,8 @@ class SetupUiStateTest {
         assertTrue(trash.workspaceEntered)
         assertEquals(SetupDestination.RECOVERY, recovery.destination)
         assertTrue(recovery.workspaceEntered)
-        assertEquals(RootCapability.DEVICE_GATE_PENDING, recovery.rootCapability)
-        assertFalse(recovery.canFinish)
+        assertEquals(RootCapability.READY, recovery.rootCapability)
+        assertTrue(recovery.canFinish)
     }
 
     @Test
@@ -239,7 +344,7 @@ class SetupUiStateTest {
 
         assertEquals(SetupDestination.IMPORT_STRATEGY, detail.destination)
         assertEquals(ImportStrategy.MOVE_SOURCE, settings.importStrategy)
-        assertEquals(RootCapability.DEVICE_GATE_PENDING, settings.rootCapability)
+        assertEquals(RootCapability.UNSELECTED, settings.rootCapability)
         assertEquals(SetupDestination.SETTINGS, settings.destination)
     }
 
@@ -253,5 +358,14 @@ class SetupUiStateTest {
 
         assertEquals(initial, result)
         assertEquals(ImportStrategy.COPY_KEEP_SOURCE, result.importStrategy)
+    }
+
+    private fun readyState(): SetupUiState {
+        val selecting = SetupReducer.reduce(SetupUiState.initial(), SetupEvent.ChooseNewRoot)
+        val ready = SetupReducer.reduce(
+            selecting,
+            SetupEvent.RootSelectionAccepted("GalleryOrganizer", SetupMode.NEW),
+        )
+        return SetupReducer.reduce(ready, SetupEvent.Finish)
     }
 }
